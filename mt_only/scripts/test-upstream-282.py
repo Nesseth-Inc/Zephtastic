@@ -22,7 +22,11 @@ FIRMWARE = "d5f16191ca28b01b5024f590f04a67f25d66f1b1"
 UNITY = "cbcd08fa7de711053a3deec6339ee89cad5d2697"
 BME = "test/test_bme680_iaq/test_main.cpp"
 HOPS = "test/test_routing_response_hops/test_main.cpp"
+REBROADCAST = "test/test_rebroadcast_mode/test_main.cpp"
+AUTH_HARNESS = "test/support/AuthPipelineHarness.h"
 PINS = {
+    REBROADCAST: "f7b231458bed04ac4097c5f5ed4c116caf687af91f612d3e72ae267e59bb615f",
+    AUTH_HARNESS: "0eb9d263fd60bdc28e47a9f0393ce136c55cfb8f9dd20644bfe04e2475f471c7",
     BME: "a52582ad86703e522b6fe0f6326ef84813d0630860f40c2280ac187097ab6784",
     HOPS: "2114aae0ea1ed25d6ab8b51ab0cb3b6f499ecbc1f8aac538b0b44ce319c47939",
     "src/mesh/NodeDB.cpp": "006921660b5b4b7e8ee32fecc4dcb84cde3e31d0c0853c335e0c43b02f31d3e1",
@@ -112,9 +116,14 @@ def main():
     if not excluded.issubset(all_hops):
         raise RuntimeError("The upstream response-hop test selection changed")
     names = [name for name in all_hops if name not in excluded]
-    bodies = [extract(sources[HOPS], "static meshtastic_MeshPacket makeRequest(")[0],
-              extract(sources[HOPS], "void setUp(")[0], extract(sources[HOPS], "void tearDown(")[0]]
-    bodies.extend(extract(sources[HOPS], f"void {name}(")[0] for name in names)
+    # In event mode upstream has a second, empty Unity runner with its own
+    # setUp/tearDown. Extract from the ordinary build's active region only.
+    standard, guard, _ = sources[HOPS].partition("#else // USERPREFS_EVENT_MODE")
+    if not guard or standard.count("#if !USERPREFS_EVENT_MODE") != 1:
+        raise ValueError("Missing upstream standard-mode test guard")
+    bodies = [extract(standard, "static meshtastic_MeshPacket makeRequest(")[0],
+              extract(standard, "void setUp(")[0], extract(standard, "void tearDown(")[0]]
+    bodies.extend(extract(standard, f"void {name}(")[0] for name in names)
     bodies += ["int main() {", "    UNITY_BEGIN();", *(f"    RUN_TEST({name});" for name in names),
                "    return UNITY_END();", "}"]
     (out / "stock-hop-tests.inc").write_text("\n".join(bodies) + "\n")
@@ -128,6 +137,23 @@ def main():
         subprocess.run([*cxx, f"-DSTOCK_ORACLE={mode}", FIXTURE / "reply_hops.cpp", obj, "-o", exe], check=True)
         results[label] = run_unity(exe, names, out)
 
+    rebroadcast_case = "test_unknown_channel_broadcast_relays_in_core_portnums_only"
+    all_rebroadcast = tests_in(sources[REBROADCAST], 11)
+    if rebroadcast_case not in all_rebroadcast:
+        raise RuntimeError("The upstream rebroadcast test selection changed")
+    (out / "stock-rebroadcast.inc").write_text("\n\n".join((
+        extract(sources[AUTH_HARNESS], "static const char *modeName(")[0],
+        extract(sources[AUTH_HARNESS], "static meshtastic_MeshPacket makeUnknownChannelBroadcast(")[0],
+        extract(sources[REBROADCAST], f"void {rebroadcast_case}(")[0],
+    )) + "\n")
+    build_fixture = runpy.run_path(str(FIXTURE / "phone_config.py"))["build_fixture"]
+    relay_out = out / "rebroadcast"
+    relay_out.mkdir()
+    relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity], [obj])
+    results["rebroadcast_zt"] = run_unity(relay, [rebroadcast_case], relay_out)
+    results["rebroadcast_modes"] = ["ALL", "CORE_PORTNUMS_ONLY", "KNOWN_ONLY", "LOCAL_ONLY", "NONE"]
+    results["excluded_rebroadcast_mode"] = "ALL_SKIP_DECODING (deprecated stock REPEATER only)"
+    results["other_upstream_rebroadcast_cases"] = [c for c in all_rebroadcast if c != rebroadcast_case]
     subprocess.run([sys.executable, APP / "scripts/test-endpoint-differential.py", "--stock", stock,
                     "--output", out / "endpoint"], check=True)
     subprocess.run([sys.executable, FIXTURE / "phone_config.py", "--output", out / "phone"], check=True)

@@ -21,7 +21,7 @@ NODE = 0x12345678
 FULL_DUMP, CONFIG_ONLY, NODES_ONLY = 71, 69420, 69421
 
 
-def build_fixture(out):
+def build_fixture(out, source=None, extra_flags=(), extra_objects=()):
     proto = ROOT / "zephcore/bench/upstream-differential/source"
     vendor = ROOT / "zephcore/adapters/bench/vendor"
     mono = ROOT / "zephcore/lib/monocypher"
@@ -37,11 +37,12 @@ def build_fixture(out):
         obj = out / (src.stem + ".o")
         subprocess.run([*host.cc(), "-std=c11", *flags, "-c", src, "-o", obj], check=True)
         objects.append(obj)
-    exe = out / "device-config-oracle"
-    subprocess.run([*host.cxx(), "-std=c++17", *flags, APP / "tests/device_config_oracle.cpp",
+    source = source or APP / "tests/device_config_oracle.cpp"
+    exe = out / source.stem
+    subprocess.run([*host.cxx(), "-std=c++17", *flags, *extra_flags, source,
                     APP / "src/Protobuf.cpp", vendor / "MtCodec.cpp", vendor / "MtSignature.cpp",
                     APP / "src/pki/PkiSigner.cpp", APP / "src/pki/PkiIdentity.cpp", *objects,
-                    *host.crypto_link_flags(), "-o", exe], check=True)
+                    *extra_objects, *host.crypto_link_flags(), "-o", exe], check=True)
     return exe
 
 
@@ -70,6 +71,11 @@ def session(exe, model, transport, out):
 
             def snapshot(nonce):
                 actual = StockClient(NODE, 0x87654321)
+                if nonce == CONFIG_ONLY:
+                    # Stock MeshInterface reserves this nonce for noNodes mode.
+                    # In ordinary mode it deliberately skips it when drawing a random ID.
+                    actual.noNodes = True
+                    actual.configId = mesh_interface.NODELESS_WANT_CONFIG_ID
                 with patch.object(mesh_interface.random, "randint", return_value=nonce):
                     actual._startConfig()
                 wire = actual.sent[-1]
