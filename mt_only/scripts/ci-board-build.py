@@ -13,6 +13,8 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
+from xiao_release import unsigned_update_capacity
+
 APP = Path(__file__).resolve().parents[1]
 EPOCH = "1795713761"
 MCUBOOT_COMMIT = "aa32eaaad41cc345e6f6e6633368a4766fe23c25"
@@ -177,7 +179,10 @@ def build(args):
     log = (app / "build.log" if (app / "build.log").is_file() else log_path).read_text()
     esp = profile in V4_BOARDS or profile == "xiao-ordinary"
     if esp:
-        flash = usage((zephyr / "zephyr.bin").stat().st_size, flash_capacity(zephyr, profile in V4_BOARDS))
+        capacity = flash_capacity(zephyr, profile in V4_BOARDS)
+        if profile == "xiao-ordinary":
+            capacity = unsigned_update_capacity(capacity)
+        flash = usage((zephyr / "zephyr.bin").stat().st_size, capacity)
         ram = linker_usage(log, "dram0_0_seg")
         if profile in V4_BOARDS and "CONFIG_MT_ALLOW_TX=y" in (zephyr / ".config").read_text().splitlines():
             raise ValueError("V4 beta must be receive-only")
@@ -200,7 +205,7 @@ def build(args):
     report = {"profile": profile, "commit": subprocess.check_output(
         ["git", "-C", APP, "rev-parse", "HEAD"], text=True).strip(),
         "flash_measure": ("simple-boot bytes / bytes before storage" if profile in V4_BOARDS else
-                          "unsigned application bytes / code partition" if esp else "linker FLASH"),
+                          "unsigned application bytes / signable update payload budget" if esp else "linker FLASH"),
         "ram_measure": "linker internal DRAM" if esp else "linker static RAM",
         "flash": flash, "ram": ram}
     (out / "memory.json").write_text(json.dumps(report, indent=2) + "\n")

@@ -19,6 +19,14 @@ FLASH_SIZE = 0x800000
 SECONDARY = 0x10000
 PRIMARY = 0x1d0000
 SLOT = 0x1c0000
+SWAP_TRAILER_RESERVE = 8192
+P256_MAX_DER_BYTES = 72
+# One TLV info header, three TLV headers, key hash, image hash, DER signature.
+SIGNED_TLV_MAX = 4 + 3 * 4 + 32 + 32 + P256_MAX_DER_BYTES
+
+def unsigned_update_capacity(slot_size):
+    return slot_size - SWAP_TRAILER_RESERVE - SIGNED_TLV_MAX
+
 MAGIC = bytes.fromhex("77c295f360d2ef7f3552500f2cb67980")
 GEOMETRY = {
     "boot_partition": (0, 0x10000), "sys_partition": (0x390000, 0x10000),
@@ -119,7 +127,7 @@ def check_build(root, public_key, require_ble=True, expanded=False, *, newly_bui
     loader = (boot / "zephyr/zephyr.bin").read_bytes()
     der = public_der(public_key)
     require(der in loader and der[-65:] in raw and bytes.fromhex(sha(der)) in raw, "Signing authority differs from linked firmware")
-    require(len(raw) < SLOT - 8192 and raw[:32] == bytes(32) and raw[32:36] == struct.pack("<I", 0xace637d3),
+    require(len(raw) < SLOT - SWAP_TRAILER_RESERVE and raw[:32] == bytes(32) and raw[32:36] == struct.pack("<I", 0xace637d3),
             "Unexpected ordinary firmware image")
     require(0 < len(loader) <= SECONDARY and loader[0] == 0xe9, "Unexpected XIAO bootloader")
     return raw, loader
@@ -162,7 +170,7 @@ def make_package(root, public_key, signed_file, dest, *, expanded=False, ordinar
                 "Ordinary release authority differs from the one checked at build time")
     raw, loader = check_build(root, public_key, expanded=expanded)
     data = signed_file.read_bytes()
-    require(32 < len(data) <= SLOT - 8192, "Signed image exceeds the secondary slot")
+    require(32 < len(data) <= SLOT - SWAP_TRAILER_RESERVE, "Signed image exceeds the secondary slot")
     magic, addr, header, protected, body, flags = struct.unpack_from("<IIHHII", data)
     require((magic, addr, header, protected, flags) == (0x96f3b83d, 0, 32, 0, 0) and
             body == len(raw) - 32 and data[32:len(raw)] == raw[32:], "Signed payload differs from this build")
@@ -185,7 +193,7 @@ def make_package(root, public_key, signed_file, dest, *, expanded=False, ordinar
     require(set(tlvs) == {1, 0x10, 0x22} and tlvs[1] == key_id and len(tlvs[0x10]) == 32,
             "Signed metadata must match the device's ECDSA key-hash format")
     signature = tlvs[0x22]
-    require(8 <= len(signature) <= 72 and utils.encode_dss_signature(*utils.decode_dss_signature(signature)) == signature,
+    require(8 <= len(signature) <= P256_MAX_DER_BYTES and utils.encode_dss_signature(*utils.decode_dss_signature(signature)) == signature,
             "Expected a canonical DER P-256 signature")
     body_hash = hashlib.sha256(data[:len(raw)]).digest()
     require(body_hash == tlvs[0x10], "Payload digest differs from signed metadata")
