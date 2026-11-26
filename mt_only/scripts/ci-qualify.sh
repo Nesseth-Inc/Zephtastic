@@ -6,6 +6,9 @@ group=${1:?usage: ci-qualify.sh native|nordic|esp32}
 case "$group" in native|nordic|esp32) ;; *) exit 2 ;; esac
 root=$(git rev-parse --show-toplevel)
 work=$(mktemp -d "${RUNNER_TEMP:-/tmp}/zephtastic-build.XXXXXXXX")
+if [[ -n ${GITHUB_ENV:-} ]]; then
+  printf 'ZT_CI_WORK=%s\n' "$work" >> "$GITHUB_ENV"
+fi
 cd "$root"
 source mt_only/scripts/ci-runner-tools.sh
 install_runner_tools "$group" "$work"
@@ -56,7 +59,10 @@ else
 fi
 install_sdk_archive "toolchain_gnu_linux-x86_64_${target}.tar.xz" "$digest" "$sdk/gnu"
 python -m pip -q install cmake==3.28.4 ninja==1.11.1.4
-(cd "$sdk" && ./setup.sh -h && ln -s "gnu/$target" "$target")
+# Zephyr finds the compiler in gnu/ and the release builder also reads this alias.
+# DTC and gperf come from the runner's job-local packages.
+ln -s "gnu/$target" "$sdk/$target"
+command -v dtc gperf
 python mt_only/scripts/prepare-deps.py "$work/deps"
 python -m pip -q install -r "$work/deps/zephyr/scripts/requirements-base.txt"
 args=()
