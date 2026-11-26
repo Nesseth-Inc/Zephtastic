@@ -76,6 +76,8 @@ The builder checks the resolved board configuration, flash layout, and public ke
 
 ## Compatibility checks
 
+The private-runner firmware checks exercise pinned upstream tests, the stock Python phone client and the supported board builds. Each completed group records the commit, test results or board memory measurements. [Tests, coverage and module priorities](mt_only/docs/UPSTREAM-QUALIFICATION.md)
+
 For the module inventory check, use an upstream Meshtastic firmware checkout containing the two pinned commits. Run from the preview root with `STOCK` pointing to that checkout.
 
 ```sh
