@@ -18,8 +18,8 @@ uint32_t draw;
 inline long random(long lo,long hi) { return lo + draw % (hi-lo); }
 #define LOG_DEBUG_RADIO(...) ((void)0)
 
-enum { meshtastic_Config_DeviceConfig_Role_ROUTER = 2 };
-struct { struct { unsigned role; } device; } config;
+#include "stock-device-role.inc"
+struct { struct { meshtastic_Config_DeviceConfig_Role role; } device; } config;
 struct meshtastic_MeshPacket { float rx_snr; };
 struct Region { bool wideLora; };
 Region subGHz{false};
@@ -60,19 +60,21 @@ int main() {
                 stock::meshtastic_MeshPacket packet{float(snr)};
                 assert(radio.getTxDelayMsecWeightedWorst(packet.rx_snr) ==
                        mt::RebroadcastTiming::worstDelay(ztSlot,snr));
-                for (unsigned role : {0u,2u,11u}) {
+                for (auto role : {stock::meshtastic_Config_DeviceConfig_Role_CLIENT,
+                                  stock::meshtastic_Config_DeviceConfig_Role_ROUTER,
+                                  stock::meshtastic_Config_DeviceConfig_Role_ROUTER_LATE}) {
                     stock::config.device.role = role;
                     for (unsigned draw : {0u,1u,5u,60u,255u}) {
                         stock::draw = draw;
                         assert(radio.getTxDelayMsecWeighted(&packet) ==
-                               mt::RebroadcastTiming::initialDelay(ztSlot,role == 2,snr,draw));
+                               mt::RebroadcastTiming::initialDelay(ztSlot,role == stock::meshtastic_Config_DeviceConfig_Role_ROUTER,snr,draw));
                         ++comparisons;
                     }
                 }
             }
         }
     }
-    stock::config.device.role = 11;
+    stock::config.device.role = stock::meshtastic_Config_DeviceConfig_Role_ROUTER_LATE;
     stock::draw = 0;
     radio.sf = 11;
     radio.bw = 250;
@@ -83,7 +85,7 @@ int main() {
     const auto weakDuplicate = radio.getTxDelayMsecWeightedWorst(-20);
     assert(radio.slotTimeMsec == stock_long_fast::slotMs && initial == stock_long_fast::initialMs);
     assert(duplicate == stock_long_fast::duplicateMs && weakDuplicate == stock_long_fast::weakDuplicateMs);
-    std::printf("{\"comparisons\":%u,\"slot_ms\":%u,\"initial_ms\":%u,"
+    std::printf("{\"role_enum_bytes\":%zu,\"comparisons\":%u,\"slot_ms\":%u,\"initial_ms\":%u,"
                 "\"duplicate_ms\":%u,\"weak_duplicate_ms\":%u}\n",
-                comparisons,radio.slotTimeMsec,initial,duplicate,weakDuplicate);
+                sizeof(stock::config.device.role),comparisons,radio.slotTimeMsec,initial,duplicate,weakDuplicate);
 }

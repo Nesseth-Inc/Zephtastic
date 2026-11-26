@@ -16,7 +16,8 @@ import host_test_toolchain as host
 
 if a.stock:
     subprocess.run([sys.executable, str(app/'tests/stock_routing_timing/run.py'),
-                    '--stock', str(a.stock), '--output', str(out/'stock-timing')], check=True)
+                    '--stock', str(a.stock), '--output', str(out/'stock-timing'),
+                    *(['--short-enums'] if a.short_enums else [])], check=True)
 vendor=root/'zephcore/adapters/bench/vendor';mono=root/'zephcore/lib/monocypher';proto=root/'zephcore/bench/upstream-differential/source'
 (out/'meshtastic').mkdir(exist_ok=True)
 boot=[line.strip()for line in (app/'src/main.cpp').read_text().splitlines()if'service.route.configureContinuous'in line]

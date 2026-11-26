@@ -30,6 +30,7 @@ if args.group == "native":
         timing = read(f"roles-{abi}/stock-timing/results.json")
         if (roles["status"] != "PASS" or roles["groups"] < 1 or
                 roles["short_enums"] != (abi == "short") or timing["status"] != "PASS" or
+                timing["short_enums"] != (abi == "short") or
                 timing["stock_commit"] != upstream["stock_revision"] or timing["comparisons"] < 1):
             raise ValueError(f"Incomplete role evidence for {abi}")
         report["roles"][abi] = {"role_channel": roles, "timing": timing}
