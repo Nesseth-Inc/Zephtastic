@@ -26,6 +26,7 @@ REBROADCAST = "test/test_rebroadcast_mode/test_main.cpp"
 AUTH_HARNESS = "test/support/AuthPipelineHarness.h"
 PINS = {
     REBROADCAST: "f7b231458bed04ac4097c5f5ed4c116caf687af91f612d3e72ae267e59bb615f",
+    "src/mesh/FloodingRouter.cpp": "37fdf91c01e2f574f72ac12ab2443ba5fc248fae5f644906abff8df1197f4c9d",
     AUTH_HARNESS: "0eb9d263fd60bdc28e47a9f0393ce136c55cfb8f9dd20644bfe04e2475f471c7",
     BME: "a52582ad86703e522b6fe0f6326ef84813d0630860f40c2280ac187097ab6784",
     HOPS: "2114aae0ea1ed25d6ab8b51ab0cb3b6f499ecbc1f8aac538b0b44ce319c47939",
@@ -146,11 +147,17 @@ def main():
         extract(sources[AUTH_HARNESS], "static meshtastic_MeshPacket makeUnknownChannelBroadcast(")[0],
         extract(sources[REBROADCAST], f"void {rebroadcast_case}(")[0],
     )) + "\n")
+    flooding = sources["src/mesh/FloodingRouter.cpp"]
+    (out / "stock-flooding.inc").write_text("\n\n".join(extract(flooding, signature)[0] for signature in (
+        "bool FloodingRouter::isRebroadcaster(",
+        "bool FloodingRouter::roleAllowsCancelingDupe(",
+        "void FloodingRouter::perhapsCancelDupe(",
+    )) + "\n")
     build_fixture = runpy.run_path(str(FIXTURE / "phone_config.py"))["build_fixture"]
     relay_out = out / "rebroadcast"
     relay_out.mkdir()
     relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity], [obj])
-    results["rebroadcast_zt"] = run_unity(relay, [rebroadcast_case], relay_out)
+    results["rebroadcast_zt"] = run_unity(relay, [rebroadcast_case, "test_zt_forwarding_and_duplicate_queue_against_stock"], relay_out)
     results["rebroadcast_modes"] = ["ALL", "CORE_PORTNUMS_ONLY", "KNOWN_ONLY", "LOCAL_ONLY", "NONE"]
     results["excluded_rebroadcast_mode"] = "ALL_SKIP_DECODING (deprecated stock REPEATER only)"
     results["other_upstream_rebroadcast_cases"] = [c for c in all_rebroadcast if c != rebroadcast_case]

@@ -90,8 +90,9 @@ static void runPipelineIngress(const meshtastic_MeshPacket &packet)
 }
 
 #include "stock-rebroadcast.inc"
+#include "rebroadcast_oracle.h"
 
-void setUp() { observations = 0; }
+void setUp() {}
 void tearDown() { relay.reset(); }
 int main()
 {
@@ -99,5 +100,6 @@ int main()
         return 1;  // This explicit exclusion must be revisited if the firmware gains this mode.
     UNITY_BEGIN();
     RUN_TEST(test_unknown_channel_broadcast_relays_in_core_portnums_only);
+    RUN_TEST(test_zt_forwarding_and_duplicate_queue_against_stock);
     return UNITY_END() || observations != sizeof(ALL_MODES)/sizeof(ALL_MODES[0]);
 }
