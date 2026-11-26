@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Each private x86-64 Ubuntu runner uses an isolated, job-local tool directory.
 set -euo pipefail
-group=${1:?usage: ci-qualify.sh native|nordic|esp32}
-case "$group" in native|nordic|esp32) ;; *) exit 2 ;; esac
+group=${1:?usage: ci-qualify.sh native|nordic|esp32|router}
+case "$group" in native|nordic|esp32|router) ;; *) exit 2 ;; esac
 root=$(git rev-parse --show-toplevel)
 work=$(mktemp -d "${RUNNER_TEMP:-/tmp}/zephtastic-build.XXXXXXXX")
 if [[ -n ${GITHUB_ENV:-} ]]; then
@@ -53,10 +53,11 @@ install_sdk_archive() {
 }
 install_sdk_archive zephyr-sdk-1.0.1_linux-x86_64_minimal.tar.xz \
   ca9bc0ff66fafca1dac9d592a36d953cf16d096a9d09b1c0357f021cf9f6a7eb "$work"
-if [[ $group == nordic ]]; then
+if [[ $group != esp32 ]]; then
   target=arm-zephyr-eabi
   digest=21b85981cb5a1818d9bc53d82af80f208946ec038b982ff1907287572ed3a634
   profiles=(t096-680 t096-728 t114-v2 rak4631-mini)
+  if [[ $group == router ]]; then profiles=(t096-router-680); fi
 else
   target=xtensa-espressif_esp32s3_zephyr-elf
   digest=904d42b75e4d819c58b0db640783911e508b9ee2a627eb5daffb907465a34be1

@@ -23,7 +23,8 @@ T096_FLAGS = {
 }
 V4_BOARDS = {"v4.2-r2": "heltec_wifi_lora32_v4", "v4.3-r2": "heltec_wifi_lora32_v43",
              "v4.3-r8": "heltec_wifi_lora32_v4_r8"}
-PROFILES = [*T096_FLAGS, "t114-v2", "rak4631-mini", *V4_BOARDS, "xiao-ordinary"]
+ROUTER = "t096-router-680"
+PROFILES = [*T096_FLAGS, ROUTER, "t114-v2", "rak4631-mini", *V4_BOARDS, "xiao-ordinary"]
 KITS = {
     "rak": ("rak4631-rak19003-mini-firmware", "0a5aafba4d1a1bbf71c981e57f8b2ec1c6f48eeb2b4f0a86118894659d006950"),
     "v4": ("heltec-v4-build-sources", "e08a9e73243e9a8e9a15a92638027d04d50c1d26a9e0fa4868dac4c279545efd"),
@@ -143,7 +144,13 @@ def build(args):
                            f"-DDTC_OVERLAY_FILE={kit}/build/native-usb.overlay"]
             else:
                 modules += ["hal/cmsis", "hal/cmsis_6", "hal/nordic"]
-                if profile == "rak4631-mini":
+                if profile == ROUTER:
+                    board = "heltec_t096/nrf52840"
+                    options = [f"-DCONF_FILE={APP}/boards/t096-router.conf",
+                               f"-DEXTRA_CONF_FILE={APP}/boards/t096-fresh-domain.conf",
+                               f"-DDTC_OVERLAY_FILE={APP}/boards/t096.overlay",
+                               f"-DEXTRA_DTC_OVERLAY_FILE={APP}/boards/t096-fresh-domain.overlay;{APP}/boards/t096-router.overlay"]
+                elif profile == "rak4631-mini":
                     board_inputs("rak", kit)
                     board = "rak4631/nrf52840"
                     options = [f"-DEXTRA_CONF_FILE={kit}/inputs/mini.conf",
@@ -178,6 +185,18 @@ def build(args):
         flash, ram = linker_usage(log, "FLASH"), linker_usage(log, "RAM")
         if not (zephyr / "zephyr.uf2").is_file():
             raise ValueError("Nordic build is missing its UF2")
+    if profile == ROUTER:
+        enabled = set((zephyr / ".config").read_text().splitlines())
+        required = ["MT_T096_ROUTER_ONLY", "MT_T096_OWNER_TX", "MT_ALLOW_TX", "MT_NORMAL_ENDPOINT",
+                    "MT_NORMAL_TX_DEFAULT", "MT_PKI_STOCK_TRIAL", "MT_PKI_TARGET_RUNTIME",
+                    "MT_PKI_FRESH_DOMAIN_ONLY", "MT_RF_ADMIN_GET", "USB_DEVICE_STACK_NEXT",
+                    "CDC_ACM_SERIAL_INITIALIZE_AT_BOOT", "ENTROPY_NRF5_BIAS_CORRECTION"]
+        omitted = ["BT", "MT_BLE_NATIVE_STORE", "MT_DISPLAY", "MT_GNSS_T096", "GNSS", "MT_ENVIRONMENT_SENSORS"]
+        if flash["capacity_bytes"] != 680 * 1024:
+            raise ValueError("Router must retain the 680 KiB application partition")
+        for symbol in required + omitted:
+            if (f"CONFIG_{symbol}=y" in enabled) != (symbol in required):
+                raise ValueError(f"Incorrect router configuration for {symbol}")
     report = {"profile": profile, "commit": subprocess.check_output(
         ["git", "-C", APP, "rev-parse", "HEAD"], text=True).strip(),
         "flash_measure": ("simple-boot bytes / bytes before storage" if profile in V4_BOARDS else

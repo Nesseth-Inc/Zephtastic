@@ -49,6 +49,9 @@ constexpr uint32_t CORE_PORTNUMS_ONLY = 5u;
 constexpr uint32_t kUnsupported = 0xFFFFFFFFu;
 
 inline bool supportedRole(uint32_t role) {
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+  return role == Role::ROUTER || role == Role::ROUTER_LATE;
+#else
   if (role == Role::CLIENT || role == Role::CLIENT_MUTE || role == Role::ROUTER ||
       role == Role::ROUTER_LATE || role == Role::CLIENT_BASE || role == Role::TRACKER ||
       role == Role::SENSOR || role == Role::TAK || role == Role::CLIENT_HIDDEN || role == Role::LOST_AND_FOUND)
@@ -57,6 +60,7 @@ inline bool supportedRole(uint32_t role) {
   return role == Role::TAK_TRACKER;
 #else
   return false;
+#endif
 #endif
 }
 

@@ -11,7 +11,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/M119PsaPremasterOverlay.cmake)
 set(MT_VENDOR ${CMAKE_CURRENT_SOURCE_DIR}/../zephcore/adapters/bench/vendor)
 set(MONO ${CMAKE_CURRENT_SOURCE_DIR}/../zephcore/lib/monocypher)
 target_include_directories(app PRIVATE src ${MT_VENDOR} ${MONO} ${CMAKE_CURRENT_SOURCE_DIR}/../zephcore/helpers)
-target_sources(app PRIVATE src/main.cpp src/BleTransport.cpp src/UsbBootloader.cpp src/ZephyrHardware.cpp
+if(CONFIG_MT_T096_ROUTER_ONLY)
+  target_sources(app PRIVATE src/BleUnavailable.cpp)
+else()
+  target_sources(app PRIVATE src/BleTransport.cpp)
+endif()
+target_sources(app PRIVATE src/main.cpp src/UsbBootloader.cpp src/ZephyrHardware.cpp
   src/security/ConsoleSecurity.cpp
   src/notifications/ZephyrNotification.cpp ../zephcore/helpers/led_gate.c
   src/network/WifiRuntime.cpp src/network/TcpTransport.cpp

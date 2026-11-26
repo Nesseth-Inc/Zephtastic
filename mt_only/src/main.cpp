@@ -3537,6 +3537,7 @@ public:
     return wifiAdmin.save(value,wifi(),now,uint64_t(k_uptime_get()));
   }
   bool bluetoothConfig(meshtastic_Config_BluetoothConfig &out) const override {
+    if(IS_ENABLED(CONFIG_MT_T096_ROUTER_ONLY))return mt::Companion::Host::bluetoothConfig(out);
     if(!bluetoothJournal.ready())return false;
     const auto &value=bluetoothJournal.config();out={};out.enabled=value.enabled;
     out.mode=static_cast<meshtastic_Config_BluetoothConfig_PairingMode>(value.mode);
@@ -3545,6 +3546,7 @@ public:
   // Caller holds serviceLock, never the BLE session lock. Durable app policy
   // and the transport handoff are separate so a BLE result cannot be purged.
   int persistBluetoothConfig(const meshtastic_Config_BluetoothConfig &value,uint32_t now) {
+    if(IS_ENABLED(CONFIG_MT_T096_ROUTER_ONLY))return -ENOTSUP;
     if(!storageReady||!journal.ready()||!bluetoothJournal.ready())return -EIO;
     if(settingsEdit.open()||rebootSchedule.pending())return -EBUSY;
     mt::BluetoothSettings candidate;candidate.enabled=value.enabled;

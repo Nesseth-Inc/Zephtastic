@@ -35,3 +35,29 @@ jobs:
           path: ${{ runner.temp }}/evidence/${{ matrix.group }}.json
           if-no-files-found: error
           retention-days: 30
+
+  router:
+    name: Qualify T096 router
+    needs: qualify
+    runs-on: [self-hosted, Linux, X64, generic-build]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Run qualification
+        shell: bash
+        env:
+          BUILD_GROUP: router
+        run: bash mt_only/scripts/ci-qualify.sh "$BUILD_GROUP"
+      - name: Collect qualification evidence
+        env:
+          BUILD_GROUP: router
+        run: python3 mt_only/scripts/ci-collect.py "$BUILD_GROUP" "$ZT_CI_WORK" "$RUNNER_TEMP/evidence/$BUILD_GROUP.json"
+      - name: Save qualification evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: qualification-router-${{ github.sha }}
+          path: ${{ runner.temp }}/evidence/router.json
+          if-no-files-found: error
+          retention-days: 30

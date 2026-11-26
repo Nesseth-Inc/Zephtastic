@@ -149,6 +149,10 @@ struct Config {
   }
   Config() {
     bytes[0]='M';bytes[1]='T';bytes[2]=Version;bytes[105]=20;bytes[600]=20;bytes[580]=11;bytes[584]=5;bytes[107]=1;bytes[121]=HopPolicy::Initial;
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+    bytes[107]=DeviceRolePolicy::Role::ROUTER;
+    bytes[108]=DeviceRolePolicy::RebroadcastMode::CORE_PORTNUMS_ONLY;
+#endif
     bench::MtNodeRecord n;n.setName("ZephTastic",false);n.setName("ZT",true);n.setPublic();
     memcpy(bytes+6,n.bytes,72);
     // Preserve the previous prototype's default, while accepting stock's
@@ -691,7 +695,7 @@ struct Config {
         LoRaPresets::Profile p{};USChannelSelection s{};
         if(version>=11) {
           if(!(version>=19?DeviceRolePolicy::storedValid(role(),rebroadcastMode()):
-                            (role()<=2&&DeviceRolePolicy::valid(role(),rebroadcastMode())))||!canonicalPrimaryName()||
+                            (role()<=2&&DeviceRolePolicy::storedValid(role(),rebroadcastMode())))||!canonicalPrimaryName()||
              !(version>=18?(regionCode()?resolveRadio(p,s):
                                     RadioSettings::validateUnprovisioned(radioRequest(),p,s,effectivePrimaryName())):
                version>=14?(regionCode()?RadioSettings::resolve(radioRequest(),p,s,effectivePrimaryName()):

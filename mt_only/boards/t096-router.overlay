@@ -1,0 +1,6 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/ { chosen { /delete-property/ zephyr,display; }; };
+&tft { status = "disabled"; };
+&tft_pwr_enable { /delete-property/ regulator-boot-on; };
+&gnss { status = "disabled"; };
+&uart0 { status = "disabled"; };

@@ -461,6 +461,11 @@ config MT_NORMAL_ENDPOINT
 	help
 	  Four pending messages and bounded ACK/retry state. MT_ALLOW_TX remains
 	  a separate disabled release gate. Disable for legacy one-packet tests.
+config MT_T096_ROUTER_ONLY
+	bool "T096 headless router with USB administration"
+	depends on BOARD_HELTEC_T096 && !BT
+	default n
+
 config MT_T096_OWNER_TX
 	bool "Owner-authorized T096 TX at fixed lowest chip drive"
 	depends on BOARD_HELTEC_T096 && MT_ALLOW_TX && MT_NORMAL_ENDPOINT
@@ -492,7 +497,7 @@ config MT_PKI_GROUNDWORK
 config MT_PKI_TARGET_RUNTIME
 	bool "Experimental load-only private runtime (unqualified)"
 	default n
-	depends on MT_NORMAL_ENDPOINT && SETTINGS_NVS && BT && PSA_CRYPTO
+	depends on MT_NORMAL_ENDPOINT && SETTINGS_NVS && (BT || MT_T096_ROUTER_ONLY) && PSA_CRYPTO
 	depends on SOC_NRF52840 || SOC_SERIES_ESP32S3
 	select MT_PKI_GROUNDWORK
 	select MT_SHARED_MBEDTLS_THREADING
@@ -524,7 +529,7 @@ config MT_PKI_STOCK_TRIAL
 	bool "Bounded multi-peer stock PKI with explicit USB administration"
 	default n
 	depends on BOARD_HELTEC_T096 && MT_NORMAL_ENDPOINT && MT_ALLOW_TX && MT_NORMAL_TX_DEFAULT
-	depends on SETTINGS_NVS && BT && PSA_CRYPTO
+	depends on SETTINGS_NVS && (BT || MT_T096_ROUTER_ONLY) && PSA_CRYPTO
 	select MT_PKI_TARGET_RUNTIME
 	help
 	  T096 qualification profile using the common private runtime. Empty
