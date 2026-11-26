@@ -23,6 +23,7 @@ def read(name):
 if args.group == "native":
     upstream = read("upstream/results.json")
     report["upstream"] = upstream
+    report["node_info_and_position"] = read("node-position.json")
     report["device_config"] = read("device-config.json")
     report["roles"] = {}
     for abi in ("native", "short"):

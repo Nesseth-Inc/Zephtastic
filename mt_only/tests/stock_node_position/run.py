@@ -2,6 +2,8 @@
 """Compare NodeInfo and Position policies with Meshtastic's pinned implementation."""
 from pathlib import Path
 import argparse
+import json
+import re
 import os
 import shlex
 import subprocess
@@ -13,6 +15,7 @@ PROTO = ROOT / 'zephcore/bench/upstream-differential/source'
 PIN = 'd5f16191ca28b01b5024f590f04a67f25d66f1b1'
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--stock', required=True, type=Path)
+parser.add_argument("--output", type=Path, help="Write the executed counts per enum ABI")
 args = parser.parse_args()
 
 def donor(path):
@@ -44,10 +47,19 @@ with tempfile.TemporaryDirectory(prefix='zt-stock-node-position-') as tmp:
     (tmp/'meshtastic').mkdir()
     for f in PROTO.glob('*.pb.h'): (tmp/'meshtastic'/f.name).symlink_to(f)
     (tmp/'oracle.inc').write_text('\n'.join(methods))
+    counts = {}
     for mode in ([], ['-fshort-enums']):
         compiler=shlex.split(os.environ.get('CXX','c++'))
         exe=tmp/'node-position-check'
         subprocess.run([*compiler,'-std=c++17','-O1','-fsanitize=address,undefined',
                         '-fno-omit-frame-pointer',*mode,'-I',tmp,'-I',PROTO/'nanopb',
                         '-I',ROOT/'mt_only/src',TEST/'cases.cpp','-o',exe],check=True)
-        subprocess.run([exe],check=True,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0','UBSAN_OPTIONS':'halt_on_error=1'})
+        completed = subprocess.run([exe], check=True, text=True, stdout=subprocess.PIPE,
+                                   env={**os.environ, 'ASAN_OPTIONS':'detect_leaks=0','UBSAN_OPTIONS':'halt_on_error=1'})
+        print(completed.stdout, end="")
+        row = re.fullmatch(r"PASS (\d+) NodeInfo admission/role and (\d+) Position reply/precision/measurement cases\s*", completed.stdout)
+        if row is None or min(map(int, row.groups())) <= 0:
+            raise ValueError("Missing NodeInfo or Position comparisons")
+        counts["short" if mode else "native"] = {"node_info": int(row[1]), "position": int(row[2])}
+    if args.output:
+        args.output.write_text(json.dumps({"stock_revision": PIN, "comparisons": counts}, indent=2) + "\n")
