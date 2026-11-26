@@ -1,0 +1,39 @@
+name: Routing parity
+on:
+  push:
+    branches: [main, codex/upstream-private-ci]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  routing:
+    runs-on: [self-hosted, Linux, X64, generic-build]
+    timeout-minutes: 20
+    container: ubuntu@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install native build tools
+        run: |
+          apt-get -qq update
+          DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends ca-certificates git clang libssl-dev python3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Fetch pinned Meshtastic 2.8.2 firmware
+        run: |
+          git init -q "$RUNNER_TEMP/stock"
+          git -C "$RUNNER_TEMP/stock" fetch -q --depth=1 https://github.com/meshtastic/firmware.git d5f16191ca28b01b5024f590f04a67f25d66f1b1
+          git -C "$RUNNER_TEMP/stock" checkout -q --detach FETCH_HEAD
+      - name: Compare stock and ZT routing on both enum ABIs
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          set -euo pipefail
+          for abi in native short; do
+            args=()
+            if [[ $abi == short ]]; then args+=(--short-enums); fi
+            python3 mt_only/scripts/test-role-channel.py --stock "$RUNNER_TEMP/stock" --output "$RUNNER_TEMP/routing-$abi" "${args[@]}"
+          done

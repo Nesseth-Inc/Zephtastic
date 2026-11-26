@@ -48,3 +48,26 @@ inline bool resolve(uint32_t bandwidthHz,unsigned sf,uint32_t &out) {
   out=uint32_t(slot);return true;
 }
 } }
+
+// Meshtastic 2.8.2 RadioInterface::getCWsize, getTxDelayMsecWeighted and
+// getTxDelayMsecWeightedWorst. The radio adapter supplies integer dB and
+// the random draw. Bound SNR to the supported range before calculating CW.
+namespace mt { namespace RebroadcastTiming {
+constexpr uint8_t CWmin = 3;
+constexpr uint8_t CWmax = 8;
+
+inline uint8_t contentionWindow(int8_t snr) {
+    const int32_t bounded = snr < -20 ? -20 : snr > 10 ? 10 : snr;
+    return uint8_t(CWmin + (bounded + 20) * (CWmax - CWmin) / 30);
+}
+
+inline uint32_t initialDelay(uint32_t slotMs, bool earlyRouter, int8_t snr, uint32_t draw) {
+    const uint8_t cw = contentionWindow(snr);
+    if (earlyRouter) return (draw % (2u * cw)) * slotMs;
+    return (2u * CWmax + draw % (1u << cw)) * slotMs;
+}
+
+inline uint32_t worstDelay(uint32_t slotMs, int8_t snr) {
+    return (2u * CWmax + (1u << contentionWindow(snr))) * slotMs;
+}
+} }

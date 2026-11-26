@@ -2,6 +2,7 @@
 // Actual Config/journal/Service/Companion with synthetic native I/O only.
 #include "device_config_fixture.h"
 #include "known_channel_fixture.h"
+#include "stock_routing_timing/long_fast.h"
 #include "ChannelName.h"
 #include "CorePorts.h"
 #include "pki/PkiSigner.h"
@@ -146,6 +147,8 @@ int main(){
     b.complete();assert(b.s.sent==1&&!b.s.active()&&!b.s.route.pending());
   }
   pass("three-normal-Services-public-transit-native-borrow-completion-and-recipient-codec");
+  constexpr uint32_t initialDue = 1000 + stock_long_fast::initialMs;
+  constexpr uint32_t duplicateDue = 1200 + stock_long_fast::duplicateMs;
   for(unsigned role:{0u,1u,2u,11u,12u}) {
     Side a(0x11223344),b(0x22334455,role);auto original=packet(a,0xffffffffu);b.receive(original);
     assert(b.s.route.pending()==unsigned(role!=1));
@@ -157,7 +160,7 @@ int main(){
   {
     Side a(0x11223344),late(0x22334455,11),router(0x33445566,2);
     auto p=packet(a,0xffffffffu,250,2);late.receive(p,1000);
-    assert(late.s.route.pending()==1&&!late.s.route.next(1447)&&late.s.route.next(1448));
+    assert(late.s.route.pending()==1&&!late.s.route.next(initialDue - 1)&&late.s.route.next(initialDue));
     p=packet(a,0xffffffffu,251,2);router.receive(p,1000);
     assert(router.s.route.pending()==1&&router.s.route.next(1000));
   }
@@ -180,8 +183,8 @@ int main(){
     favoriteNode(b,favoriteSource?a.s.route.identity():destination,0);
     auto original=packet(a,destination,301);b.receive(original,1000);assert(b.s.route.pending()==1);
     auto duplicate=original;duplicate[12]=uint8_t((2u<<5)|1u);duplicate[15]=0x77;b.receive(duplicate,1200);
-    assert(b.s.route.pending()==1&&!b.s.route.next(3439));
-    assert(b.s.route.next(3440));
+    assert(b.s.route.pending()==1&&!b.s.route.next(duplicateDue - 1));
+    assert(b.s.route.next(duplicateDue));
   }
   {Side a(0x11223344),b(0x22334455,12);auto original=packet(a,0x33445566,302);
    b.receive(original,1000);assert(b.s.route.pending()==1);auto duplicate=original;
@@ -193,27 +196,40 @@ int main(){
     else {favoriteNode(b,destination,0);assert(b.s.nodes.edit(destination,b.s.route.identity(),mt::NodeCache::Edit::Ignore)==1);}
     auto original=packet(a,destination,303);b.receive(original,1000);assert(b.s.route.pending()==1);
     auto duplicate=original;duplicate[12]=uint8_t((2u<<5)|1u);duplicate[15]=0x77;b.receive(duplicate,1200);
-    assert(b.s.route.pending()==1&&!b.s.route.next(3439)&&b.s.route.next(3440));
+    assert(b.s.route.pending()==1&&!b.s.route.next(duplicateDue - 1)&&b.s.route.next(duplicateDue));
   }
   pass("CLIENT_BASE-preserves-favorite-LoRa-duplicate-and-clamps-once-to-stock-late-window; nonfavorite-cancels");
   {
     Side a(0x11223344),late(0x22334455,11);auto p=packet(a,0xffffffffu,350,2);
     late.receive(p,1000);assert(late.s.route.pending()==1);auto duplicate=p;
     duplicate[12]=uint8_t((2u<<5)|1u);duplicate[15]=0x77;late.receive(duplicate,1200);
-    assert(late.s.route.pending()==1&&!late.s.route.next(3439)&&late.s.route.next(3440));
+    assert(late.s.route.pending()==1&&!late.s.route.next(duplicateDue - 1)&&late.s.route.next(duplicateDue));
     Side opaque(0x33445566,11);p=packet(a,0xffffffffu,351,2);p[13]^=1;
     opaque.receive(p,1000);assert(opaque.s.route.pending()==1);duplicate=p;
     duplicate[12]=uint8_t((2u<<5)|1u);duplicate[15]=0x77;opaque.receive(duplicate,1200);
-    assert(opaque.s.route.pending()==1&&!opaque.s.route.next(3439)&&opaque.s.route.next(3440));
+    assert(opaque.s.route.pending()==1&&!opaque.s.route.next(duplicateDue - 1)&&opaque.s.route.next(duplicateDue));
   }
   pass("ROUTER_LATE decoded-and-opaque duplicates preserve queued work and clamp only once");
+  for (bool opaque : {false, true}) {
+    Side a(0x11223344), late(0x22334455,11);
+    auto original = packet(a,0xffffffffu,354,2);
+    if (opaque) original[13] ^= 1;
+    late.s.rx(original.data(),original.size(),-20,1000,0);
+    auto duplicate = original;
+    duplicate[12] = uint8_t((2u << 5) | 1u);
+    duplicate[15] = 0x77;
+    late.receive(duplicate,1200);
+    constexpr uint32_t due = 1200 + stock_long_fast::weakDuplicateMs;
+    assert(late.s.route.pending()==1 && !late.s.route.next(due-1) && late.s.route.next(due));
+  }
+  pass("ROUTER_LATE duplicate uses original negative SNR for decoded and opaque frames");
   {
     Side a(0x11223344),late(0x22334455,11);
     auto p=packet(a,0xffffffffu,352,2);late.receive(p,1000);late.receive(p,1200);
-    assert(late.s.route.pending()==1&&!late.s.route.next(1447)&&late.s.route.next(1448));
+    assert(late.s.route.pending()==1&&!late.s.route.next(initialDue - 1)&&late.s.route.next(initialDue));
     Side opaque(0x33445566,11);p=packet(a,0xffffffffu,353,2);p[13]^=1;
     opaque.receive(p,1000);opaque.receive(p,1200);
-    assert(opaque.s.route.pending()==1&&!opaque.s.route.next(1447)&&opaque.s.route.next(1448));
+    assert(opaque.s.route.pending()==1&&!opaque.s.route.next(initialDue - 1)&&opaque.s.route.next(initialDue));
   }
   pass("ROUTER_LATE repeated-originator decoded-and-opaque copies do not enter the late-duplicate window");
   auto forwardedHop=[](Side &side,std::vector<uint8_t> p,uint32_t now=1000) {

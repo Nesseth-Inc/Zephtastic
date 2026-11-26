@@ -125,16 +125,10 @@ private:
   }
   uint32_t initialDelay(uint32_t jitter) const {
     if(!haveSnr_) return 150+jitter%850;
-    const uint8_t cw=uint8_t(3+(int32_t(rxSnr_)+20)*5/30);
-    // RadioInterface::getTxDelayMsecWeighted, with integer dB input supplied
-    // by the existing RX adapter. The broker still performs channel activity.
-    return alwaysRelay_ ? (jitter%(2*cw))*slotMs_ :
-                         (16+jitter%(1u<<cw))*slotMs_;
+    return mt::RebroadcastTiming::initialDelay(slotMs_, alwaysRelay_, rxSnr_, jitter);
   }
   uint32_t lateRebroadcastDelay(int8_t snr) const {
-    const uint8_t bounded=uint8_t(snr<-20?-20:snr>10?10:snr);
-    const uint8_t cw=uint8_t(3+(int32_t(bounded)+20)*5/30);
-    return (16u+(1u<<cw))*slotMs_;
+    return mt::RebroadcastTiming::worstDelay(slotMs_, snr);
   }
   void clampLateDuplicate(Frame *q,uint32_t now) const {
     if(q&&!q->lateWindow) {
