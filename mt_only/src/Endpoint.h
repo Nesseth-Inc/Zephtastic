@@ -1200,7 +1200,7 @@ public:
     if(to!=ours||!from||from>=0xfffffffeu||!id)return;
     // A flooded response already gained an implicit ACK on its relayed path.
     // Stock only sends a terminal zero-hop ACK for direct/next-hop responses.
-    const bool terminalAckPath=start==hop||p[14]!=0;
+    const bool terminalAckPath=stock::routing::getHopsAway(start,hop,m.hasBitfield)==0||p[14]!=0;
     const bool nextHopAck=armed&&!(p[12]&8)&&hop>0&&p[14]&&p[14]==uint8_t(ours);
     if(m.portnum==meshtastic_PortNum_POSITION_APP&&!m.request_id) {
       if(armed&&(!controlEncoder_||controlEncoder_->positionSharingAllowed())&&sharedPosition_.positionSharing()&&sharedPosition_.positionPotential()&&hop<=start&&start<=HopPolicy::Maximum&&!(p[12]&0x10)&&
@@ -1299,14 +1299,14 @@ public:
       }
       if(match&&armed&&(p[12]&8)&&terminalAckPath)reply(codec,ours,from,id,0,now,random);
       else if(armed&&(p[12]&8)&&!m.request_id&&!m.reply_id&&!m.wantResponse&&!(m.hasBitfield&&(m.bitfield&2))) {
-        reply(codec,ours,from,id,HopPolicy::response(start,hop,sharedPosition_.hopLimit()),now,random);
+        reply(codec,ours,from,id,HopPolicy::response(start,hop,sharedPosition_.hopLimit(),m.hasBitfield),now,random);
       }
       // Discovery queries already own their NodeInfo response. Limit this
       // next-hop completion to accepted responses or plain announcements.
       else if(nextHopAck&&(match||(!m.request_id&&!m.reply_id&&!m.emoji&&
           !m.wantResponse&&!(m.hasBitfield&&(m.bitfield&2)))))reply(codec,ours,from,id,0,now,random);
     } else if(armed&&(p[12]&8)&&(m.portnum==1||(PublicApplication::allowed(m.portnum)&&PublicApplication::received(codec,p,n,m)))) {
-      const unsigned responseHop=HopPolicy::response(start,hop,sharedPosition_.hopLimit());
+      const unsigned responseHop=HopPolicy::response(start,hop,sharedPosition_.hopLimit(),m.hasBitfield);
       reply(codec,ours,from,id,responseHop,now,random,true,m.portnum!=1);
     } else if(nextHopAck&&(m.portnum==1||(PublicApplication::allowed(m.portnum)&&PublicApplication::received(codec,p,n,m))))
       reply(codec,ours,from,id,0,now,random,false,m.portnum!=1);

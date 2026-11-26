@@ -124,6 +124,29 @@ int main() {
     }
   group("1188 stock ACK decision vectors: text, reply, reaction, NodeInfo and matched responses");
   assert(vectors==1188);
+  // Legacy packets omit Data.bitfield. A zero hop_start is then unknown,
+  // which affects both origin replies and terminal ACK-of-ACK suppression.
+  for (bool response : {false, true}) {
+    for (unsigned next : {0u, unsigned(uint8_t(OURS))}) {
+      if (!response && next) continue;
+      Fixture f;
+      if (response) { f.text(); f.s.poll(300, 0); f.done(); }
+      auto p = packet(100, response ? 5 : 1, 0, 0, true, uint8_t(next));
+      p.decoded.has_bitfield = false;
+      p.decoded.request_id = response ? 1 : 0;
+      meshtastic_Routing success{};
+      success.which_variant = meshtastic_Routing_error_reason_tag;
+      success.error_reason = meshtastic_Routing_Error_NONE;
+      stock::ReliableRouter oracle;
+      oracle.sniffReceived(&p, response ? &success : nullptr);
+      auto bytes = f.wire(PEER, OURS, 100, p.decoded.request_id, 0, 8, !response, false);
+      bytes[14] = p.next_hop;
+      f.rx(bytes, 1000, 700);
+      if (response) { f.clients(); assert(results(f.h, 1, 0, PEER) == 1); }
+      expect(f, oracle, response ? 1 : 0);
+    }
+  }
+  group("three legacy zero-hop ACK decisions match the pinned stock router on encoded packets");
   // New response shares the existing duplicate rate ledger: no more than
   // three jobs for an incoming (sender,id), each terminal and without retries.
   {

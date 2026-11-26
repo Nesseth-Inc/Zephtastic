@@ -1,16 +1,31 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Meshtastic 8e6a88d RoutingModule.cpp. The adapter supplies validated RF
-// headers and node observations. Unknown license status is distinct from false.
+// Response-hop selection follows Meshtastic d5f1619 NodeDB.cpp and RoutingModule.cpp.
+// ZT supplies the decoded bitfield presence and validated packet/header values.
 #pragma once
 #include <stdint.h>
 
 namespace mt::stock::routing {
-inline unsigned getHopLimitForResponse(unsigned start,unsigned remaining,unsigned configured)
+inline int getHopsAway(unsigned start, unsigned remaining, bool decodedHasBitfield)
 {
-    const unsigned hopsUsed=start-remaining;
-    if(hopsUsed>configured)return hopsUsed;
-    if(!start)return 0;
-    return hopsUsed+2<configured ? hopsUsed+2 : configured;
+    if ((start == 0 && !decodedHasBitfield) || start > 7 || remaining > start)
+        return -1;
+    return int(start - remaining);
+}
+
+inline unsigned getHopLimitForResponse(unsigned start, unsigned remaining, unsigned configured,
+                                       bool decodedHasBitfield)
+{
+    const int hopsUsed = getHopsAway(start, remaining, decodedHasBitfield);
+    const unsigned responseHopLimit = configured < 7 ? configured : 7;
+    if (hopsUsed >= 0) {
+        if (unsigned(hopsUsed) > responseHopLimit)
+            return unsigned(hopsUsed);
+        if (start == 0)
+            return 0;
+        if (unsigned(hopsUsed + 2) < responseHopLimit)
+            return unsigned(hopsUsed + 2);
+    }
+    return responseHopLimit;
 }
 
 template<class Known,class Unlicensed>

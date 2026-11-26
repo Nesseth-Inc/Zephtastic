@@ -15,34 +15,12 @@ jobs:
       fail-fast: false
       matrix:
         group: [native, nordic, esp32]
-    container: ubuntu@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea
-    defaults:
-      run:
-        shell: bash
     steps:
-      - name: Install build tools in the disposable container
-        run: |
-          apt-get -qq update
-          DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
-            ca-certificates git curl wget xz-utils file make gcc g++ clang libssl-dev \
-            cmake ninja-build device-tree-compiler gperf python3 python3-venv unzip
-      - name: Check out the triggering commit
-        env:
-          SOURCE_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          src=$(mktemp -d /tmp/zephtastic-source.XXXXXXXX)
-          git -C "$src" init -q
-          # Use a step-scoped read-only credential for private mirrors. Keep it out of Git config.
-          git -C "$src" -c credential.helper= \
-            -c 'credential.helper=!f() { if test "$1" = get; then printf "username=x-access-token\npassword=%s\n" "$SOURCE_TOKEN"; fi; }; f' \
-            fetch -q --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git" "$GITHUB_SHA"
-          git -C "$src" checkout -q --detach FETCH_HEAD
-          test "$(git -C "$src" rev-parse HEAD)" = "$GITHUB_SHA"
-          echo "ZT_SOURCE=$src" >> "$GITHUB_ENV"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Run qualification
+        shell: bash
         env:
           BUILD_GROUP: ${{ matrix.group }}
-        run: |
-          cd "$ZT_SOURCE"
-          bash mt_only/scripts/ci-qualify.sh "$BUILD_GROUP"
+        run: bash mt_only/scripts/ci-qualify.sh "$BUILD_GROUP"

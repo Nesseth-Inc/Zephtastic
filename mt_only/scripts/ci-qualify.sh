@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-only
-# Each job runs in a disposable Ubuntu 24.04 container on a private x86-64 runner.
+# Each private x86-64 Ubuntu runner uses an isolated, job-local tool directory.
 set -euo pipefail
 group=${1:?usage: ci-qualify.sh native|nordic|esp32}
 case "$group" in native|nordic|esp32) ;; *) exit 2 ;; esac
 root=$(git rev-parse --show-toplevel)
-work=$(mktemp -d /tmp/zephtastic-build.XXXXXXXX)
+work=$(mktemp -d "${RUNNER_TEMP:-/tmp}/zephtastic-build.XXXXXXXX")
 cd "$root"
+source mt_only/scripts/ci-runner-tools.sh
+install_runner_tools "$group" "$work"
 
 fetch_commit() {
   local dest=$1 url=$2 commit=$3
@@ -19,6 +21,9 @@ fetch_commit() {
 if [[ $group == native ]]; then
   fetch_commit "$work/stock" https://github.com/meshtastic/firmware.git d5f16191ca28b01b5024f590f04a67f25d66f1b1
   export CC=clang CXX=clang++
+  ulimit -s 65536
+  python -m pip -q install meshtastic==2.7.11
+  python mt_only/scripts/test-upstream-282.py --stock "$work/stock" --output "$work/upstream"
   for abi in native short; do
     args=()
     if [[ $abi == short ]]; then args+=(--short-enums); fi
@@ -51,8 +56,7 @@ fi
 install_sdk_archive "toolchain_gnu_linux-x86_64_${target}.tar.xz" "$digest" "$sdk/gnu"
 (cd "$sdk" && ./setup.sh -h && ln -s "gnu/$target" "$target")
 
-python3 -m venv "$work/venv"
-source "$work/venv/bin/activate"
+python -m pip -q install cmake==3.28.4 ninja==1.11.1.4
 python mt_only/scripts/prepare-deps.py "$work/deps"
 python -m pip -q install -r "$work/deps/zephyr/scripts/requirements-base.txt"
 args=()
