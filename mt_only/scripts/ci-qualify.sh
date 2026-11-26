@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-only
+# Each job runs in a disposable Ubuntu 24.04 container on a private x86-64 runner.
+set -euo pipefail
+group=${1:?usage: ci-qualify.sh native|nordic|esp32}
+case "$group" in native|nordic|esp32) ;; *) exit 2 ;; esac
+root=$(git rev-parse --show-toplevel)
+work=$(mktemp -d /tmp/zephtastic-build.XXXXXXXX)
+cd "$root"
+
+fetch_commit() {
+  local dest=$1 url=$2 commit=$3
+  git init -q "$dest"
+  git -C "$dest" fetch -q --depth=1 "$url" "$commit"
+  git -C "$dest" checkout -q --detach FETCH_HEAD
+  test "$(git -C "$dest" rev-parse HEAD)" = "$commit"
+}
+
+if [[ $group == native ]]; then
+  fetch_commit "$work/stock" https://github.com/meshtastic/firmware.git d5f16191ca28b01b5024f590f04a67f25d66f1b1
+  export CC=clang CXX=clang++
+  for abi in native short; do
+    args=()
+    if [[ $abi == short ]]; then args+=(--short-enums); fi
+    python3 mt_only/scripts/test-role-channel.py --stock "$work/stock" --output "$work/roles-$abi" "${args[@]}"
+  done
+  exit 0
+fi
+
+sdk="$work/zephyr-sdk-1.0.1"
+install_sdk_archive() {
+  local name=$1 digest=$2 dest=$3
+  local archive="$work/$name"
+  curl --fail --silent --show-error --location --retry 3 --output "$archive" \
+    "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/$name"
+  printf '%s  %s\n' "$digest" "$archive" | sha256sum -c -
+  mkdir -p "$dest"
+  tar -xJf "$archive" -C "$dest"
+}
+install_sdk_archive zephyr-sdk-1.0.1_linux-x86_64_minimal.tar.xz \
+  ca9bc0ff66fafca1dac9d592a36d953cf16d096a9d09b1c0357f021cf9f6a7eb "$work"
+if [[ $group == nordic ]]; then
+  target=arm-zephyr-eabi
+  digest=21b85981cb5a1818d9bc53d82af80f208946ec038b982ff1907287572ed3a634
+  profiles=(t096-680 t096-728 t114-v2 rak4631-mini)
+else
+  target=xtensa-espressif_esp32s3_zephyr-elf
+  digest=904d42b75e4d819c58b0db640783911e508b9ee2a627eb5daffb907465a34be1
+  profiles=(xiao-ordinary v4.2-r2 v4.3-r2 v4.3-r8)
+fi
+install_sdk_archive "toolchain_gnu_linux-x86_64_${target}.tar.xz" "$digest" "$sdk/gnu"
+(cd "$sdk" && ./setup.sh -h && ln -s "gnu/$target" "$target")
+
+python3 -m venv "$work/venv"
+source "$work/venv/bin/activate"
+python mt_only/scripts/prepare-deps.py "$work/deps"
+python -m pip -q install -r "$work/deps/zephyr/scripts/requirements-base.txt"
+args=()
+if [[ $group == esp32 ]]; then
+  fetch_commit "$work/mcuboot" https://github.com/mcu-tools/mcuboot.git aa32eaaad41cc345e6f6e6633368a4766fe23c25
+  python -m pip -q install -r "$work/deps/modules/hal/espressif/zephyr/requirements.txt" "$work/mcuboot/scripts"
+  args+=(--mcuboot "$work/mcuboot")
+fi
+for profile in "${profiles[@]}"; do
+  python mt_only/scripts/ci-board-build.py "$profile" --deps "$work/deps" \
+    --sdk "$sdk" --build "$work/$profile" --jobs 4 "${args[@]}"
+done
