@@ -4,3 +4,6 @@
 &tft_pwr_enable { /delete-property/ regulator-boot-on; };
 &gnss { status = "disabled"; };
 &uart0 { status = "disabled"; };
+/* The board's optional INA219 is only a connector target. The router uses
+ * its internal battery ADC and has no I2C telemetry driver. */
+&ina219 { status = "disabled"; };

@@ -43,6 +43,22 @@ int main() {
   assert(customPower.setPower(power) && completion.save(f.backend, customPower) == 0);
   assert(mt::modules::seedRouterDefaults(reboot, modules, completion));
   assert(reboot.config().same(old) && modules.config().same(customized) && completion.config().same(customPower));
+  // A provisioned router can also carry owner-selected values. A missing
+  // supplementary journal must not shadow its primary telemetry cadence.
+  mt::Config existingRouter = old;
+  assert(existingRouter.setDeviceRole(router, mt::DeviceRolePolicy::RebroadcastMode::ALL));
+  assert(reboot.save(f.backend, existingRouter) == 0);
+  assert(mt::modules::seedRouterDefaults(reboot, modules, completion));
+  assert(reboot.config().same(existingRouter) && !reboot.config().ownerUnmessagable());
+  assert(modules.config().same(customized) && completion.config().same(customPower));
+  Backend blankSupplement;
+  mt::modules::CompletionJournal newSupplement;
+  assert(newSupplement.load(blankSupplement) == 0);
+  assert(mt::modules::seedRouterDefaults(reboot, modules, newSupplement));
+  assert(newSupplement.config().get(telemetry, meshtastic_ModuleConfig_telemetry_tag));
+  assert(telemetry.payload_variant.telemetry.device_update_interval == 731);
+  assert(!blankSupplement.writes);
+  assert(reboot.save(f.backend, old) == 0);
   auto writes = f.backend.writes;
   assert(!mt::NormalTxStartup::migrate(reboot, f.backend, true) && f.backend.writes == writes);
   assert(f.service.apply(reboot.config()) && mt::NormalTxStartup::activate(f.service, true, true, 1));
