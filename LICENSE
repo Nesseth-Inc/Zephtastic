@@ -1,5 +1,6 @@
 MIT License
 
+Copyright (c) 2026 ZephTastic contributors
 Copyright (c) 2025-2026 ZephCore contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +25,11 @@ SOFTWARE.
 
 Component notices in this source tree
 
-The MIT terms above accompany the ZephCore code identified by that notice.
+The MIT terms above apply to original project-owned ZephTastic material
+without another applicable license, and to the ZephCore code identified by
+its MIT notice. Specific file headers, component licenses and upstream
+licenses govern the material they cover, including project files marked
+GPL-3.0-only.
 The original ZephCore notice is preserved in zephcore/helpers/LICENSE.ZephCore.
 
 The application and Meshtastic-derived files that carry GPL-3.0-only
