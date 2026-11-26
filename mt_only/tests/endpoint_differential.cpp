@@ -124,29 +124,40 @@ int main() {
     }
   group("1188 stock ACK decision vectors: text, reply, reaction, NodeInfo and matched responses");
   assert(vectors==1188);
-  // Legacy packets omit Data.bitfield. A zero hop_start is then unknown,
-  // which affects both origin replies and terminal ACK-of-ACK suppression.
-  for (bool response : {false, true}) {
-    for (unsigned next : {0u, unsigned(uint8_t(OURS))}) {
-      if (!response && next) continue;
-      Fixture f;
-      if (response) { f.text(); f.s.poll(300, 0); f.done(); }
-      auto p = packet(100, response ? 5 : 1, 0, 0, true, uint8_t(next));
-      p.decoded.has_bitfield = false;
-      p.decoded.request_id = response ? 1 : 0;
-      meshtastic_Routing success{};
-      success.which_variant = meshtastic_Routing_error_reason_tag;
-      success.error_reason = meshtastic_Routing_Error_NONE;
-      stock::ReliableRouter oracle;
-      oracle.sniffReceived(&p, response ? &success : nullptr);
-      auto bytes = f.wire(PEER, OURS, 100, p.decoded.request_id, 0, 8, !response, false);
-      bytes[14] = p.next_hop;
-      f.rx(bytes, 1000, 700);
-      if (response) { f.clients(); assert(results(f.h, 1, 0, PEER) == 1); }
-      expect(f, oracle, response ? 1 : 0);
-    }
+  unsigned applicationVectors=0;
+  // Exercise the accepted public opaque-application owner as well as text.
+  // Stock gives compressed text a reliable ACK. Generic payloads get a plain
+  // ACK, with a terminal zero-hop ACK only for direct/next-hop application replies.
+  for (unsigned port : {unsigned(meshtastic_PortNum_TEXT_MESSAGE_COMPRESSED_APP), 256u})
+    for (bool replied : {false, true}) for (unsigned hops : {0u, 2u})
+      for (uint8_t next : {uint8_t(0), uint8_t(OURS)}) {
+        Fixture f;
+        auto p = packet(100, port, 3, 3-hops, true, next);
+        p.decoded.payload.bytes[0] = 0x41;
+        p.decoded.payload.size = 1;
+        if (replied) p.decoded.reply_id = 44;
+        stock::ReliableRouter oracle;
+        oracle.sniffReceived(&p, nullptr);
+        f.rx(encode(f,p),1000,700);
+        expect(f,oracle,0);
+        ++applicationVectors;
+      }
+  assert(applicationVectors==16);
+  group("16 compressed text and public application ACK/reply decisions match the stock router");
+  // The RF gate deliberately rejects legacy zero-hop frames before they
+  // reach Endpoint. The original upstream Unity suite exercises the response
+  // policy itself; these runtime cases keep admission and ACK correlation intact.
+  for (unsigned shape : {0u,1u,2u}) {
+    Fixture f;
+    const bool response=shape!=0;
+    if(response){f.text();f.s.poll(300,0);f.done();}
+    auto bytes=f.wire(PEER,OURS,100,response?1:0,0,8,!response,false);
+    if(shape==2)bytes[14]=uint8_t(OURS);
+    f.rx(bytes,1000,700);f.clients();f.s.poll(1300,0);
+    assert(f.radio.sends==(response?1:0));
+    if(response)assert(results(f.h,1,0,PEER)==0);
   }
-  group("three legacy zero-hop ACK decisions match the pinned stock router on encoded packets");
+  group("three legacy zero-hop packets rejected before any radio ACK or delivery confirmation");
   // New response shares the existing duplicate rate ledger: no more than
   // three jobs for an incoming (sender,id), each terminal and without retries.
   {

@@ -91,11 +91,11 @@ result.check_returncode()
 (out / 'commands.json').write_text(json.dumps(commands, indent=2) + '\n')
 (out / 'results.json').write_text(json.dumps({
     'status': 'PASS', 'stock_commit': commit, 'ASAN_UBSAN': True, 'hardware': False,
-    'stock_ack_decision_vectors': 1188, 'legacy_header_vectors': 3, 'negative_and_resource_groups': 8,
+    'stock_ack_decision_vectors': 1188, 'stock_public_application_vectors': 16, 'legacy_admission_vectors': 3, 'negative_and_resource_groups': 8,
     'exact_stock_functions': len(manifest),
     'scope': 'Endpoint ACK decisions against unchanged pinned ReliableRouter::sniffReceived; existing bounded endpoint queues exercised.',
     'limits': ['Stock module scheduling, RF and client UI are not executed.',
-               'Only accepted Public TEXT and NodeInfo endpoint cases are compared.',
+               'Accepted public text, opaque application and NodeInfo endpoint cases are compared.',
                'Unmatched response packets remain deliberately silent; this fixture configures three default hops.',
                'PKI proof, retransmission matching and NodeDB are environment stubs, not part of this oracle.']
 }, indent=2) + '\n')

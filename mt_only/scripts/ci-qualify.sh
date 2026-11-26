@@ -29,6 +29,7 @@ if [[ $group == native ]]; then
     if [[ $abi == short ]]; then args+=(--short-enums); fi
     python3 mt_only/scripts/test-role-channel.py --stock "$work/stock" --output "$work/roles-$abi" "${args[@]}"
   done
+  python mt_only/tests/stock_operating_roles/run.py --release 2.8.2 --stock "$work/stock"
   exit 0
 fi
 
@@ -54,9 +55,8 @@ else
   profiles=(xiao-ordinary v4.2-r2 v4.3-r2 v4.3-r8)
 fi
 install_sdk_archive "toolchain_gnu_linux-x86_64_${target}.tar.xz" "$digest" "$sdk/gnu"
-(cd "$sdk" && ./setup.sh -h && ln -s "gnu/$target" "$target")
-
 python -m pip -q install cmake==3.28.4 ninja==1.11.1.4
+(cd "$sdk" && ./setup.sh -h && ln -s "gnu/$target" "$target")
 python mt_only/scripts/prepare-deps.py "$work/deps"
 python -m pip -q install -r "$work/deps/zephyr/scripts/requirements-base.txt"
 args=()

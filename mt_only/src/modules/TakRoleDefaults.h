@@ -47,12 +47,31 @@ struct TakRoleDefaults {
       return Result::NotTakTrackerTransition;
 
     Config core = currentCore;
-    ModuleSettings modules = currentModules;
     // Stock NodeDB role defaults do not assign rebroadcast mode.
     const uint32_t rebroadcast=requestedRebroadcast==UINT32_MAX?
       core.rebroadcastMode():requestedRebroadcast;
     if (!core.setDeviceRole(newRole, rebroadcast))
       return Result::UnsupportedSettings;
+    return applyDefaults(core, currentModules, out);
+#else
+    (void)oldRole; (void)newRole; (void)currentCore; (void)currentModules; (void)out;
+    (void)requestedRebroadcast;
+    return Result::NotTakTrackerTransition;
+#endif
+  }
+#ifdef CONFIG_MT_TAK_TRACKER
+  static Result projectRequest(const Config &requested, const ModuleSettings &currentModules, Projection &out) {
+    if (!requested.valid() || !currentModules.valid())
+      return Result::InvalidInput;
+    if (requested.role() != RoleTakTracker)
+      return Result::NotTakTrackerTransition;
+    Config core = requested;
+    return applyDefaults(core, currentModules, out);
+  }
+
+private:
+  static Result applyDefaults(Config &core, const ModuleSettings &currentModules, Projection &out) {
+    ModuleSettings modules = currentModules;
     core.setOwnerUnmessagable(true);
     if (!core.setNodeInfoSeconds(NodeInfoSeconds))
       return Result::UnsupportedSettings;
@@ -76,11 +95,7 @@ struct TakRoleDefaults {
     Projection candidate{core, modules, true};
     out = candidate;
     return Result::Applied;
-#else
-    (void)oldRole; (void)newRole; (void)currentCore; (void)currentModules; (void)out;
-    (void)requestedRebroadcast;
-    return Result::NotTakTrackerTransition;
-#endif
   }
+#endif
 };
 } // namespace mt::modules

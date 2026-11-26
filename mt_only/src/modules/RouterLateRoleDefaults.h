@@ -25,12 +25,24 @@ struct RouterLateRoleDefaults {
       return Result::NotRouterLateTransition;
 
     Config core=currentCore;
-    ModuleSettings modules=currentModules;
-    // Stock Admin keeps the requested/current rebroadcast setting, marks the
-    // owner unmessagable, and updates only device telemetry cadence.
     const uint32_t rebroadcast=requestedRebroadcast==UINT32_MAX?
       core.rebroadcastMode():requestedRebroadcast;
     if(!core.setDeviceRole(newRole,rebroadcast))return Result::UnsupportedSettings;
+    return applyDefaults(core,currentModules,out);
+  }
+
+  // Admin first installs the complete accepted DeviceConfig, then installs
+  // defaults for the new role. Other fields in that same request survive.
+  static Result projectRequest(const Config &requested,const ModuleSettings &currentModules,Projection &out) {
+    if(!requested.valid()||!currentModules.valid())return Result::InvalidInput;
+    if(requested.role()!=RoleRouterLate)return Result::NotRouterLateTransition;
+    Config core=requested;
+    return applyDefaults(core,currentModules,out);
+  }
+
+private:
+  static Result applyDefaults(Config &core,const ModuleSettings &currentModules,Projection &out) {
+    ModuleSettings modules=currentModules;
     core.setOwnerUnmessagable(true);
     meshtastic_ModuleConfig telemetry{};
     if(!modules.get(telemetry,meshtastic_ModuleConfig_telemetry_tag))

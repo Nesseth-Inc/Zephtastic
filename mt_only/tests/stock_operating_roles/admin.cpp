@@ -2,6 +2,11 @@
 #include "device_config_fixture.h"
 #include "DeviceSettingsCommit.h"
 #include "modules/OperatingRole.h"
+#ifdef TEST_DEVICE_ADMIN_282
+#include "modules/RouterLateRoleDefaults.h"
+#include "modules/TakRoleDefaults.h"
+#include "stock_device_admin.h"
+#endif
 #include "modules/CompletionConfig.h"
 struct RoleHost:Host{
  mt::Service &service;
@@ -40,7 +45,54 @@ static void send(mt::Companion &phone,const meshtastic_AdminMessage &admin,uint3
  uint8_t wire[512];auto stream=pb_ostream_from_buffer(wire,sizeof(wire));assert(pb_encode(&stream,meshtastic_ToRadio_fields,&input));
  phone.packet(wire,stream.bytes_written,now,mt::Companion::WorkspaceProof{true});
 }
+#ifdef TEST_DEVICE_ADMIN_282
+static void deviceReplacement(meshtastic_Config_DeviceConfig_Role role,
+                              meshtastic_Config_DeviceConfig_RebroadcastMode mode) {
+  auto f = std::make_unique<Fixture>();
+  f->provision();
+  RoleHost host(*f);
+  mt::Companion phone(f->service,host,127,f->workspace,1);
+  stock_device::Admin stock{};
+  stock.config.device.role = static_cast<meshtastic_Config_DeviceConfig_Role>(f->service.config.role());
+
+  // The first request changes role and two other device fields. The next two
+  // are same-role replacements, including an interval below the stock floor.
+  uint32_t now = 2;
+  for (const uint32_t interval : {7201u, 8234u, 30u}) {
+    auto admin = device(interval);
+    auto &d = admin.set_config.payload_variant.device;
+    d.role = role;
+    d.rebroadcast_mode = mode;
+    strcpy(d.tzdef,interval==7201 ? "EST5" : "UTC0");
+    stock.apply(admin.set_config);
+    send(phone,admin,now++);
+    assert(host.error()==meshtastic_Routing_Error_NONE);
+
+    // Read what a stock phone sees and then reopen both flash journals.
+    assert(getter(*f)==stock.config.device.node_info_broadcast_secs);
+    const auto response=f->usb.reply().get_config_response.payload_variant.device;
+    assert(response.role==stock.config.device.role && response.rebroadcast_mode==stock.config.device.rebroadcast_mode);
+    assert(!strcmp(response.tzdef,stock.config.device.tzdef));
+    mt::SettingsJournal settings;
+    mt::ModuleJournal modules;
+    assert(!settings.load(f->backend) && !modules.load(f->backend));
+    const auto &stored=settings.config();
+    assert(stored.same(f->service.config) && stored.timezoneEquals(stock.config.device.tzdef));
+    assert(stored.node().interval()==stock.config.device.node_info_broadcast_secs);
+    assert(stored.ownerUnmessagable()==stock.owner.is_unmessagable);
+    meshtastic_ModuleConfig telemetry{};
+    assert(modules.config().get(telemetry,meshtastic_ModuleConfig_telemetry_tag));
+    assert(telemetry.payload_variant.telemetry.device_update_interval==stock.moduleConfig.telemetry.device_update_interval);
+  }
+}
+#endif
 void adminCases(){
+#ifdef TEST_DEVICE_ADMIN_282
+ for (auto role : {meshtastic_Config_DeviceConfig_Role_ROUTER_LATE,meshtastic_Config_DeviceConfig_Role_TAK_TRACKER})
+  for (auto mode : {meshtastic_Config_DeviceConfig_RebroadcastMode_KNOWN_ONLY,meshtastic_Config_DeviceConfig_RebroadcastMode_NONE})
+   deviceReplacement(role,mode);
+ puts("PASS 2.8.2 stock DeviceConfig and NodeDB transitions, same-role writes, phone readback and journal reload");
+#endif
  for(unsigned role:{5u,6u,7u,8u,9u}){
   auto f=std::make_unique<Fixture>();f->provision();RoleHost h(*f);
   mt::Companion phone(f->service,h,127,f->workspace,1);

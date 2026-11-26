@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
 import argparse,json,os,shutil,subprocess,sys
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--output',required=True,type=Path);p.add_argument('--short-enums',action='store_true');p.add_argument('--config',action='store_true');p.add_argument('--stock',type=Path,help='Pinned 2.8.2 firmware checkout for the radio timing differential');a=p.parse_args();out=a.output.resolve();out.mkdir(parents=True,exist_ok=False)
-app=Path(__file__).resolve().parents[1];root=app.parent;sys.path.insert(0,str(root));import host_test_toolchain as host
+parser = argparse.ArgumentParser()
+parser.add_argument('--output', required=True, type=Path)
+parser.add_argument('--short-enums', action='store_true')
+parser.add_argument('--config', action='store_true')
+parser.add_argument('--stock', type=Path, help='Compare radio timing with a pinned 2.8.2 checkout')
+a = parser.parse_args()
+out = a.output.resolve()
+out.mkdir(parents=True, exist_ok=False)
+app = Path(__file__).resolve().parents[1]
+root = app.parent
+sys.path.insert(0, str(root))
+import host_test_toolchain as host
+
 if a.stock:
     subprocess.run([sys.executable, str(app/'tests/stock_routing_timing/run.py'),
                     '--stock', str(a.stock), '--output', str(out/'stock-timing')], check=True)

@@ -4226,8 +4226,7 @@ public:
     if(c.role()==mt::DeviceRolePolicy::Role::ROUTER_LATE&&c.role()!=service.config.role()) {
       if(!moduleEdit.ready())return -EACCES;
       mt::modules::RouterLateRoleDefaults::Projection projected;
-      if(mt::modules::RouterLateRoleDefaults::project(service.config.role(),c.role(),service.config,
-          moduleEdit.config(),projected,c.rebroadcastMode())!=mt::modules::RouterLateRoleDefaults::Result::Applied)return -EINVAL;
+      if(mt::modules::RouterLateRoleDefaults::projectRequest(c,moduleEdit.config(),projected)!=mt::modules::RouterLateRoleDefaults::Result::Applied)return -EINVAL;
       meshtastic_ModuleConfig telemetry{};
       if(!projected.modules.get(telemetry,meshtastic_ModuleConfig_telemetry_tag))return -EINVAL;
       return mt::DeviceSettingsCommit::save(service,settingsEdit,notificationEdit,settingsCommit,
@@ -4237,8 +4236,7 @@ public:
     if(c.role()==meshtastic_Config_DeviceConfig_Role_TAK_TRACKER&&c.role()!=service.config.role()) {
       if(!moduleEdit.ready())return -EACCES;
       mt::modules::TakRoleDefaults::Projection projected;
-      if(mt::modules::TakRoleDefaults::project(service.config.role(),c.role(),service.config,
-          moduleEdit.config(),projected,c.rebroadcastMode())!=mt::modules::TakRoleDefaults::Result::Applied)return -EINVAL;
+      if(mt::modules::TakRoleDefaults::projectRequest(c,moduleEdit.config(),projected)!=mt::modules::TakRoleDefaults::Result::Applied)return -EINVAL;
       meshtastic_ModuleConfig telemetry{};
       if(!projected.modules.get(telemetry,meshtastic_ModuleConfig_telemetry_tag))return -EINVAL;
       return mt::DeviceSettingsCommit::save(service,settingsEdit,notificationEdit,settingsCommit,

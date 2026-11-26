@@ -1306,8 +1306,15 @@ public:
       else if(nextHopAck&&(match||(!m.request_id&&!m.reply_id&&!m.emoji&&
           !m.wantResponse&&!(m.hasBitfield&&(m.bitfield&2)))))reply(codec,ours,from,id,0,now,random);
     } else if(armed&&(p[12]&8)&&(m.portnum==1||(PublicApplication::allowed(m.portnum)&&PublicApplication::received(codec,p,n,m)))) {
-      const unsigned responseHop=HopPolicy::response(start,hop,sharedPosition_.hopLimit(),m.hasBitfield);
-      reply(codec,ours,from,id,responseHop,now,random,true,m.portnum!=1);
+      // ReliableRouter::shouldSuccessAckWithWantAck requests an ACK of the
+      // ACK only for ordinary/compressed text DMs. Other application replies
+      // already have an implicit ACK on a flooded path.
+      const bool text=m.portnum==meshtastic_PortNum_TEXT_MESSAGE_APP||
+        m.portnum==meshtastic_PortNum_TEXT_MESSAGE_COMPRESSED_APP;
+      if(text||(!m.request_id&&!m.reply_id)) {
+        const unsigned responseHop=HopPolicy::response(start,hop,sharedPosition_.hopLimit(),m.hasBitfield);
+        reply(codec,ours,from,id,responseHop,now,random,text,m.portnum!=meshtastic_PortNum_TEXT_MESSAGE_APP);
+      } else if(terminalAckPath)reply(codec,ours,from,id,0,now,random,false,true);
     } else if(nextHopAck&&(m.portnum==1||(PublicApplication::allowed(m.portnum)&&PublicApplication::received(codec,p,n,m))))
       reply(codec,ours,from,id,0,now,random,false,m.portnum!=1);
   }
