@@ -23,6 +23,10 @@ fetch_commit() {
 
 if [[ $group == native ]]; then
   fetch_commit "$work/stock" https://github.com/meshtastic/firmware.git d5f16191ca28b01b5024f590f04a67f25d66f1b1
+  git -C "$work/stock" fetch -q --depth=1 https://github.com/meshtastic/firmware.git 8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c
+  for release in 2.8.1 2.8.2; do
+    python mt_only/scripts/check-upstream-module-inventory.py --stock "$work/stock" --version "$release"
+  done
   export CC=clang CXX=clang++
   ulimit -s 65536
   python -m pip -q install meshtastic==2.7.11
@@ -32,7 +36,7 @@ if [[ $group == native ]]; then
     if [[ $abi == short ]]; then args+=(--short-enums); fi
     python3 mt_only/scripts/test-role-channel.py --stock "$work/stock" --output "$work/roles-$abi" "${args[@]}"
   done
-  python mt_only/tests/stock_operating_roles/run.py --release 2.8.2 --stock "$work/stock"
+  python mt_only/tests/stock_operating_roles/run.py --release 2.8.2 --stock "$work/stock" --output "$work/device-config.json"
   exit 0
 fi
 

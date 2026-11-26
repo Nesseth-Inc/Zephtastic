@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare production operating role behavior with pinned stock defaults."""
 from pathlib import Path
-import argparse, hashlib, os, subprocess, sys, tempfile
+import argparse, hashlib, json, os, subprocess, sys, tempfile
 APP=Path(__file__).resolve().parents[2]
 ROOT=APP.parent
 sys.path.insert(0,str(ROOT))
@@ -9,7 +9,12 @@ import host_test_toolchain as host
 P=argparse.ArgumentParser(description=__doc__)
 P.add_argument("--stock",required=True,type=Path)
 P.add_argument("--release", choices=["2.8.1", "2.8.2"], default="2.8.1")
+P.add_argument("--output", type=Path, help="Write the 2.8.2 DeviceConfig assertion counts as JSON")
 args=P.parse_args()
+if args.output and args.release!="2.8.2":
+    P.error("--output records the 2.8.2 DeviceConfig comparison; use --release 2.8.2")
+if args.output and args.output.exists():
+    P.error("--output must be a new file")
 # Hashes allow source archives as well as git checkouts of the 2.8.2 donor.
 pin282="d5f16191ca28b01b5024f590f04a67f25d66f1b1"
 hashes282={
@@ -46,6 +51,7 @@ proto=ROOT/"zephcore/bench/upstream-differential/source"
 vendor=ROOT/"zephcore/adapters/bench/vendor"
 mono=ROOT/"zephcore/lib/monocypher"
 HERE=Path(__file__).resolve().parent
+results=[]
 with tempfile.TemporaryDirectory(prefix="zt-operating-roles-") as td:
     out=Path(td)
     (out/"donor.inc").write_text(donor)
@@ -79,4 +85,13 @@ with tempfile.TemporaryDirectory(prefix="zt-operating-roles-") as td:
             obj=out/(src.stem+".o");objs.append(obj)
             subprocess.run([*host.cc(),"-std=c11",*flags,"-c",src,"-o",obj],check=True)
         subprocess.run([*host.cxx(),"-std=c++17",*flags,HERE/"roles.cpp",HERE/"admin.cpp",APP/"src/power/PowerPolicy.cpp",APP/"src/clock/LocalTime.cpp",APP/"src/Protobuf.cpp",vendor/"MtCodec.cpp",vendor/"MtSignature.cpp",*objs,*host.crypto_link_flags(),"-o",out/"tests"],check=True)
-        subprocess.run([out/"tests"],check=True,env={**os.environ,"UBSAN_OPTIONS":"halt_on_error=1"})
+        result=subprocess.run([out/"tests"],check=True,text=True,stdout=subprocess.PIPE,
+                              env={**os.environ,"UBSAN_OPTIONS":"halt_on_error=1"})
+        print(result.stdout,end="")
+        if stock282:
+            counts=[int(line.split()[1]) for line in result.stdout.splitlines() if line.startswith("DEVICE_CONFIG_ASSERTIONS ")]
+            if len(counts)!=1 or counts[0]<=0:
+                raise RuntimeError("missing native DeviceConfig result")
+            results.append({"enum_abi":"short" if abi else "native","device_config_assertions":counts[0]})
+if args.output:
+    args.output.write_text(json.dumps({"stock_commit":pin282,"variants":results},indent=2)+"\n")
