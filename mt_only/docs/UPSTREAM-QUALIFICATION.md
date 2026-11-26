@@ -18,3 +18,12 @@ The native job pins Meshtastic firmware, the source and assertions used from its
 The board jobs build the T096 680 and 728 KiB profiles, T114 V2, RAK4631 Mini, ordinary XIAO and three receive-only Heltec V4 variants. Each successful group uploads a JSON receipt containing its source commit. Board receipts give flash and static RAM usage and capacity. XIAO uses its unsigned application size and internal DRAM. These measurements leave peak stack, heap and physical radio behavior to the bench.
 
 Qualification runs on trusted pushes or explicit dispatch using private self-hosted Linux runners. It uses the published XIAO verification key and produces measurements without release signing. The firmware beta retains its own hardware qualification record. [Workflow](../../.github/workflows/firmware-qualification.yml) · [Beta hardware coverage](../../README.md#01-beta-board-downloads)
+
+## Optional USB bench check
+
+With the designated test node already backed up and running ZT, use the stock Python package `meshtastic==2.7.11`. Supply its assigned serial port and the node ID from the backup. The default check reads the configuration handshake. Adding `--send-to` sends one direct text and verifies the peer's successful routing ACK matches the destination and request ID. The meshTestic assertions run through ZT's device selection without invoking upstream device discovery or setup. [Upstream bench assertions](https://github.com/meshtastic/meshTestic/blob/dcac7e5673005f4d8a2b1f0f6e06877b689d7519/test/config.spec.ts)
+
+```sh
+python mt_only/tests/upstream_282/usb_smoke.py --port "$ZT_SERIAL" --expect-node "$ZT_NODE"
+python mt_only/tests/upstream_282/usb_smoke.py --port "$ZT_SERIAL" --expect-node "$ZT_NODE" --send-to "$ZT_PEER"
+```

@@ -12,10 +12,11 @@ from unittest.mock import patch
 
 APP = Path(__file__).resolve().parents[2]
 ROOT = APP.parent
-sys.path[:0] = [str(ROOT), str(APP / "tests/stock-private-client")]
+sys.path[:0] = [str(ROOT), str(APP / "tests/stock-private-client"), str(Path(__file__).resolve().parent)]
 import host_test_toolchain as host
 from client import StockClient, mesh_interface, mesh_pb2, portnums_pb2, provenance
 from meshtastic.protobuf import admin_pb2
+from usb_smoke import check_config
 
 NODE = 0x12345678
 FULL_DUMP, CONFIG_ONLY, NODES_ONLY = 71, 69420, 69421
@@ -101,6 +102,7 @@ def session(exe, model, transport, out):
 
             try:
                 client = snapshot(FULL_DUMP)
+                check_config(client, NODE)
                 require("initial stock Device config", client.localNode.localConfig.device.node_info_broadcast_secs == 10800)
                 snapshot(CONFIG_ONLY)
                 snapshot(NODES_ONLY)
