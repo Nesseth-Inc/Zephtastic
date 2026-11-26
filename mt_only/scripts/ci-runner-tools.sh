@@ -6,7 +6,12 @@ install_runner_tools() {
   arch=$(gcc -dumpmachine)
   local pkg="$work/packages" prefix="$work/tools"
   mkdir -p "$pkg"/{lists/partial,archives/partial,empty} "$prefix"
-  local -a apt=(apt-get -qq -o "Dir::State::Lists=$pkg/lists"
+  # APT reads this file before the image-wide Docker hooks. Its lists, archives
+  # and status snapshot belong exclusively to this job. No dpkg transaction runs.
+  printf 'Dir::Etc::parts "%s";\nDir::Etc::main "/dev/null";\n' "$pkg/empty" > "$pkg/apt.conf"
+  cp /var/lib/dpkg/status "$pkg/status"
+  local -a apt=(env "APT_CONFIG=$pkg/apt.conf" apt-get -qq -o Debug::NoLocking=1
+    -o "Dir::State::status=$pkg/status" -o "Dir::State::Lists=$pkg/lists"
     -o "Dir::Cache::Archives=$pkg/archives" -o "Dir::Etc::parts=$pkg/empty"
     -o "Dir::Cache::pkgcache=" -o "Dir::Cache::srcpkgcache="
     -o "APT::Sandbox::User=$(id -un)")
