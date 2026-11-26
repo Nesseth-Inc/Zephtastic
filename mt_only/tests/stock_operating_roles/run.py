@@ -21,6 +21,8 @@ hashes282={
     "src/mesh/NodeDB.cpp":"006921660b5b4b7e8ee32fecc4dcb84cde3e31d0c0853c335e0c43b02f31d3e1",
     "src/modules/AdminModule.cpp":"6690b141c8ea4dafc30c1bfa1ae64b6acd6e5cc939d99b33ac9f90892493d76c",
     "src/modules/AtakPluginModule.cpp":"6077bc559397a9183c4d7108275e8cfe2e700388fffdc8fd7335b9d6a6d77115",
+    "src/mesh/TypeConversions.cpp":"12f110a1a3d9aeacf7e4d2320dede31ef8747399a0ce5c4d6ebe2d2d232e13a7",
+    "src/mesh/NodeDB.h":"15b7679f066c8061ee92dba6242d50e1cbe786f08765ee970af0239b26edb819",
     "src/mesh/Default.h":"0a468de454cb7da41536b90715cde20d506b2430d3577310a32347b67fed0116",
 }
 stock282=args.release=="2.8.2"
@@ -58,6 +60,14 @@ with tempfile.TemporaryDirectory(prefix="zt-operating-roles-") as td:
     main=(APP/"src/main.cpp").read_text()
     starts=["if(mt::modules::OperatingRole::handles(c.role())"]
     if stock282:
+        convert=source("src/mesh/TypeConversions.cpp")
+        db=source("src/mesh/NodeDB.h")
+        flags=db[db.index("#define NODEINFO_BITFIELD_IS_KEY_MANUALLY_VERIFIED_SHIFT"):
+                 db.index("/// A node that the eviction/migration paths")]
+        (out/"stock-nodeinfo-flags.inc").write_text(flags)
+        (out/"stock-nodeinfo-export.inc").write_text(
+            method(convert,"meshtastic_NodeInfo TypeConversions::ConvertToNodeInfo(const meshtastic_NodeInfoLite *lite,")+
+            method(convert,"meshtastic_NodeInfo TypeConversions::ConvertToNodeInfoThin("))
         admin=source("src/modules/AdminModule.cpp")
         start=admin.index("    case meshtastic_Config_device_tag: {",admin.index("auto existingRole = config.device.role;"))
         end="    } // case meshtastic_Config_device_tag"
@@ -92,6 +102,10 @@ with tempfile.TemporaryDirectory(prefix="zt-operating-roles-") as td:
             counts=[int(line.split()[1]) for line in result.stdout.splitlines() if line.startswith("DEVICE_CONFIG_ASSERTIONS ")]
             if len(counts)!=1 or counts[0]<=0:
                 raise RuntimeError("missing native DeviceConfig result")
-            results.append({"enum_abi":"short" if abi else "native","device_config_assertions":counts[0]})
+            peer_counts=[int(line.split()[1]) for line in result.stdout.splitlines() if line.startswith("NODEINFO_SIGNER_COMPARISONS ")]
+            if len(peer_counts)!=1 or peer_counts[0]!=8:
+                raise RuntimeError("missing restored peer signer comparisons")
+            results.append({"enum_abi":"short" if abi else "native","device_config_assertions":counts[0],
+                            "restored_peer_signer_comparisons":peer_counts[0]})
 if args.output:
     args.output.write_text(json.dumps({"stock_commit":pin282,"variants":results},indent=2)+"\n")

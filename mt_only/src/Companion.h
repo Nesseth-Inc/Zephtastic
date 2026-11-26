@@ -994,6 +994,7 @@ private:
     node={};node.num=entry.id();node.has_user=!entry.placeholder();auto &u=node.user;
     node.is_favorite=entry.favorite();node.is_ignored=entry.ignored();node.is_muted=entry.muted();
     node.is_key_manually_verified=entry.manuallyVerified();
+    node.has_xeddsa_signed=entry.verifiedSigner();
     snprintf(u.id,sizeof(u.id),"!%08x",entry.id());
     memcpy(u.long_name,entry.bytes+E::Name,sizeof(u.long_name));memcpy(u.short_name,entry.bytes+E::Short,sizeof(u.short_name));
     u.hw_model=static_cast<meshtastic_HardwareModel>(entry.model());u.role=static_cast<meshtastic_Config_DeviceConfig_Role>(entry.role());

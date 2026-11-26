@@ -6,6 +6,7 @@
 #include "modules/RouterLateRoleDefaults.h"
 #include "modules/TakRoleDefaults.h"
 #include "stock_device_admin.h"
+#include "../stock_peer_directory/signer_export.h"
 #endif
 #include "modules/CompletionConfig.h"
 struct RoleHost:Host{
@@ -91,6 +92,7 @@ static unsigned deviceReplacement(meshtastic_Config_DeviceConfig_Role role,
 #endif
 void adminCases(){
 #ifdef TEST_DEVICE_ADMIN_282
+ printf("NODEINFO_SIGNER_COMPARISONS %u\n",restoredSignerExport());
  unsigned deviceAssertions = 0;
  for (auto role : {meshtastic_Config_DeviceConfig_Role_ROUTER_LATE,meshtastic_Config_DeviceConfig_Role_TAK_TRACKER})
   for (auto mode : {meshtastic_Config_DeviceConfig_RebroadcastMode_KNOWN_ONLY,meshtastic_Config_DeviceConfig_RebroadcastMode_NONE})

@@ -16,3 +16,5 @@ ZT uses the Zephyr board's wake-capable timed backend and keeps pending radio or
 
 
 With a Meshtastic 2.8.2 checkout or source archive, run `python3 mt_only/tests/stock_operating_roles/run.py --release 2.8.2 --stock /path/to/meshtastic`. The fixture verifies the donor files against commit `d5f16191ca28b01b5024f590f04a67f25d66f1b1` and executes the stock Admin device-config case and NodeDB role defaults. A simulated phone sends simultaneous role, timezone, rebroadcast and NodeInfo changes for ROUTER_LATE and TAK_TRACKER, then reads the response and reloads both settings journals. Subsequent same-role requests exercise customization and the one-hour NodeInfo minimum.
+
+The 2.8.2 phone fixture also reloads the NodeDB and compares peer signing and manual verification fields against stock `TypeConversions::ConvertToNodeInfoThin` during ordinary and nodes-only handshakes. It covers a previously verified signer, a manually verified key, a known unsigned key and an owner-replaced signing key. Passing `--output results.json` records the actual number of DeviceConfig assertions and restored peer comparisons for each enum ABI.
