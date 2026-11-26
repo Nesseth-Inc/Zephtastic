@@ -1,0 +1,9 @@
+// Build fixture for two external thermometers on the controller's I2C bus.
+/ {
+    aliases { zt-environment = &test_pct2075; zt-environment-2 = &test_mcp9808; };
+};
+&i2c0 {
+    status = "okay";
+    test_pct2075: thermometer@37 { compatible = "lm75"; reg = <0x37>; };
+    test_mcp9808: thermometer@18 { compatible = "jedec,jc-42.4-temp"; reg = <0x18>; resolution = <2>; };
+};

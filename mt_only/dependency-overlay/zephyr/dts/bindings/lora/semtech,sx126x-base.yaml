@@ -1,0 +1,96 @@
+# Copyright (c) 2019 Manivannan Sadhasivam
+# Copyright (c) 2020 Andreas Sandberg
+# SPDX-License-Identifier: Apache-2.0
+
+include: spi-device.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    description: |
+      GPIO connected to the modem's NRESET signal.
+
+      This signal is open-drain, active-low as interpreted by the
+      modem.
+
+  busy-gpios:
+    type: phandle-array
+    description: |
+      GPIO connected to the modem's BUSY signal.
+
+  antenna-enable-gpios:
+    type: phandle-array
+    description: |
+      Antenna power enable pin.
+
+  tx-enable-gpios:
+    type: phandle-array
+    description: |
+      Antenna switch TX enable GPIO. If set, the driver tracks the
+      state of the radio and controls the RF switch.
+
+  rx-enable-gpios:
+    type: phandle-array
+    description: |
+      Antenna switch RX enable GPIO. If set, the driver tracks the
+      state of the radio and controls the RF switch.
+
+  lna-bypass-gpios:
+    type: phandle-array
+    description: |
+      Receive-path select of an external front-end module whose RX gain is
+      software-selectable, such as the KCT8103L CTX pin on Heltec boards.
+      LOW routes the receive path through the FEM's LNA, HIGH bypasses it.
+
+      This is NOT an RF switch control. It belongs only on a FEM where the
+      TX/RX path is selected by something else -- on the KCT8103L boards,
+      DIO2 into the FEM's CPS pin -- which is what leaves this line free to
+      mean "LNA or bypass". Never point it at a PA or TXEN enable: the
+      driver asserts it during receive whenever the LNA is switched off,
+      which on a real TXEN would key the amplifier into a receive window.
+
+      Held HIGH while transmitting; in receive it follows
+      sx126x_set_fem_rx_enable() -- LOW for the LNA (the default), HIGH to
+      trade its gain for its supply current.
+
+  dio1-gpios:
+    type: phandle-array
+    description: |
+      GPIO connected to DIO1. This GPIO will be used as a generic
+      IRQ line from the chip.
+
+  dio2-tx-enable:
+    type: boolean
+    description: |
+      Use DIO2 to drive an RF switch selecting between the TX and RX
+      paths. When enabled, DIO2 goes high when the chip is
+      transmitting.
+
+  dio3-tcxo-voltage:
+    type: int
+    description: |
+      TCXO supply voltage controlled by DIO3 if present.
+
+      See constants in dt-bindings/lora/sx126x.h.
+
+  tcxo-power-startup-delay-ms:
+    type: int
+    description: |
+      Startup delay to let the TCXO stabilize after TCXO power on.
+
+  rx-boosted:
+    type: boolean
+    description: |
+      Enable RX boosted mode, which increases the power consumption of
+      RX mode by ~2mA in exchange for ~3dB sensitivity improvement.
+
+  regulator-ldo:
+    type: boolean
+    description: |
+      Use the internal LDO instead of the internal DCDC. Increases power consumption.
+
+  force-ldro:
+    type: boolean
+    description: |
+      Force usage of Low Data Rate Optimization even in cases where the symbol time is shorter than
+      16.38ms. Useful for designs using no TCXO or with bad heat dissipation.

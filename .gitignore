@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
+.env
+.env.*
+build/
+builds/
+zt-deps/
+*.o
+*.a
+*.dSYM/
+CMakeCache.txt
+.ninja_*

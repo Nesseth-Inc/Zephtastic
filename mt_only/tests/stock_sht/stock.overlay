@@ -1,0 +1,12 @@
+/* Source fixture declaring only these four sockets on one I2C bus. */
+/ { aliases {
+    zt-sht40 = &slot40; zt-sht44 = &slot44; zt-sht45 = &slot45; zt-sht70 = &slot70;
+}; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    slot40: sht-family@40 { compatible = "zephtastic,sht-family"; reg = <0x40>; };
+    slot44: sht-family@44 { compatible = "zephtastic,sht-family"; reg = <0x44>; };
+    slot45: sht-family@45 { compatible = "zephtastic,sht-family"; reg = <0x45>; };
+    slot70: sht-family@70 { compatible = "zephtastic,sht-family"; reg = <0x70>; };
+};

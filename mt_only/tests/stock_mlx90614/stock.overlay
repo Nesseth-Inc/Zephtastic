@@ -1,0 +1,7 @@
+/* Build-only fixture for an external, preconfigured 0.98-emissivity sensor. */
+/ { aliases { zt-mlx90614 = &test_mlx; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_mlx: thermometer@5a { compatible = "zephtastic,mlx90614"; reg = <0x5a>; };
+};

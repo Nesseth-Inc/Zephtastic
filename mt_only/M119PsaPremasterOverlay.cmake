@@ -1,0 +1,97 @@
+# Source-owned Mbed TLS TLS 1.2 premaster sizing overlay proposal.
+# Include after find_package(Zephyr) and project() have completed.
+
+function(m119_apply_psa_premaster_overlay)
+  if(NOT CONFIG_MT_MQTT_GATEWAY OR NOT CONFIG_MQTT_LIB_TLS)
+    message(STATUS "M119 PSA premaster overlay inactive: MQTT TLS is not configured")
+    return()
+  endif()
+
+  foreach(_required_target IN ITEMS app mbedtls zephyr_interface)
+    if(NOT TARGET ${_required_target})
+      message(FATAL_ERROR "M119 PSA premaster overlay requires target '${_required_target}'")
+    endif()
+  endforeach()
+
+  # Zephyr's Mbed TLS integration exposes its interface library under the
+  # current mbedtls_iface name; resolve the compatibility alias where present.
+  if(TARGET mbedtls_iface)
+    set(_mbedtls_iface_target mbedtls_iface)
+  elseif(TARGET mbedTLS)
+    get_target_property(_mbedtls_iface_alias mbedTLS ALIASED_TARGET)
+    if(_mbedtls_iface_alias)
+      set(_mbedtls_iface_target "${_mbedtls_iface_alias}")
+    else()
+      set(_mbedtls_iface_target mbedTLS)
+    endif()
+  else()
+    message(FATAL_ERROR "M119 PSA premaster overlay cannot find mbedtls_iface or mbedTLS")
+  endif()
+
+  get_target_property(_mbedtls_include_dirs mbedtls INTERFACE_INCLUDE_DIRECTORIES)
+  if(NOT _mbedtls_include_dirs OR _mbedtls_include_dirs STREQUAL "_mbedtls_include_dirs-NOTFOUND")
+    message(FATAL_ERROR "M119 PSA premaster overlay cannot inspect mbedtls public include directories")
+  endif()
+
+  # Select the exact pinned source header from the real target include list.
+  # Unknown generator expressions are skipped and therefore fail closed.
+  set(_matching_source_includes "")
+  foreach(_include_dir IN LISTS _mbedtls_include_dirs)
+    set(_candidate "${_include_dir}")
+    if(_candidate MATCHES "^\\$<BUILD_INTERFACE:(.*)>$")
+      set(_candidate "${CMAKE_MATCH_1}")
+    elseif(_candidate MATCHES "\\$<")
+      continue()
+    endif()
+    if(EXISTS "${_candidate}/mbedtls/ssl.h")
+      file(SHA256 "${_candidate}/mbedtls/ssl.h" _candidate_sha256)
+      if(_candidate_sha256 STREQUAL "daffb37b840f01aea2e46ef858e29e226c01d380d06addcfa5c37e3b819e4262")
+        list(APPEND _matching_source_includes "${_candidate}")
+      endif()
+    endif()
+  endforeach()
+  list(REMOVE_DUPLICATES _matching_source_includes)
+  list(LENGTH _matching_source_includes _matching_source_count)
+  if(NOT _matching_source_count EQUAL 1)
+    message(FATAL_ERROR "M119 PSA premaster overlay requires one exact pinned ssl.h in mbedtls target includes; found ${_matching_source_count}")
+  endif()
+  list(GET _matching_source_includes 0 _pinned_include)
+  set(_source_header "${_pinned_include}/mbedtls/ssl.h")
+
+  file(READ "${_source_header}" _header)
+  set(_old_ecdh "    unsigned char _pms_ecdh[MBEDTLS_ECP_MAX_BYTES];    /* RFC 4492 5.10 */")
+  set(_new_ecdh "    unsigned char _pms_ecdh[PSA_RAW_KEY_AGREEMENT_OUTPUT_MAX_SIZE];    /* RFC 4492 5.10 */")
+  set(_old_ecdhe_psk "    unsigned char _pms_ecdhe_psk[4 + MBEDTLS_ECP_MAX_BYTES\n                                 + MBEDTLS_PSK_MAX_LEN];       /* RFC 5489 2 */")
+  set(_new_ecdhe_psk "    unsigned char _pms_ecdhe_psk[4 + PSA_RAW_KEY_AGREEMENT_OUTPUT_MAX_SIZE\n                                 + MBEDTLS_PSK_MAX_LEN];       /* RFC 5489 2 */")
+  m119_count_literal("${_header}" "${_old_ecdh}" _ecdh_count)
+  m119_count_literal("${_header}" "${_old_ecdhe_psk}" _ecdhe_psk_count)
+  if(NOT _ecdh_count EQUAL 1 OR NOT _ecdhe_psk_count EQUAL 1)
+    message(FATAL_ERROR "M119 PSA premaster overlay expected exactly one of each pinned ECDHE member; got ${_ecdh_count}/${_ecdhe_psk_count}")
+  endif()
+  string(REPLACE "${_old_ecdh}" "${_new_ecdh}" _patched_header "${_header}")
+  string(REPLACE "${_old_ecdhe_psk}" "${_new_ecdhe_psk}" _patched_header "${_patched_header}")
+
+  set(_overlay_root "${CMAKE_CURRENT_BINARY_DIR}/m119-psa-premaster-overlay")
+  set(_overlay_include "${_overlay_root}/include")
+  file(MAKE_DIRECTORY "${_overlay_include}/mbedtls")
+  file(WRITE "${_overlay_include}/mbedtls/ssl.h" "${_patched_header}")
+
+  # Make the generated include win both for Mbed TLS's own source files and
+  # for every Zephyr consumer. Keep the overlay build-local and source-owned.
+  target_include_directories(mbedtls BEFORE PUBLIC "${_overlay_include}")
+  target_include_directories(${_mbedtls_iface_target} BEFORE INTERFACE "${_overlay_include}")
+  target_include_directories(zephyr_interface BEFORE INTERFACE "${_overlay_include}")
+  target_sources(app PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/M119PsaPremasterSizeAssert.c")
+  message(STATUS "M119 PSA premaster overlay enabled from pinned Mbed TLS ssl.h")
+endfunction()
+
+function(m119_count_literal input needle output)
+  string(LENGTH "${input}" _input_length)
+  string(LENGTH "${needle}" _needle_length)
+  string(REPLACE "${needle}" "" _without "${input}")
+  string(LENGTH "${_without}" _without_length)
+  math(EXPR _count "(${_input_length} - ${_without_length}) / ${_needle_length}")
+  set(${output} "${_count}" PARENT_SCOPE)
+endfunction()
+
+m119_apply_psa_premaster_overlay()

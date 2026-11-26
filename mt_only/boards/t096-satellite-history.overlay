@@ -1,0 +1,18 @@
+/* Leave the optional enrolled identity retirement floor at 0xf3000 untouched. */
+&lfs_partition { reg = <0x000d4000 0x0001f000>; };
+/ {
+    fstab {
+        compatible = "zephyr,fstab";
+        mt_sat_fs: sat-history {
+            compatible = "zephyr,fstab,littlefs";
+            mount-point = "/zt-history";
+            partition = <&lfs_partition>;
+            no-format;
+            read-size = <16>;
+            prog-size = <16>;
+            cache-size = <64>;
+            lookahead-size = <16>;
+            block-cycles = <512>;
+        };
+    };
+};

@@ -1,0 +1,9 @@
+/* Optional external parts at three distinct addresses. */
+/ { aliases { zt-aht = &stock_aht; zt-dps310 = &stock_dps; zt-bmp085 = &stock_bmp; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    stock_aht: aht@38 { compatible = "zephtastic,aht"; reg = <0x38>; };
+    stock_dps: dps@76 { compatible = "zephtastic,dps310"; reg = <0x76>; };
+    stock_bmp: bmp@77 { compatible = "zephtastic,bmp085"; reg = <0x77>; };
+};

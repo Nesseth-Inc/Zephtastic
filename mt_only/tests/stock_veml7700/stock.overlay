@@ -1,0 +1,7 @@
+/* Build-only external peripheral. Neither board declares this part by default. */
+/ { aliases { zt-veml7700 = &test_veml; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_veml: light@10 { compatible = "zephtastic,veml7700"; reg = <0x10>; };
+};

@@ -1,0 +1,13 @@
+/* Both explicitly declared external stock continuous optical producers. */
+/ {
+    aliases {
+        zt-opt3001 = &stock_opt;
+        zt-bh1750 = &stock_bh;
+    };
+};
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    stock_opt: light@45 { compatible = "zephtastic,opt3001"; reg = <0x45>; };
+    stock_bh: light@23 { compatible = "zephtastic,bh1750"; reg = <0x23>; };
+};

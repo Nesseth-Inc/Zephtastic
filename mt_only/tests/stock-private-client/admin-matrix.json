@@ -1,0 +1,422 @@
+{
+  "reference_firmware": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "base_source": "2c6a2a07060aeaed4cade3859d3b4b7d53e7bef8",
+  "admin_schema_sha256": "5dd83418156d92c75b15a14dd7dd44e2773d3526eddab871a632a4029104848a",
+  "requests_and_responses": [
+    {
+      "name": "get_channel_request",
+      "tag": 1,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "one-based request1..8; one primary Public, seven disabled"
+    },
+    {
+      "name": "get_channel_response",
+      "tag": 2,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_owner_request",
+      "tag": 3,
+      "wire_kind": "BOOL",
+      "status": "implemented",
+      "scope": "local names/model/CLIENT_MUTE; no private key"
+    },
+    {
+      "name": "get_owner_response",
+      "tag": 4,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_config_request",
+      "tag": 5,
+      "wire_kind": "UENUM",
+      "status": "bounded",
+      "scope": "nine variants; many report fixed/disabled values"
+    },
+    {
+      "name": "get_config_response",
+      "tag": 6,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_module_config_request",
+      "tag": 7,
+      "wire_kind": "UENUM",
+      "status": "read-only-disabled",
+      "scope": "17 empty disabled variants; getter does not implement module"
+    },
+    {
+      "name": "get_module_config_response",
+      "tag": 8,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_canned_message_module_messages_request",
+      "tag": 10,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "Canonical requested canned-message list response via its typed owner."
+    },
+    {
+      "name": "get_canned_message_module_messages_response",
+      "tag": 11,
+      "wire_kind": "STRING",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_device_metadata_request",
+      "tag": 12,
+      "wire_kind": "BOOL",
+      "status": "implemented",
+      "scope": "truthful board/transport/excluded-module capability flags"
+    },
+    {
+      "name": "get_device_metadata_response",
+      "tag": 13,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_ringtone_request",
+      "tag": 14,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "Canonical requested ringtone string through its typed owner."
+    },
+    {
+      "name": "get_ringtone_response",
+      "tag": 15,
+      "wire_kind": "STRING",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "get_device_connection_status_request",
+      "tag": 16,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "T096 CDC measured; XIAO serial absent/unknown; BLE link only"
+    },
+    {
+      "name": "get_device_connection_status_response",
+      "tag": 17,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "set_ham_mode",
+      "tag": 18,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "Canonical licensed mode/call-sign configuration through the existing validated policy owner."
+    },
+    {
+      "name": "get_node_remote_hardware_pins_request",
+      "tag": 19,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "Canonical requested declared hardware pin inventory; not a generic GPIO grant."
+    },
+    {
+      "name": "get_node_remote_hardware_pins_response",
+      "tag": 20,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "enter_dfu_mode_request",
+      "tag": 21,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "Canonical DFU request delegated to the declared update owner; unsupported targets refuse."
+    },
+    {
+      "name": "delete_file_request",
+      "tag": 22,
+      "wire_kind": "STRING",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "set_scale",
+      "tag": 23,
+      "wire_kind": "UINT32",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "backup_preferences",
+      "tag": 24,
+      "wire_kind": "UENUM",
+      "status": "bounded",
+      "scope": "Canonical FLASH preference snapshot through the bounded preference owner; capability and verified storage required."
+    },
+    {
+      "name": "restore_preferences",
+      "tag": 25,
+      "wire_kind": "UENUM",
+      "status": "bounded",
+      "scope": "Canonical FLASH restore through the bounded preference owner; protected identity/history are outside reset scope."
+    },
+    {
+      "name": "remove_backup_preferences",
+      "tag": 26,
+      "wire_kind": "UENUM",
+      "status": "bounded",
+      "scope": "Canonical FLASH snapshot removal through the bounded preference owner; not a general storage reset."
+    },
+    {
+      "name": "send_input_event",
+      "tag": 27,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "T096 local canonical SELECT/UP/DOWN/LEFT/RIGHT/BACK/USER_PRESS only; wake-first, volatile navigation; headless and keyboard/touch/system actions refused"
+    },
+    {
+      "name": "set_owner",
+      "tag": 32,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "long/short names only; identity/key/role/licensed changes rejected"
+    },
+    {
+      "name": "set_channel",
+      "tag": 33,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "primary default Public/disable; unused disabled no-op; custom/secondary/AEAD unsupported"
+    },
+    {
+      "name": "set_config",
+      "tag": 34,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "bounded Device interval, LoRa, M20 timeout/flip/carousel Display, and M18 GPS-not-present Position echo/removal subsets only"
+    },
+    {
+      "name": "set_module_config",
+      "tag": 35,
+      "wire_kind": "MESSAGE",
+      "status": "bounded-noop",
+      "scope": "Exact canonical echo of one disabled/default excluded module is an inert success; enabled, non-default, duplicate, unknown, alternate or noncanonical wires reject"
+    },
+    {
+      "name": "set_canned_message_module_messages",
+      "tag": 36,
+      "wire_kind": "STRING",
+      "status": "bounded",
+      "scope": "Canonical bounded canned-message list persisted via its typed owner."
+    },
+    {
+      "name": "set_ringtone_message",
+      "tag": 37,
+      "wire_kind": "STRING",
+      "status": "bounded",
+      "scope": "Canonical bounded ringtone persisted through its typed owner."
+    },
+    {
+      "name": "remove_by_nodenum",
+      "tag": 38,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "shared peer cache removal plus targeted verified signature/receive-duplicate cleanup; not full auxiliary-store purge"
+    },
+    {
+      "name": "set_favorite_node",
+      "tag": 39,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "existing peer mutation;14 protected entries; M26 valid absent peer is guarded no-op success"
+    },
+    {
+      "name": "remove_favorite_node",
+      "tag": 40,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "existing peer mutation; ignore protection remains; M26 valid absent peer is guarded no-op success"
+    },
+    {
+      "name": "set_fixed_position",
+      "tag": 41,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "local canonical latitude/longitude E7 plus optional altitude; v5 Config persistence with v4 migration and local NodeInfo update; no RF send or fix metadata"
+    },
+    {
+      "name": "remove_fixed_position",
+      "tag": 42,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "canonical true removes persisted local fixed position and emits an empty local parser tombstone; no RF send"
+    },
+    {
+      "name": "set_time_only",
+      "tag": 43,
+      "wire_kind": "FIXED32",
+      "status": "bounded",
+      "scope": "RAM-only shared local clock when Host supplies provider; nonzero UTC32, same-second no-op, 30-minute correction guard; no RTC/persistence/position"
+    },
+    {
+      "name": "get_ui_config_request",
+      "tag": 44,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "Canonical requested validated DeviceUIConfig through its typed owner."
+    },
+    {
+      "name": "get_ui_config_response",
+      "tag": 45,
+      "wire_kind": "MESSAGE",
+      "status": "response-only",
+      "scope": "Not a request/control; inbound value rejected"
+    },
+    {
+      "name": "store_ui_config",
+      "tag": 46,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "Canonical validated DeviceUIConfig persisted through its typed owner."
+    },
+    {
+      "name": "set_ignored_node",
+      "tag": 47,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "existing peer or ID-only absent placeholder; drop sender before routing/clients"
+    },
+    {
+      "name": "remove_ignored_node",
+      "tag": 48,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "existing peer only; placeholder retained until remove/NodeInfo"
+    },
+    {
+      "name": "toggle_muted_node",
+      "tag": 49,
+      "wire_kind": "UINT32",
+      "status": "bounded",
+      "scope": "existing non-self peer only; verified NodeDB-v3 toggle and NodeInfo.is_muted readback; suppresses only T096 direct-text screen attention"
+    },
+    {
+      "name": "begin_edit_settings",
+      "tag": 64,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "shared live-RAM deferred persistence; disarms; no isolation/rollback"
+    },
+    {
+      "name": "commit_edit_settings",
+      "tag": 65,
+      "wire_kind": "BOOL",
+      "status": "bounded",
+      "scope": "verified Config save; failed/uncertain commit retains pending state/fault"
+    },
+    {
+      "name": "add_contact",
+      "tag": 66,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "Canonical local contact enrollment through the current owner; ready identity and trust/persistence checks required."
+    },
+    {
+      "name": "key_verification",
+      "tag": 67,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "Canonical local key verification delegated to its typed owner and existing exact-peer/state checks."
+    },
+    {
+      "name": "factory_reset_device",
+      "tag": 94,
+      "wire_kind": "INT32",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "reboot_ota_seconds",
+      "tag": 95,
+      "wire_kind": "INT32",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "exit_simulator",
+      "tag": 96,
+      "wire_kind": "BOOL",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "reboot_seconds",
+      "tag": 97,
+      "wire_kind": "INT32",
+      "status": "bounded",
+      "scope": "local scheduling/cancel; refused while settings edit or unsafe state; no reset implementation in this fixture"
+    },
+    {
+      "name": "shutdown_seconds",
+      "tag": 98,
+      "wire_kind": "INT32",
+      "status": "bounded",
+      "scope": "Canonical delayed shutdown/cancellation delegated to the declared power owner; unsupported hardware may refuse."
+    },
+    {
+      "name": "factory_reset_config",
+      "tag": 99,
+      "wire_kind": "INT32",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "nodedb_reset",
+      "tag": 100,
+      "wire_kind": "BOOL",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "ota_request",
+      "tag": 102,
+      "wire_kind": "MESSAGE",
+      "status": "bounded",
+      "scope": "Canonical OTA mode and exact hash delegated to the declared update owner; unsupported mode/capability refuses."
+    },
+    {
+      "name": "sensor_config",
+      "tag": 103,
+      "wire_kind": "MESSAGE",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    },
+    {
+      "name": "lockdown_auth",
+      "tag": 104,
+      "wire_kind": "MESSAGE",
+      "status": "deferred",
+      "scope": "Local request rejected with BAD_REQUEST; no runtime implementation"
+    }
+  ],
+  "supplemental_fields": [
+    {
+      "name": "session_passkey",
+      "tag": 101,
+      "status": "unsupported-authentication",
+      "scope": "Outside oneof; no local passkey or RF-admin authorization claimed"
+    }
+  ],
+  "source_inventory_note": "M186 refresh of admitted local dispatch controls. A bounded handler may refuse absent target capability; this inventory does not prove deployment, physical support or successful execution."
+}

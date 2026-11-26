@@ -1,0 +1,29 @@
+/* Build-only fixture for stock I2C accessory commands. */
+/ {
+    aliases {
+        zt-scd30 = &test_scd30;
+        zt-sen5x = &test_sen5x;
+        zt-sen6x = &test_sen6x;
+        zt-as3935 = &test_as3935;
+        zt-nau7802 = &test_nau7802;
+        zt-lark = &test_lark;
+        zt-rainfall = &test_rainfall;
+        zt-ltr390 = &test_ltr390;
+        zt-radsens = &test_radsens;
+        zt-rcwl9620 = &test_rcwl9620;
+    };
+};
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_lark: lark@42 { compatible = "dfrobot,lark"; reg = <0x42>; };
+    test_rainfall: rain@1d { compatible = "dfrobot,sen0575"; reg = <0x1d>; };
+    test_ltr390: light@53 { compatible = "liteon,ltr390"; reg = <0x53>; };
+    test_radsens: radiation@66 { compatible = "climateguard,radsens"; reg = <0x66>; };
+    test_rcwl9620: range@57 { compatible = "rcwl,rcwl9620"; reg = <0x57>; };
+    test_scd30: scd30@61 { compatible = "sensirion,scd30"; reg = <0x61>; };
+    test_sen5x: sen5x@69 { compatible = "sensirion,sen5x"; reg = <0x69>; };
+    test_sen6x: sen6x@6b { compatible = "sensirion,sen6x"; reg = <0x6b>; };
+    test_as3935: as3935@3 { compatible = "ams,as3935"; reg = <0x03>; };
+    test_nau7802: nau7802@2a { compatible = "nuvoton,nau7802"; reg = <0x2a>; };
+};

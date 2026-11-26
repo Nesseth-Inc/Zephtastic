@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: ROHM BH1750 in the stock continuous high-resolution measurement mode
+compatible: "zephtastic,bh1750"
+include: i2c-device.yaml

@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MIT
+
+description: |
+  Explicit hardware exports for the ZephCore stock GPIO module backend.
+  Child reg values are stable wire pin IDs, not GPIO controller offsets.
+
+compatible: "zephcore,gpio-module-exports"
+include: base.yaml
+
+properties:
+  "#address-cells":
+    const: 1
+  "#size-cells":
+    const: 0
+
+child-binding:
+  description: One explicitly exported GPIO-module wire pin.
+  properties:
+    reg:
+      type: array
+      required: true
+      description: Stable GPIO-module wire pin ID, constrained to 0 through 63.
+    gpios:
+      type: phandle-array
+      required: true
+      description: The dedicated GPIO line for this export.
+    zephcore,readable:
+      type: boolean
+      description: Allow input configuration and sampling for this wire pin.
+    zephcore,writable:
+      type: boolean
+      description: Allow output configuration and setting for this wire pin.
+    zephcore,pullup:
+      type: boolean
+      description: Allow input configuration with an internal pull-up.

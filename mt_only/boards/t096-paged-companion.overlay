@@ -1,0 +1,4 @@
+/* Independent first-install geometry for the larger paged companion. */
+&code_partition { reg = <0x00026000 0x000b7000>; };
+&storage_partition { reg = <0x000dd000 0x00004000>; };
+&lfs_partition { reg = <0x000e1000 0x00012000>; };

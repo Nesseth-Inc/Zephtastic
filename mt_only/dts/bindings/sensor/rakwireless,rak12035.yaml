@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Externally powered RAK12035 soil probe on the telemetry worker
+compatible: "rakwireless,rak12035"
+include: i2c-device.yaml
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: Dedicated active-low reset line of this probe

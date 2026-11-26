@@ -1,0 +1,11 @@
+/* Compile-only active-high SET on a test pin. */
+/ { aliases { air-quality = &test_plantower; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_plantower: pm@12 {
+        compatible = "plantower,pmsa003i";
+        reg = <0x12>;
+        set-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+    };
+};

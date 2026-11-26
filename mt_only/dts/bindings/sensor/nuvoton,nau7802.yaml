@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: Nau7802 stock I2C telemetry accessory
+compatible: "nuvoton,nau7802"
+include: i2c-device.yaml

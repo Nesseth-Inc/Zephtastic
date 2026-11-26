@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: DPS310 on the stock environment telemetry worker
+compatible: "zephtastic,dps310"
+include: i2c-device.yaml

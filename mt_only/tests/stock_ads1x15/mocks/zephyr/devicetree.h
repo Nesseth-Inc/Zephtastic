@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-3.0-only
+#pragma once
+#define DT_ALIAS(n) n
+#define DT_NODE_HAS_STATUS(n,s) status(n)
+#define status(n) status_##n
+#define status_zt_ads1x15 1
+#define status_zt_ads1x15_alt 1
+#define DT_NODE_HAS_COMPAT(n,c) compat(n,c)
+#define compat(n,c) compat_##n##_##c
+#define compat_zt_ads1x15_zephtastic_ads1015 0
+#define compat_zt_ads1x15_zephtastic_ads1115 1
+#define compat_zt_ads1x15_alt_zephtastic_ads1015 1
+#define compat_zt_ads1x15_alt_zephtastic_ads1115 0
+#define DT_BUS(n) bus
+#define DT_PROP(n,p) 100000
+#define DT_REG_ADDR(n) address(n)
+#define address(n) address_##n
+#define address_zt_ads1x15 0x48
+#define address_zt_ads1x15_alt 0x4b
+#define status_zt_scd30 0
+#define status_zt_sen5x 0
+#define status_zt_sen6x 0
+#define status_zt_as3935 0
+#define status_zt_nau7802 0
+#define status_zt_radsens 0
+#define status_zt_rcwl9620 0

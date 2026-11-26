@@ -1,0 +1,18 @@
+{
+  "source_revision": "1aeb2d594babd0b54ddfde95bf773788149b41cf",
+  "legacy_ChannelMeter_sha256": "c412b9a2682af4b26d2eec2c6b431536851abfce45f32fd3869cb3da33829255",
+  "unchanged_dependencies_sha256": {
+    "AirtimeMeter.h": "9fa17ebcced0855773a041f6f1d01516056a44f46bf6181b4f1ac4419a8fc119",
+    "tx_window.h": "729dfeb91674a196b22a4149d5b9c5d27cde80564e0d44b4affff386d272e23d",
+    "Observed.h": "003cd6bd71b2594eebd8390c77d4cfc96aabbb620a59cda3b384096772fb6076",
+    "ChannelWindow.h": "7c8503ad69b7806a9ecb29c9d30f9b8a40c89e619b538697db06ee53b825cb7c",
+    "ChannelBuckets.h": "8b70502d0defd8d96bff01899a8705a290c20e7f68fd78b465fe82fc89ac28ab",
+    "ChannelQuality.h": "ca903eb732a4919ad92557df9a0d9069266fd3fc27ac39c57200e2968e18234d"
+  },
+  "legacy_ChannelWindow_sha256": "7c8503ad69b7806a9ecb29c9d30f9b8a40c89e619b538697db06ee53b825cb7c",
+  "diagnostic_baseline_ChannelMeter_sha256": "fcc908f49dd9dde3cb756183c2d66a76370d9c6d2b4f6470db591193ef9c2f3b",
+  "diagnostic_baseline_ChannelTrace_sha256": "e86c19efd4b49187513b669a1066302dc334283110075c07a6e604145d058254",
+  "intentional_current_dependency_changes": [
+    "ChannelWindow.h"
+  ]
+}

@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Run bounded native checks for the isolated canned-message settings journal."""
+import hashlib
+import os
+import shlex
+import subprocess
+import tempfile
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parents[2]
+APP=ROOT/"mt_only"
+VENDOR=ROOT/"zephcore/adapters/bench/vendor"
+SOURCE=APP/"tests/canned_message_journal_tests.cpp"
+SETTINGS=APP/"src/modules/CannedMessageSettings.h"
+JOURNAL=APP/"src/modules/CannedMessageJournal.h"
+VENDOR_NODE=ROOT/"zephcore/adapters/bench/vendor/MtNodeInfo.h"
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def run(command,env):
+    print("$"," ".join(map(str,command)),flush=True)
+    result=subprocess.run(command,env=env,text=True,capture_output=True)
+    if result.stdout: print(result.stdout,end="",flush=True)
+    if result.stderr: print(result.stderr,end="",flush=True)
+    if result.returncode: raise SystemExit(result.returncode)
+
+def main():
+    pinned=(SOURCE,SETTINGS,JOURNAL,APP/"src/SettingsJournal.h",APP/"src/Config.h",VENDOR_NODE)
+    before={str(p):digest(p) for p in pinned}
+    env=dict(os.environ);env["ASAN_OPTIONS"]="detect_leaks=0:halt_on_error=1";env["UBSAN_OPTIONS"]="halt_on_error=1"
+    cxx=shlex.split(env.get("CXX","c++"))
+    with tempfile.TemporaryDirectory(prefix="mt-canned-journal-") as temporary:
+        out=Path(temporary)
+        for label,extra in (("default-enum",[]),("short-enum",["-fshort-enums"])):
+            exe=out/("canned-journal-"+label)
+            run([*cxx,"-std=c++17","-Wall","-Wextra","-Werror","-fsanitize=address,undefined",
+                 "-fno-omit-frame-pointer","-g","-O1",*extra,"-I"+str(APP/"src"),"-I"+str(VENDOR),
+                 str(SOURCE),"-o",str(exe)],env)
+            run([str(exe)],env)
+    after={str(p):digest(p) for p in pinned}
+    assert before==after,"source changed during native journal tests"
+    print("PASS canned-message journal default and short-enum ASan/UBSan variants; source pins unchanged")
+
+if __name__=="__main__": main()

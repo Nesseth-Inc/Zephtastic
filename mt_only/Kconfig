@@ -1,0 +1,754 @@
+mainmenu "ZephTastic standalone companion"
+config MT_HARDWARE_MODEL
+    int "Meshtastic hardware model (0 selects the board default)"
+    range 0 255
+    default 0
+    help
+      A board or carrier overlay can select its published Meshtastic 2.8.2
+      HardwareModel number here. Use 255 for a private port. An unrecognized
+      board with the default setting reports UNSET. This option changes the
+      reported identity only. Radio drivers and updater images must match
+      the physical board.
+
+config MT_NORDIC_DFU
+	bool "T096 Nordic DFU handoff (provisioned compatible bootloader required)"
+	depends on BOARD_HELTEC_T096 && BT
+	default n
+	help
+	  Opt in only when the installed UF2 partition contains the documented,
+	  board-compatible Nordic bootloader that consumes the GPREGRET mode values
+	  used by this application. The runtime pointer/vector probe proves only
+	  executable plausibility, not loader identity or protocol compatibility.
+	  No loader is installed and no reserved SoftDevice peer-data RAM is written.
+config MT_SIGNED_WIFI_OTA
+    bool "Owner-authorized stock TCP OTA for signed XIAO companion slots"
+    depends on BOARD_XIAO_ESP32S3 && MT_WIFI_STATION && BOOTLOADER_MCUBOOT
+    depends on !MT_ESP_STOCK_OTA_LOADER
+    help
+      Accept one preauthorized image hash using the Meshtastic unified TCP
+      update protocol on a configured station. Requires the dedicated signed
+      bootloader and first-install flash map.
+config MT_ESP_STOCK_OTA_LOADER
+	bool "Existing ESP-IDF stock Meshtastic OTA loader bridge"
+	depends on BOARD_XIAO_ESP32S3
+	default n
+	help
+	  Requires separately supplied ESP-IDF app_update, esp_partition and NVS
+	  APIs, plus an already provisioned compatible OTA_0/OTA_1/otadata/NVS
+	  partition layout. This does not provision a loader, initialize NVS,
+	  erase flash or repartition the current Zephyr device. A runtime probe
+	  refuses absent/incompatible layouts. Current ordinary profiles keep it off.
+config MT_TAK_TRACKER
+	bool "Meshtastic TAK tracker position producer"
+	default n
+	depends on MT_NORMAL_ENDPOINT
+	help
+	  Optional TAK_TRACKER role, persistent team/role settings, and raw PLI
+	  position broadcasts through the normal endpoint. Fresh/fixed position
+	  and per-channel precision consent remain required.
+config MT_GPIO_MODULES
+	bool "Meshtastic RemoteHardware and DetectionSensor modules"
+	default n
+	depends on GPIO
+	help
+	  Optional module settings and bounded runtime using an explicit GPIO
+	  export table. Existing board aliases are never implicitly exported.
+	  Without a reviewed table both modules remain operationally unavailable.
+config MT_SERIAL_MODULE
+	bool "Meshtastic dedicated UART module"
+	select REQUIRES_FLOAT_PRINTF
+	default n
+	depends on SERIAL
+	help
+	  Uses a dedicated enabled mt-serial devicetree alias with board pinctrl.
+	  The companion console and GNSS UART cannot be reused by this adapter.
+	  Supports stock baud selection/byte timeout, SIMPLE/TEXTMSG, framed
+	  PROTO, NMEA/CalTopo output and WS85 weather input. Module configuration
+	  remains disabled by default; Heltec Solar-only MS_CONFIG is absent.
+config MT_WIFI_STATION
+	bool "ZephCore WiFi station with local Meshtastic configuration"
+	default n
+	depends on BOARD_XIAO_ESP32S3 && WIFI && NETWORKING
+	depends on NET_IPV4 && NET_DHCPV4 && NET_MGMT && NET_MGMT_EVENT
+	depends on NET_MGMT_EVENT_INFO
+	help
+	  Explicit WiFi-capable build only. Disabled defaults never associate.
+	  Reuses ZephCore reconnect/backoff and optional SNTP; boot owns immutable
+	  credential buffers. Local verified settings take effect after reboot.
+	  DHCP readiness is separate from successful time synchronization.
+config MT_TCP_COMPANION
+	bool "Meshtastic TCP companion on port 4403"
+	default n
+	depends on MT_WIFI_STATION && NET_SOCKETS && NET_TCP && ESP_SPIRAM
+	help
+	  Single LAN client, bounded queues and a separate socket owner. Reuses
+	  ZephCore transport primitives with Meshtastic framing and a third local
+	  endpoint owner. No socket starts without verified enabled WiFi policy.
+config MT_BROWSER_MESSAGING
+	bool "Same-origin browser messaging on the joined WiFi station"
+	default n
+	depends on MT_TCP_COMPANION && CSPRNG_ENABLED
+	help
+	  Serves the onboard messaging page and the stock protobuf polling API on
+	  HTTP port 80. A local-subnet browser shares the existing TCP companion
+	  owner exclusively. Only text and sanitized discovery reach this endpoint.
+# Both listeners, Wi-Fi services and recently closed peers share these pools.
+# Supply browser defaults before the Zephyr IPv4-only defaults (4 and 6).
+config NET_MAX_CONN
+	int
+	default 12 if MT_BROWSER_MESSAGING
+
+config NET_MAX_CONTEXTS
+	int
+	default 12 if MT_BROWSER_MESSAGING
+
+config MT_MQTT_GATEWAY
+	bool "Meshtastic MQTT gateway"
+	default n
+	depends on BOARD_XIAO_ESP32S3 && MT_WIFI_STATION && NET_SOCKETS && NET_TCP && ESP_SPIRAM
+	depends on MQTT_LIB && MQTT_LIB_TLS
+	select MT_SHARED_MBEDTLS_THREADING
+	help
+	  Optional WiFi/PSRAM uplink and admitted downlink. A worker owns DNS,
+	  socket IO, polling, TLS, and reconnects. Bounded payload queue resides in
+	  external PSRAM; T096 and ordinary XIAO builds have no MQTT worker/storage.
+	  TLS requires an explicitly configured CA security tag and verifies hostname.
+config MT_M119_TLS_TEST
+	bool "M119 test-only authenticated WiFi MQTT TLS canary"
+	default n
+	depends on MT_WIFI_STATION && MT_MQTT_GATEWAY && TLS_CREDENTIALS_BACKEND_VOLATILE
+	depends on MQTT_LIB_TLS
+	depends on !MT_PKI_TARGET_RUNTIME
+	help
+	  Temporary test-only CA provisioning and scalar MQTT status for the M119
+	  WiFi TLS canary. Requires Root-generated public CA fixture bytes. No
+	  default fixture or insecure fallback exists. Never enable in release,
+	  T096, or ordinary XIAO profiles.
+
+config MT_BLE_DIAGNOSTICS
+	bool "Temporary privacy-safe BLE pairing diagnostics"
+	depends on BT_SMP
+	default n
+	help
+	  RAM-only SMP opcode counters and passive pairing callbacks. Does not
+	  change security, bonding or RF policy. Exposed only through local USB.
+config MT_GNSS_T096
+	bool "T096 ZephCore GNSS adapter"
+	depends on BOARD_HELTEC_T096 && GNSS && PM_DEVICE
+	default y
+config MT_PERSIST_BROADCAST_HISTORY
+	bool "Persist stock broadcast cooldowns"
+	depends on BOARD_XIAO_ESP32S3 && MT_NORMAL_ENDPOINT && SETTINGS_NVS
+	default y
+	help
+	  Restore broadcast schedule timestamps across resets using two small
+	  verified native settings records bound to this device's identity.
+config MT_XIAO_LARGE_NODEDB
+	bool "Extended persistent XIAO NodeDB protection"
+	depends on BOARD_XIAO_ESP32S3 && ESP_SPIRAM && MT_MQTT_GATEWAY && MT_PKI_TARGET_RUNTIME && MT_PEER_DIRECTORY && MT_PAGED_SATELLITES
+	default y
+config MT_GNSS_XIAO_L76K
+	bool "Seeed XIAO ESP32-S3 L76K expansion GNSS"
+	depends on BOARD_XIAO_ESP32S3 && GNSS_NMEA_GENERIC && PM_DEVICE
+	default n
+	help
+	  Select only with the XIAO L76K overlay and a separately fitted receiver
+	  whose RESET is disconnected from the Wio radio SPI pins.
+config MT_GNSS_L76K_SETUP
+	bool "Probe and configure the fitted Seeed L76K receiver"
+	depends on MT_GNSS_XIAO_L76K && UART_USE_RUNTIME_CONFIGURE
+	default n
+config MT_MAX17048
+    bool "MAX17048 battery and power telemetry"
+    depends on I2C && $(dt_alias_enabled,zt-max17048)
+    default y
+config MT_ENVIRONMENT_SENSORS
+	bool "Reuse ZephCore environment sensor acquisition"
+	default y
+	select SENSOR
+	select I2C if $(dt_alias_enabled,zt-veml7700) || $(dt_alias_enabled,zt-mlx90614) || $(dt_alias_enabled,zt-tsl2591) || $(dt_alias_enabled,zt-tsl2561) || MT_BAROMETER_DECLARED || MT_SHT_SLOT_DECLARED || $(dt_alias_enabled,zt-mlx90632) || $(dt_alias_enabled,zt-bh1750) || $(dt_alias_enabled,zt-opt3001)
+	help
+	  Reuses declared ZephCore sensors; measurement remains disabled until the
+	  local telemetry module config explicitly enables it. No discovery scan,
+	  coordinates, invented values or automatic power policy is added.
+config MT_MLX90632
+    bool "Stock MLX90632 object-temperature telemetry"
+    depends on MT_ENVIRONMENT_SENSORS && I2C && $(dt_alias_enabled,zt-mlx90632)
+    default y
+config MT_SHT_SLOT_DECLARED
+	bool
+	default y if $(dt_alias_enabled,zt-sht40) || $(dt_alias_enabled,zt-sht44) || $(dt_alias_enabled,zt-sht45) || $(dt_alias_enabled,zt-sht70)
+config MT_STOCK_SHT
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && MT_SHT_SLOT_DECLARED
+config MT_BAROMETER_DECLARED
+	bool
+	default y if $(dt_alias_enabled,zt-aht) || $(dt_alias_enabled,zt-bmp085) || $(dt_alias_enabled,zt-bmp3xx) || $(dt_alias_enabled,zt-dps310)
+config MT_STOCK_BAROMETERS
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && MT_BAROMETER_DECLARED
+config MT_BME680_IAQ
+	bool "Stock BME680 air-quality estimator"
+	depends on MT_ENVIRONMENT_SENSORS && I2C && SETTINGS && BME680 && $(dt_alias_enabled,zt-bme680)
+	default y
+	help
+	  Samples the explicitly wired I2C accessory on its own worker and
+	  checkpoints the upstream gas baseline across application restarts.
+MT_HM330X_COMPAT := seeed,hm330x
+config MT_HM330X_DECLARED
+	bool
+	default y if $(dt_alias_enabled,zt-hm330x)
+	default y if $(dt_alias_enabled,air-quality) && $(dt_node_has_compat,air-quality,$(MT_HM330X_COMPAT))
+	default y if $(dt_alias_enabled,air-quality-2) && $(dt_node_has_compat,air-quality-2,$(MT_HM330X_COMPAT))
+	default y if $(dt_alias_enabled,air-quality-3) && $(dt_node_has_compat,air-quality-3,$(MT_HM330X_COMPAT))
+MT_PMSA003I_COMPAT := plantower,pmsa003i
+config MT_PMSA003I_DECLARED
+	bool
+	default y if $(dt_alias_enabled,zt-pmsa003i)
+	default y if $(dt_alias_enabled,air-quality) && $(dt_node_has_compat,air-quality,$(MT_PMSA003I_COMPAT))
+	default y if $(dt_alias_enabled,air-quality-2) && $(dt_node_has_compat,air-quality-2,$(MT_PMSA003I_COMPAT))
+	default y if $(dt_alias_enabled,air-quality-3) && $(dt_node_has_compat,air-quality-3,$(MT_PMSA003I_COMPAT))
+config MT_ACCESSORY_SENSORS
+	bool "Stock optional I2C sensor protocols"
+	depends on I2C && SETTINGS
+	depends on $(dt_alias_enabled,zt-scd30) || $(dt_alias_enabled,zt-sen5x) || $(dt_alias_enabled,zt-sen6x) || $(dt_alias_enabled,zt-as3935) || $(dt_alias_enabled,zt-nau7802) || $(dt_alias_enabled,zt-radsens) || $(dt_alias_enabled,zt-rcwl9620) || $(dt_alias_enabled,zt-ads1x15) || $(dt_alias_enabled,zt-ads1x15-alt) || $(dt_alias_enabled,zt-ltr390) || $(dt_alias_enabled,zt-tsl2591) || $(dt_alias_enabled,zt-tsl2561) || $(dt_alias_enabled,zt-veml7700) || $(dt_alias_enabled,zt-mlx90614) || $(dt_alias_enabled,zt-lark) || $(dt_alias_enabled,zt-rainfall) || $(dt_alias_enabled,zt-sfa30) || $(dt_alias_enabled,zt-rak12035) || MT_HM330X_DECLARED || MT_PMSA003I_DECLARED || MT_BAROMETER_DECLARED || MT_SHT_SLOT_DECLARED || $(dt_alias_enabled,zt-bh1750) || $(dt_alias_enabled,zt-opt3001)
+	default y
+	help
+	  A single worker serves local calibration and fresh telemetry for the
+	  accessory addresses declared by this board.
+MT_NATIVE_TSL2591_COMPAT := ams,tsl2591
+config MT_NATIVE_TSL2591
+    bool
+    default y if MT_STOCK_ENVIRONMENT_CHANNELS && ($(dt_node_has_compat,zt-environment,$(MT_NATIVE_TSL2591_COMPAT)) || $(dt_node_has_compat,zt-environment-2,$(MT_NATIVE_TSL2591_COMPAT)))
+MT_NATIVE_OPT3001_COMPAT := ti,opt3001
+MT_NATIVE_BH1750_COMPAT := rohm,bh1750
+MT_NATIVE_TSL2561_COMPAT := ams,tsl2561
+MT_NATIVE_VEML7700_COMPAT := vishay,veml7700
+config MT_NATIVE_LUX
+	bool
+	depends on MT_STOCK_ENVIRONMENT_CHANNELS
+	default y if MT_NATIVE_TSL2591
+	default y if ($(dt_alias_enabled,zt-environment) && $(dt_node_has_compat,zt-environment,$(MT_NATIVE_OPT3001_COMPAT))) || ($(dt_alias_enabled,zt-environment-2) && $(dt_node_has_compat,zt-environment-2,$(MT_NATIVE_OPT3001_COMPAT)))
+	default y if ($(dt_alias_enabled,zt-environment) && $(dt_node_has_compat,zt-environment,$(MT_NATIVE_BH1750_COMPAT))) || ($(dt_alias_enabled,zt-environment-2) && $(dt_node_has_compat,zt-environment-2,$(MT_NATIVE_BH1750_COMPAT)))
+	default y if ($(dt_alias_enabled,zt-environment) && $(dt_node_has_compat,zt-environment,$(MT_NATIVE_TSL2561_COMPAT))) || ($(dt_alias_enabled,zt-environment-2) && $(dt_node_has_compat,zt-environment-2,$(MT_NATIVE_TSL2561_COMPAT)))
+	default y if ($(dt_alias_enabled,zt-environment) && $(dt_node_has_compat,zt-environment,$(MT_NATIVE_VEML7700_COMPAT))) || ($(dt_alias_enabled,zt-environment-2) && $(dt_node_has_compat,zt-environment-2,$(MT_NATIVE_VEML7700_COMPAT)))
+config MT_TSL_LIGHT
+    bool
+    default y if MT_ENVIRONMENT_SENSORS && MT_ACCESSORY_SENSORS && ($(dt_alias_enabled,zt-tsl2591) || $(dt_alias_enabled,zt-tsl2561))
+config MT_OPT3001
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && $(dt_alias_enabled,zt-opt3001)
+config MT_BH1750
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && $(dt_alias_enabled,zt-bh1750)
+config MT_MLX90614
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && $(dt_alias_enabled,zt-mlx90614)
+config MT_VEML7700
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && $(dt_alias_enabled,zt-veml7700)
+config MT_LARK_WEATHER
+    bool
+    default y if MT_ACCESSORY_SENSORS && $(dt_alias_enabled,zt-lark)
+
+config MT_PMSA003I
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_PMSA003I_DECLARED
+config MT_HM330X
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_HM330X_DECLARED
+config MT_ADS1X15
+	bool
+	default y if MT_ACCESSORY_SENSORS && ($(dt_alias_enabled,zt-ads1x15) || $(dt_alias_enabled,zt-ads1x15-alt))
+config MT_RAK12035
+	bool
+	default y if MT_ACCESSORY_SENSORS && MT_ENVIRONMENT_SENSORS && GPIO && $(dt_alias_enabled,zt-rak12035)
+config MT_SATELLITE_HISTORY
+    bool "Persist shared broadcast observations on the private history volume"
+    depends on MT_PKI_TARGET_RUNTIME && FILE_SYSTEM_LITTLEFS && $(dt_nodelabel_enabled,mt_sat_fs)
+    depends on !BOARD_HELTEC_T096 || MT_PKI_FRESH_DOMAIN_ONLY
+    default y
+config MT_PEER_DIRECTORY
+    bool "Persist thin phone peer identities on the private history volume"
+    depends on MT_SATELLITE_HISTORY
+    default y
+config MT_WARM_PEERS
+    bool "Keep evicted peer metadata on the private history volume"
+    depends on MT_PEER_DIRECTORY && CSPRNG_ENABLED
+    default y
+config MT_PAGED_SATELLITES
+    bool "Page public peer reports on the private NodeDB volume"
+    depends on MT_WARM_PEERS
+    default n
+config MT_SATELLITE_INITIALIZE_ERASED
+    bool "Initialize an entirely erased private history volume on first use"
+    depends on MT_SATELLITE_HISTORY
+    default n
+config MT_LIGHTNING_EVENTS
+	bool
+	default y if MT_ACCESSORY_SENSORS && $(dt_alias_enabled,zt-as3935)
+config MT_SHTXX_ADMIN
+	bool "Stock SHT3x/SHT4x measurement accuracy"
+	depends on MT_STOCK_SHT || (SENSOR && (SHT3XD || SHT4X) && $(dt_alias_enabled,zt-shtxx))
+	default y
+	help
+	  Select low, medium or high repeatability through local USB sensor_config
+	  on the explicitly declared SHT3x or SHT4x peripheral.
+config MT_SCD4X_ADMIN
+	bool "Stock SCD4x sensor configuration"
+	depends on SENSOR && SCD4X && $(dt_alias_enabled,zt-scd4x)
+	default y
+	help
+	  Enables the local USB sensor_config calibration commands for the
+	  SCD40/SCD41 explicitly bound as zt-scd4x. The driver runs in a
+	  dedicated worker while the transport and radio continue to operate.
+config MT_MAX30102_OPTICAL
+	bool "Stock MAX30102 optical measurements"
+	depends on MAX30101 && $(dt_alias_enabled,zt-optical)
+	default y
+	help
+	  Processes fresh red/IR FIFO samples at the pinned firmware's 25 Hz.
+	  The sensor must use its stock SPO2 settings in the board overlay.
+
+config MT_ONE_WIRE_TELEMETRY
+	bool "Eight-channel stock DS2482 thermometer reports"
+	depends on MT_ENVIRONMENT_SENSORS
+	select W1
+	default y if $(dt_alias_enabled,zt-one-wire-0) || $(dt_alias_enabled,zt-one-wire-1) || $(dt_alias_enabled,zt-one-wire-2) || $(dt_alias_enabled,zt-one-wire-3) || $(dt_alias_enabled,zt-one-wire-4) || $(dt_alias_enabled,zt-one-wire-5) || $(dt_alias_enabled,zt-one-wire-6) || $(dt_alias_enabled,zt-one-wire-7)
+	default n
+	help
+	  Bind each temperature sensor to its physical zt-one-wire-0 through
+	  zt-one-wire-7 slot. USB sensor_config selects a primary channel.
+
+config MT_INA260
+	bool
+	depends on MT_ENVIRONMENT_SENSORS && I2C && DT_HAS_TI_INA260_ENABLED && $(dt_nodelabel_enabled,ina260)
+	default y
+
+config MT_STOCK_INA_METRICS
+	bool
+	depends on MT_ENVIRONMENT_SENSORS
+	default y if MT_INA260 || $(dt_nodelabel_enabled,ina219) || $(dt_nodelabel_enabled,ina226) || $(dt_nodelabel_enabled,ina3221)
+
+config MT_SINGLE_INA219
+	bool
+	depends on MT_STOCK_INA_METRICS && $(dt_nodelabel_enabled,ina219)
+	default y if !MT_INA260 && !$(dt_nodelabel_enabled,ina3221) && !$(dt_nodelabel_enabled,ina226) && !$(dt_nodelabel_enabled,ina228) && !$(dt_nodelabel_enabled,ina230) && !$(dt_nodelabel_enabled,ina232) && !$(dt_nodelabel_enabled,ina236) && !$(dt_nodelabel_enabled,ina237)
+
+config MT_INA3221_ENV_CHANNEL
+	int "INA3221 environment channel (1 through 3)"
+	depends on MT_STOCK_INA_METRICS && $(dt_nodelabel_enabled,ina3221)
+	range 1 3
+	default 1
+
+config MT_INA3221_BAT_CHANNEL
+	int "INA3221 battery channel (1 through 3)"
+	depends on MT_STOCK_INA_METRICS && $(dt_nodelabel_enabled,ina3221)
+	range 1 3
+	default 1
+
+config MT_STOCK_ENVIRONMENT_CHANNELS
+	bool "Additional measured stock environment fields"
+	depends on MT_ENVIRONMENT_SENSORS
+	default y if $(dt_alias_enabled,zt-environment) || $(dt_alias_enabled,zt-environment-2)
+	default n
+	help
+	  Includes stock INA voltage/current observations in environment reports
+	  and explicit zt-environment / zt-environment-2 sensors. Their generic
+	  Zephyr channels supply light, distance and gas resistance when present.
+config ZEPHCORE_SENSORS_LOG_LEVEL
+	int
+	range 0 4
+	default 0
+config MT_RUNTIME_RESOURCES
+	bool "Isolated USB runtime memory measurements"
+	default n
+	depends on COMMON_LIBC_MALLOC && !MT_PKI_TARGET_RUNTIME && !MT_BLE_DIAGNOSTICS
+	select INIT_STACKS
+	select THREAD_STACK_INFO
+	select SYS_HEAP_RUNTIME_STATS
+config MT_ONLY
+	bool
+	default y
+config MT_SIGNED_BLE_OTA
+	bool "Meshtastic BLE OTA on the signed inactive-slot layout"
+	depends on MT_SIGNED_WIFI_OTA && BT_GATT_SERVICE_CHANGED && BOARD_XIAO_ESP32S3
+	select BT_GATT_DYNAMIC_DB
+	default y
+	help
+	  Advertise and register the stock ESP BLE updater only after an admitted
+	  OTA_BLE request. The existing encrypted link policy, requested image hash
+	  and the inactive-slot MCUboot signing policy all remain required.
+config MT_BLE_LOG_RADIO
+	bool "Meshtastic encrypted LogRadio characteristic"
+	depends on BT && BOARD_XIAO_ESP32S3
+	default y
+	help
+	  Expose the stock LogRecord characteristic for locally enabled, allowlisted
+	  diagnostic events. Each protected connection has its own retained value.
+config MT_LOCAL_CLOCK
+	bool "Stock local log and display timestamps"
+	depends on BOARD_XIAO_ESP32S3 && PICOLIBC
+	default y
+	help
+	  Accept POSIX TZ strings for local PhoneAPI logs and the optional OLED clock.
+
+config MT_XIAO_EXPANSION_OLED
+	bool
+	depends on BOARD_XIAO_ESP32S3
+	default y if $(dt_alias_enabled,zt-expansion-oled)
+	select I2C
+config MT_DISPLAY
+	bool "ZephTastic companion display"
+	depends on BOARD_HELTEC_T096 || MT_XIAO_EXPANSION_OLED
+	default y
+	select DISPLAY
+if MT_DISPLAY
+config MT_TELEMETRY_REPORT_FRAMES
+    bool "Detailed telemetry reports with sender and receipt age"
+    default y if MT_XIAO_EXPANSION_OLED || MT_T096_FULL_COMPANION
+    default n
+    help
+      Show stock environment, power, air quality and health fields. The report
+      history is volatile and uses the display model's storage.
+config MT_ONSCREEN_KEYBOARD
+    bool "Meshtastic on-screen text keyboard"
+    default y
+config MT_BASEUI_EMOTES
+    bool "Meshtastic emote picker and symbols"
+    depends on MT_ONSCREEN_KEYBOARD
+    default y
+config MT_BASEUI_GAMES
+    bool "Meshtastic BaseUI games"
+    default n
+    help
+      Enable Snake, Tetris, Chirpy Dash and Breakout on the display.
+config MT_GAMES_ANNOUNCE_HIGH_SCORE
+    bool "Broadcast new top scores on the primary channel"
+    depends on MT_BASEUI_GAMES
+    default n
+config MT_UI_WIDTH
+	int "Screen width"
+	default 128 if MT_XIAO_EXPANSION_OLED
+	default 160
+config MT_UI_HEIGHT
+	int "Screen height"
+	default 64 if MT_XIAO_EXPANSION_OLED
+	default 80
+config MT_UI_STRIP_ROWS
+	int "Framebuffer rows retained in RAM"
+	range 1 135
+	default MT_UI_HEIGHT
+config MT_UI_MONO
+	bool "128x64 vertical monochrome framebuffer"
+	default y if MT_XIAO_EXPANSION_OLED
+	default n
+config MT_UI_DEVICE_LABEL
+	string "Cosmetic splash label"
+	default "XIAO ESP32S3" if MT_XIAO_EXPANSION_OLED
+	default "HELTEC T096"
+endif
+config MT_ALLOW_TX
+	bool "Compile the bounded RF transmission path"
+	default n
+	help
+	  Normal-use or explicit owner-test builds only. This gate alone never arms
+	  TX and RX-only builds leave it disabled.
+	  T096 is fixed at the lowest SX1262 drive; antenna output is uncalibrated.
+config MT_NORMAL_ENDPOINT
+	bool "Bounded primary-channel messaging engine"
+	default y
+	help
+	  Four pending messages and bounded ACK/retry state. MT_ALLOW_TX remains
+	  a separate disabled release gate. Disable for legacy one-packet tests.
+config MT_T096_OWNER_TX
+	bool "Owner-authorized T096 TX at fixed lowest chip drive"
+	depends on BOARD_HELTEC_T096 && MT_ALLOW_TX && MT_NORMAL_ENDPOINT
+	default n
+	help
+	  This deliberate opt-in retains the fixed -9 dBm chip-drive request, which
+	  is not calibrated antenna power. Region and protocol guards remain fixed.
+config MT_NORMAL_TX_DEFAULT
+	bool "Normal companion TX enabled unless explicitly disabled"
+	depends on MT_ALLOW_TX && MT_NORMAL_ENDPOINT
+	default n
+	help
+	  Normal-use profile policy. A provisioned legacy record is migrated to an
+	  explicit durable enable before RX/TX starts. A later explicit local LoRa
+	  disable persists and overrides this default. Diagnostic and RX-only
+	  profiles leave this option off.
+config MT_PKI_GROUNDWORK
+	bool "Compile/link inactive private-message crypto groundwork"
+	default n
+	depends on PSA_CRYPTO
+	select PSA_WANT_ALG_SHA_256
+	select PSA_WANT_ALG_HMAC
+	select PSA_WANT_ALG_CCM
+	select PSA_WANT_KEY_TYPE_HMAC
+	select PSA_WANT_KEY_TYPE_AES
+	help
+	  Target link evidence only. No runtime caller, persistent credentials,
+	  identity migration, nonce provider or PKI capability advertisement.
+config MT_PKI_TARGET_RUNTIME
+	bool "Experimental load-only private runtime (unqualified)"
+	default n
+	depends on MT_NORMAL_ENDPOINT && SETTINGS_NVS && BT && PSA_CRYPTO
+	depends on SOC_NRF52840 || SOC_SERIES_ESP32S3
+	select MT_PKI_GROUNDWORK
+	select MT_SHARED_MBEDTLS_THREADING
+	help
+	  Load an already provisioned local identity, up to sixteen durable peer
+	  contacts and four hot sessions. Never creates a local identity or imports
+	  private credentials. With ready compact storage, canonical local owner
+	  contacts may configure destination keys; verified signed RF NodeInfo may
+	  add peers through the serialized storage barrier. NodeCache alone cannot
+	  grant trust. TX follows existing profile/configuration intent; invalid
+	  private state holds RF disabled. Provisioning and hardware resource,
+	  entropy and interoperability qualification remain separate requirements.
+config MT_STOCK_IDENTITY_IMPORT
+    bool
+    default y if BOARD_XIAO_ESP32S3 && BOOTLOADER_MCUBOOT && MT_PKI_TARGET_RUNTIME && !MT_XIAO_EXPANDED_CONTACTS
+    help
+      Include the local USB-consented stock identity migration protocol.
+      It is disabled at boot and every new USB session until an explicit arm.
+
+config MT_XIAO_EXPANDED_CONTACTS
+	bool "XIAO signed companion with 198 explicitly trusted contacts"
+	depends on BOARD_XIAO_ESP32S3 && ESP_SPIRAM && MT_PKI_TARGET_RUNTIME && FLASH_MAP
+	depends on MT_SIGNED_BLE_OTA && MT_STORE_FORWARD_PSRAM && $(dt_nodelabel_enabled,mt_pki_contacts_partition)
+	default n
+	help
+	  Adds a separate banked contact partition. Local USB activation imports
+	  existing contacts. A downgrade after activation requires verified recovery.
+config MT_PKI_STOCK_TRIAL
+	bool "Bounded multi-peer stock PKI with explicit USB administration"
+	default n
+	depends on BOARD_HELTEC_T096 && MT_NORMAL_ENDPOINT && MT_ALLOW_TX && MT_NORMAL_TX_DEFAULT
+	depends on SETTINGS_NVS && BT && PSA_CRYPTO
+	select MT_PKI_TARGET_RUNTIME
+	help
+	  T096 qualification profile using the common private runtime. Empty
+	  private storage permits local USB but holds RF. When legacy setup tools
+	  are enabled, same-session USB stage/commit may create the initial local
+	  identity and first peer. Normal operation preserves that identity and
+	  the global nonce authority; compact contacts support live owner updates
+	  and verified RF peer adoption without rebuilding sibling sessions.
+	  Active startup may honor normal TX intent. Storage migration, recovery
+	  compatibility and hardware qualification remain explicit boundaries.
+
+config MT_PKI_LEGACY_TAIL_TOOLS
+	bool "Legacy PKI setup, upgrade and recovery USB tools"
+	depends on MT_PKI_STOCK_TRIAL
+	default y
+	help
+	  Retain fresh identity setup over local CDC, one-time legacy storage/lifecycle
+	  upgrades, explicit compact-contact migration and USB peer-add maintenance,
+	  and former-code tail, spare-partition, and capacity diagnostics for recovery
+	  images. Disabling this option omits those setup/maintenance commands; it does
+	  not change loading of an existing identity or compact-contact directory,
+	  ledger normalization, append-history capacity, automatic owner-contact and
+	  verified RF peer adoption, or ordinary lifecycle/ledger status.
+	  Existing profiles retain these tools unless an explicit build fragment opts
+	  out. Fresh initial setup remains available in a recovery image built with
+	  this option enabled. Use a recovery image built from a source revision
+	  compatible with the stored contact and history formats.
+
+config MT_PKI_EXTENDED_DIAGNOSTICS
+	bool "Extended USB diagnostics for development and recovery"
+	default y
+	help
+	  Include extended radio, private-reply, settings-save, storage and
+	  channel diagnostic records in the local USB handshake. The normal
+	  health and endpoint records and the read-only PKI contacts, lifecycle,
+	  and limits status commands remain available when this is disabled.
+	  Disable in the constrained production profile; retain in development
+	  and full-tools recovery profiles.
+
+config MT_PKI_COMPACT_RUNTIME_ONLY
+	bool "Require provisioned compact PKI runtime at boot"
+	depends on MT_PKI_STOCK_TRIAL && !MT_PKI_LEGACY_TAIL_TOOLS
+	default n
+	help
+	  Omit legacy identity/ledger runtime fallback from the normal T096 profile.
+	  Boot requires the identity-bound, fully replayed immutable append root,
+	  activated bounded nonce counter, and a valid adjacent compact-contact pair.
+	  Missing, legacy-only, partial, or mismatched state fails closed without
+	  repair or migration. Use a compatible recovery image for initial setup and
+	  migration. The default keeps the existing stock-compatible runtime.
+
+config MT_PKI_FRESH_DOMAIN_ONLY
+	bool "T096 extended application with fresh NVS-backed PKI only"
+	depends on BOARD_HELTEC_T096 && MT_PKI_COMPACT_RUNTIME_ONLY
+	default n
+	help
+	  Select only with t096-fresh-domain.overlay on a blank board. The app
+	  occupies the former append journal. Only a freshly generated identity
+	  and its verified NVS nonce and contact records may become active.
+	  Existing legacy identities and scalar restoration are unavailable.
+
+config MT_RF_ADMIN_GET
+	bool "Authenticated private RF Admin responder"
+	depends on MT_PKI_TARGET_RUNTIME
+	default n
+	help
+	  Answer bounded owner/config/module/channel GETs for a current explicitly
+	  authorized public Admin key. The same opt-in supports peer/key-bound
+	  session-passkey SETs for owner, device/network, MQTT and channel settings,
+	  deferred until authenticated RX/storage pause restoration. Uses existing
+	  replay/nonce and typed settings journals; no private identity, Admin-key,
+	  LoRa or legacy shared-admin-channel mutation. Requires the independent
+	  Admin-key journal and production owner callbacks. Recovery may omit it.
+
+config MT_SHARED_MBEDTLS_THREADING
+	bool "Install shared Zephyr Mbed TLS and TF-PSA threading callbacks"
+	default n
+	select MBEDTLS_USER_CONFIG_ENABLE
+	help
+	  Use the existing Zephyr mutex/condition-variable ALT backend for both
+	  Zephyr Mbed TLS and TF-PSA Crypto. The callback installer runs before
+	  Zephyr's POST_KERNEL Mbed TLS/PSA initialization. Selected by the private
+	  runtime and WiFi MQTT TLS profile; this does not enable a heap or change
+	  allocator policy.
+
+config TF_PSA_CRYPTO_USER_CONFIG_FILE
+	default "mt_pki_psa_threading_config.h" if MT_SHARED_MBEDTLS_THREADING
+
+config MBEDTLS_USER_CONFIG_FILE
+	default "mt_pki_psa_threading_config.h" if MT_SHARED_MBEDTLS_THREADING
+
+source "Kconfig.zephyr"
+
+config MT_BLE_NATIVE_STORE
+	bool "Native Bluetooth Settings admission"
+	default n
+	depends on BT_SETTINGS && SETTINGS_NVS && BT_BONDABLE_PER_CONNECTION
+	help
+	  Native SDK record storage under the main-owned RF storage barrier.
+
+config MT_LTO_RUNTIME
+	bool "Pinned T096 partial-LTO runtime qualification profile"
+	default n
+	depends on BOARD_HELTEC_T096 && LTO && ISR_TABLES_LOCAL_DECLARATION
+	depends on MT_PKI_STOCK_TRIAL && MT_BLE_NATIVE_STORE
+	help
+	  Explicit compile profile preserving the 42 pinned Bluetooth controller
+	  sources at O2 without LTO. Other original SDK exclusions remain intact.
+	  Requires final-image Settings/GATT/key-hook and runtime qualification.
+	  Does not enable PSA persistent key storage or change storage identities.
+
+config MT_STORE_FORWARD_PSRAM
+	bool "Bounded stock StoreForward server and client on XIAO PSRAM"
+	default n
+	depends on BOARD_XIAO_ESP32S3 && ESP_SPIRAM && MT_PKI_TARGET_RUNTIME
+	depends on MT_NORMAL_ENDPOINT && MT_ALLOW_TX && MT_NORMAL_TX_DEFAULT
+	help
+	  Optional volatile 400-record / 32-requester archive in a separate PSRAM
+	  BSS arena. Replays use stock shared-channel original-author metadata,
+	  never PKI or signed author authentication. Stock module config defaults
+	  disabled. The normal endpoint control queue owns every transmission.
+
+config ZEPHCORE_AUDIO_CODEC2
+	bool "Stock Codec2 audio module on explicit I2S hardware"
+	default n
+	depends on I2S
+	help
+	  Build the pinned Codec2 dependency and audio data path. An audio-i2s
+	  node and optional mt-audio-ptt alias must explicitly own the hardware.
+
+config MT_PAXCOUNTER
+	bool "Bounded passive BLE paxcounter observation"
+	default n
+	depends on BT
+	select BT_OBSERVER
+	help
+	  Register a passive observer without changing companion advertising.
+	  Address observations remain in a bounded RAM-only window.
+
+config MT_PAXCOUNTER_WIFI_ESP32
+	bool "Exclusive ESP32 passive Wi-Fi and BLE paxcounter"
+	default y if MT_WIFI_STATION
+	depends on MT_PAXCOUNTER && WIFI_ESP32 && SOC_FAMILY_ESPRESSIF_ESP32
+	help
+	  Requires an existing started/null-mode WiFi owner and exclusive ownership
+	  of the ESP-IDF promiscuous callback. Rotate only through channels in
+	  the active country while both ordinary companion radios are disabled.
+
+config MT_RANGE_TEST_LOG
+	bool "Range-test CSV on an existing mounted filesystem"
+	default n
+	depends on FILE_SYSTEM
+
+config MT_RANGE_TEST_LOG_DIR
+	string "Existing mounted range-test directory"
+	default ""
+	depends on MT_RANGE_TEST_LOG
+	help
+	  Explicit existing directory only. No automatic mounting, formatting or
+	  directory creation. clear_on_reboot applies only to its rangetest.csv.
+
+config MT_T096_FULL_COMPANION
+	bool "Full companion first-install T096 layout"
+	depends on BOARD_HELTEC_T096 && MT_PKI_FRESH_DOMAIN_ONLY
+	help
+	  Only the dedicated 728 KiB application overlay, relocated settings
+	  partition, 76 KiB file volume and separate reset page use this profile.
+
+config MT_T096_PAGED_LAYOUT
+    bool "732 KiB first-install T096 application with paged public observations"
+    depends on MT_T096_FULL_COMPANION && MT_PAGED_SATELLITES
+    help
+      This separate layout gives 732 KiB to the application, 16 KiB to
+      settings, 72 KiB to LittleFS and one erase page to identity retirement.
+
+config MT_PHONE_FILES
+	bool "Export local range-test CSV with stock PhoneAPI file transfer"
+	depends on MT_RANGE_TEST_LOG && MT_NORMAL_ENDPOINT
+	default y
+	help
+	  The mounted range-log directory supplies the single app-visible file.
+	  Uploads are staged until a complete local XModem transfer succeeds.
+
+config MT_PHONE_PUBLIC_TREE
+	bool "Expose files from a dedicated public LittleFS mount"
+	depends on MT_PHONE_FILES && FILE_SYSTEM_LITTLEFS
+	help
+	  The explicitly supplied /public mount is available as /static over a
+	  local authorized PhoneAPI session. Three levels and 64 entries are
+	  listed. Internal settings and private history have separate owners.
+
+config MT_REPLY_BOT
+	bool "Stock text command reply bot"
+	depends on MT_NORMAL_ENDPOINT
+	default n
+
+config MT_REPLY_EXAMPLE
+	bool "Stock REPLY_APP example responder"
+	depends on MT_NORMAL_ENDPOINT
+	default n
+
+config MT_GENERIC_THREAD
+	bool "Stock ten-second generic example thread"
+	default n
+
+config MT_DROPZONE
+	bool "Stock Dropzone conditions responder"
+	select ADC if DT_HAS_ZEPHTASTIC_DROPZONE_ENABLED
+	select I2C if DT_HAS_ZEPHTASTIC_DROPZONE_ENABLED
+	depends on MT_NORMAL_ENDPOINT
+	default n
+	help
+	  Uses an explicitly declared zt-dropzone alias with an ADC IO channel.
+	  An optional lark phandle selects the weather station on its I2C bus.
+
+config MT_HOST_METRICS_BRIDGE
+	bool "Accept Linux host telemetry on the local USB companion"
+	depends on MT_NORMAL_ENDPOINT
+	default n
+
+config MT_POWER_STRESS
+	bool "Local USB PowerStress bench module"
+	depends on MT_NORMAL_ENDPOINT
+	default n
+	help
+	  Enable the stock power measurement command scheduler on the USB console.
+	  Requires an operator-configured PowerConfig.powermon_enables mask.

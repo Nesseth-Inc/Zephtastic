@@ -1,0 +1,66 @@
+/* Build-only sensor-bearing profile. Standard board images do not declare it. */
+/ {
+    aliases {
+        zt-scd4x = &test_scd41;
+        zt-shtxx = &test_sht4x;
+        zt-environment-2 = &test_sht4x;
+        zt-optical = &test_optical;
+        zt-environment = &test_scd41;
+        air-quality = &test_scd41;
+        zt-one-wire-3 = &probe3;
+        zt-one-wire-5 = &absent_probe;
+        air-quality-3 = &absent_co2;
+        health-sensor = &absent_co2;
+        body-temperature = &absent_probe;
+    };
+};
+&i2c0 {
+    status = "okay";
+    w1@18 {
+        compatible = "maxim,ds2482-800";
+        reg = <0x18>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+        channel@3 {
+            compatible = "maxim,ds2482-800-channel";
+            reg = <3>;
+            absent_probe: disabled-thermometer {
+                compatible = "maxim,ds18b20";
+                family-code = <0x28>;
+                resolution = <12>;
+                status = "disabled";
+            };
+            probe3: thermometer {
+                compatible = "maxim,ds18b20";
+                family-code = <0x28>;
+                resolution = <12>;
+            };
+        };
+    };
+    test_sht4x: humidity@44 {
+        compatible = "sensirion,sht4x";
+        reg = <0x44>;
+        repeatability = <2>;
+    };
+    test_optical: optical@57 {
+        compatible = "maxim,max30102";
+        reg = <0x57>;
+        acq-mode = "spo2";
+        smp-ave = <4>;
+        smp-sr = <100>;
+        led-pw = <411>;
+        adc-rge = <4096>;
+        led-pa = [3c 3c];
+    };
+    absent_co2: co2@61 {
+        compatible = "sensirion,scd41";
+        reg = <0x61>;
+        mode = <0>;
+        status = "disabled";
+    };
+    test_scd41: co2@62 {
+        compatible = "sensirion,scd41";
+        reg = <0x62>;
+        mode = <0>;
+    };
+};

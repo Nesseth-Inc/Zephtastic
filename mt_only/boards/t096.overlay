@@ -1,0 +1,38 @@
+/* T096: raw ST7735S color display and independent single SX1262 and passive GNSS. */
+/ {
+ chosen { zephyr,display = &tft; /delete-property/ zephcore,gps-power; };
+ /delete-node/ mono-tft;
+ /delete-node/ user_btn_multitap;
+ /delete-node/ user_btn_longpress;
+ /delete-node/ fstab;
+};
+&uart0 { status = "okay"; };
+&adc { status = "okay"; };
+/* The reusable driver calls device_init() when measurements are explicitly
+ * enabled. Optional external parts must not be probed during kernel boot. */
+&shtc3 { zephyr,deferred-init; };
+&aht20 { zephyr,deferred-init; };
+&sht4x { zephyr,deferred-init; };
+&bme280 { zephyr,deferred-init; };
+&bme280_alt { zephyr,deferred-init; };
+&lps22hb { zephyr,deferred-init; };
+&bmp388 { zephyr,deferred-init; };
+&ina219 { zephyr,deferred-init; };
+&gps_power { /delete-property/ regulator-boot-on; };
+/* Keep board's boot-on panel power at priority75, before display init85.
+ * Preserve ST7735S madctl0xa8, offsets0,24, colmod0x05 and no inversion.
+ * No T114/ST7789 register values are transplanted. */
+&lora { spi-max-frequency = <1000000>; };
+&wdt0 { status = "okay"; };
+/* M70 retains the existing NVS and legacy /lfs addresses. This application
+ * can never link into the append-only history region. Merely flashing an
+ * image does not initialize, erase or claim that region's existing bytes. */
+&code_partition { reg = <0x00026000 0x00080000>; };
+&flash0 {
+ partitions {
+  mt_pki_history: partition@a6000 {
+   label = "mt-pki-history";
+   reg = <0x000a6000 0x0002a000>;
+  };
+ };
+};

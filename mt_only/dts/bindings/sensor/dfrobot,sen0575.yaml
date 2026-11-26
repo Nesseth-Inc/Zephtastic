@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: DFRobot SEN0575 tipping bucket rain gauge
+compatible: "dfrobot,sen0575"
+include: i2c-device.yaml

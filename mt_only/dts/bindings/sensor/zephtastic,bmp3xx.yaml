@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: BMP3XX on the stock environment telemetry worker
+compatible: "zephtastic,bmp3xx"
+include: i2c-device.yaml

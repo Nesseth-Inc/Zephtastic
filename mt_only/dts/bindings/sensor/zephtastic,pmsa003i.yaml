@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Plantower PMSA003I on the Meshtastic particulate telemetry worker
+compatible: "zephtastic,pmsa003i"
+include: i2c-device.yaml
+properties:
+  set-gpios:
+    type: phandle-array
+    description: Optional active-high SET line used to wake and sleep the sensor

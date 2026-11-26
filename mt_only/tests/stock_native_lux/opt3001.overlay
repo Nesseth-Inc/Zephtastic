@@ -1,0 +1,7 @@
+/* Stock continuous 100 ms optical producer at the primary stock address. */
+/ { aliases { zt-opt3001 = &stock_opt; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    stock_opt: light@45 { compatible = "zephtastic,opt3001"; reg = <0x45>; };
+};

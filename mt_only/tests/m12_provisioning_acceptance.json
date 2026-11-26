@@ -1,0 +1,53 @@
+{
+  "scope": "Independent offline acceptance: Empty-only USB provisioning and public diagnostics",
+  "baseline": "0b9c0120193834c4778818d3935b2f0ed45ece5d",
+  "execution_status": "OFFLINE_CORE_IMPLEMENTED_REVIEWED_HOST_TESTED_TRANSPORT_PENDING",
+  "prohibited": [
+    "Device ports",
+    "RF",
+    "Flash",
+    "Reset",
+    "Generated live credentials",
+    "Production edits"
+  ],
+  "workflow": [
+    "Stage BOTH RAM candidates before any write, with separate powered USB sessions and RF off/TX disarmed.",
+    "Confirm full local public tuples and opposite peer pins.",
+    "Commit each exactly once while both candidates remain valid.",
+    "Read back both completed tuples before a separately deliberate reboot.",
+    "Halt whole pair after uncertainty/candidate loss; no automatic retry, regeneration, rollback, overwrite or activation."
+  ],
+  "non_atomicity": "RAM-only staging cannot provide atomic two-device persistence. Identity-last write can complete despite error: current instance stays terminal/uncertain, while later deliberate boot may verify a complete authorized tuple without resuming the failed pair.",
+  "contract": {
+    "stage": "No-repair snapshot proves all four private keys absent; exactly one 32-byte entropy fill, clamp and real Monocypher derivation. Repeated stage rechecks Empty and returns the same public tuple. 120-second lifetime from trusted 64-bit monotonic uptime.",
+    "commit": "Exact expected binding and explicit canonical peer tuple, fresh Empty check, complete service lease. Order ledger0 initialization, ledger1 pin, identity0 completion, exact readback after each. No runtime activation.",
+    "context": "Actual service lock, native RF off/not busy, TX disarmed, no queues/private runtime/open SettingsEdit/pending reboot or bootloader operation; NodeDB/hardware-node collision checks; unified same-store read snapshot and persistence adapter.",
+    "failure": "Stage outputs preserved on rejection; key copies wiped on expiry/cancel/terminal failure. Attempted commit failure terminal, no blind retry or repair.",
+    "diagnostic": "Validated public tuples/state/error only; never scalar/raw record/key handle, store repair/initialization, RF state changes or activation.",
+    "ingress": "Dedicated bounded USB CDC dispatcher, separate from Companion/BleHost/RF admin. Clear candidate on session loss/disconnect/overflow/reset/timeout/cancel."
+  },
+  "independent_cases": [
+    "Passive construction; denied lease/quiescence has no entropy/write side effects.",
+    "Each private key present in any shape prevents stage before entropy, including zero/truncated/oversized records.",
+    "One fill produces exact canonical fixture binding and preserves every persistent byte; repeat stage draws nothing.",
+    "Entropy/read failure, callback reentry, gate loss and expiry preserve rejected output and cannot regenerate.",
+    "Wrong expected binding, noncanonical/self/wrong-CRC/colliding peer tuples write nothing.",
+    "Storage becoming nonempty after stage is rejected by fresh check without overwrite.",
+    "Paired happy path pins exact opposite tuples once, preserves Public config/NodeDB and requires later explicit startup.",
+    "Every before/after/torn write and readback-error/mismatch cutpoint freezes without retry or completion after earlier error.",
+    "Final complete-but-error remains uncertain in-session; fresh boot distinguishes verified complete from partial without repair.",
+    "Expiry/quiescence loss during entropy, snapshot, each write/readback prevents success publication.",
+    "Cancellation/session loss/expiry and terminal states cannot obtain a new candidate in same lifecycle.",
+    "A full 32-bit millisecond elapsed cycle still expires under the 64-bit clock contract.",
+    "A competing writer that fills storage makes repeated stage terminal without returning stale public success.",
+    "Diagnostics stage public outputs atomically and never reinterpret partial/corrupt/ambiguous/revoked state as Empty.",
+    "Fragmented/oversized/stale/unknown USB frames stay bounded and cannot enter BLE/RF admin or repeat mutations.",
+    "Host pair helper aborts after uncertainty/candidate loss, without automatic retries, reboot or activation."
+  ],
+  "limits": [
+    "No hardware entropy quality, physical USB or hard flash/scheduler latency proof.",
+    "NVS CRC/plaintext is not hostile rollback or physical-key protection.",
+    "Local USB endpoint/host and operator public-tuple selection remain trust assumptions.",
+    "Parent paused integration/transport while owner moves offline; local review only."
+  ]
+}

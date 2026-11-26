@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Texas Instruments INA260 current and bus-voltage monitor
+compatible: "ti,ina260"
+include: [sensor-device.yaml, i2c-device.yaml]

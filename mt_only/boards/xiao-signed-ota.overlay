@@ -1,0 +1,22 @@
+/* Fresh-install 8-MiB single-core release. The stock ESP serial updater writes
+ * at 0x10000, so that address must start the inactive, signature-checked slot. */
+/delete-node/ &sys_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &slot0_appcpu_partition;
+/delete-node/ &slot1_appcpu_partition;
+&flash0 { partitions {
+    slot1_partition: partition@10000 {
+        compatible = "zephyr,mapped-partition"; label = "image-1"; reg = <0x010000 0x1c0000>;
+    };
+    slot0_partition: partition@1d0000 {
+        compatible = "zephyr,mapped-partition"; label = "image-0"; reg = <0x1d0000 0x1c0000>;
+    };
+    sys_partition: partition@390000 {
+        compatible = "zephyr,mapped-partition"; label = "sys"; reg = <0x390000 0x10000>;
+    };
+    scratch_partition: partition@3e0000 {
+        compatible = "zephyr,mapped-partition"; label = "image-scratch"; reg = <0x3e0000 0x10000>;
+    };
+}; };
+/ { chosen { zephyr,code-partition = &slot0_partition; }; };

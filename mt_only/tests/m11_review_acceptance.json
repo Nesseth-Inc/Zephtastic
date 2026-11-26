@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "scope": "Independent offline M11 adapters and selected companion parity",
+  "base_source": "a92b8c27ae5bdd0283b3f6288769016ec424cf98",
+  "boundaries": [
+    "No device access, RF, flashing, provisioning, real credentials or public publication",
+    "Synthetic entropy ports prove control flow and output publication, not entropy quality",
+    "Memory/NVS call doubles prove adapter policy, not flash retention or power-failure behavior on a target",
+    "Pinned stock client requests and source-derived expectations do not qualify physical iPhone or radio interoperability",
+    "Target compile, stack/resource audit and standard-profile no-runtime capability audit belong to integration"
+  ],
+  "entropy": [
+    "No constructor/startup entropy I/O or implicit Bluetooth/PHY/RF enable/wakeup",
+    "Invalid lengths, unavailable lease/device/quality and unsupported platform reject before output publication",
+    "Partial/zero/error/oversized responses terminate by sampled deadline or independent attempt cap; no weak fallback",
+    "Readiness checked before reads and before publication; release failure terminally poisons with no uncertain cleanup retry",
+    "All output bytes unchanged on failure; local partial scratch securely wiped",
+    "Reentry rejects without releasing or poisoning the current owner lease",
+    "nRF pool-only ISR flags=0 path; no K_FOREVER or ENTROPY_BUSYWAIT fallback",
+    "ESP32-S3 requires already-enabled awake BT/PHY under nonblocking lease and pinned clock constraints; finite cycle polls; no unsupported SMP/PM",
+    "Describe sampled 20ms admission deadline and 64 reads, not a scheduler-independent wall-clock guarantee"
+  ],
+  "storage_lifecycle": [
+    "Prepare uses an already-initialized backend; no mount, repair, erase, write, initialization, key generation or pin creation",
+    "Absent, corrupt, uncertain, oversized, orphaned, duplicate or mismatched state fails closed without fallback",
+    "Exact identity CRC node/public key and ledger domain binding; expected local identity independently supplied",
+    "Both journal snapshots and monotonic histories validated before capability publication",
+    "Only four private namespace keys can be read/written; bounds are explicit",
+    "Canonical NVS name/count encodings and full returned lengths checked; bounded scans detect stale counter within supported namespace",
+    "Service lock obtained without waiting; storage gate proves RF off/no active work; other settings writers excluded or serialized",
+    "Nonce/replay/revocation writes retain all existing domain, failure-burn and tombstone invariants",
+    "No automatic retry or recovery after uncertain writes; no default provisioning or trust from NodeInfo/client metadata",
+    "CRC is consistency only: no at-rest encryption or malicious coherent rollback protection is claimed"
+  ],
+  "companion": [
+    "Real stock Python localNode getConfig/writeConfig wire requests accepted for supported DeviceConfig interval field",
+    "Interval readback comes from active stored Config, including old valid 60..3599 records",
+    "New writes below3600 clamp3600 matching pinned AdminModule; >86400 reject as explicit local bound",
+    "Fixed CLIENT_MUTE, serial enabled and heartbeat disabled enforced; unsupported DeviceConfig edits reject",
+    "Fully supported equivalent saves outside edit batches do not write, stop RX, disarm, cancel queues or reset discovery",
+    "Batch equivalent saves may refresh activity but perform no storage/RF transition",
+    "Real interval changes persist through SettingsEdit and disarm TX; write failures remain fail-closed",
+    "Discovery reschedules from last admitted time plus new interval, retaining 60s admission and 12h peer reply limits",
+    "Clock wrap, shortening below elapsed interval and rearming preserve the existing 30s startup gate where due"
+  ],
+  "pinned_zephyr_entropy_findings": {
+    "revision": "1ee3b93134be23c16ab16b9eb4183bfef63447a6",
+    "nrf_get_entropy": "May wait K_FOREVER; unsuitable for bounded private adapter",
+    "nrf_get_entropy_isr_flags_zero": "Finite pool copy, can return partial/zero",
+    "nrf_busywait": "Hardware-ready wait is not independently bounded",
+    "esp32_isr_api": "Absent; Zephyr returns ENOSYS",
+    "esp32_get_entropy": "Cycle-count loop and BT/Wi-Fi entropy supply assumptions require separate bounded quality-gated adapter",
+    "sys_rand_get": "May fall back to cycle counter; prohibited for private randomness",
+    "sys_csrand_get": "Does not itself prove boundedness/readiness of hardware or PSA provider"
+  }
+}

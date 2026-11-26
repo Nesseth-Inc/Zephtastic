@@ -1,0 +1,391 @@
+{
+  "repository": "https://github.com/meshtastic/Crypto",
+  "commit": "1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae",
+  "files": [
+    {
+      "local_file": "Crypto/AES.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AES.h",
+      "sha256": "dc8413ad0261cc58c19ae0b0e278a93ada9ce4b335b6984ede52d99c9866236b"
+    },
+    {
+      "local_file": "Crypto/AES128.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AES128.cpp",
+      "sha256": "8c5a4a9eaee38be0ccc6bea75d60c617d56a784c52169056a89d9704db8f1ef4"
+    },
+    {
+      "local_file": "Crypto/AES192.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AES192.cpp",
+      "sha256": "5bfcf9b86e61e16c95140b4b30f3a007bdbb4c8a8815f368ad5c914f3d23b88f"
+    },
+    {
+      "local_file": "Crypto/AES256.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AES256.cpp",
+      "sha256": "462e6c94b4d937a89e0d03adb7c71f856995a965aa685ab4cd79979b4547f2cc"
+    },
+    {
+      "local_file": "Crypto/AESCommon.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AESCommon.cpp",
+      "sha256": "9546b2ffb1ef8e4459d1cff0e56c65ed9aedb69c4bf99a43093816278f410cdd"
+    },
+    {
+      "local_file": "Crypto/AESEsp32.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AESEsp32.cpp",
+      "sha256": "98de6b20fabc3e6992f3e265e46680c15f8030ddc06d7d641b55f19ffa1fd943"
+    },
+    {
+      "local_file": "Crypto/AuthenticatedCipher.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AuthenticatedCipher.cpp",
+      "sha256": "34967b5b62435253bdd37b92b6847f1201a311e45a1567ef2054125a9067875a"
+    },
+    {
+      "local_file": "Crypto/AuthenticatedCipher.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/AuthenticatedCipher.h",
+      "sha256": "c9d3154e1f336e6eb7841a2580e3955d2ca09aebcedff1e266c591f82fd7c31c"
+    },
+    {
+      "local_file": "Crypto/BLAKE2b.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BLAKE2b.cpp",
+      "sha256": "6c05ad7f106b974b2426fb1c4f06479c0850723c785100caca88bb85b4234994"
+    },
+    {
+      "local_file": "Crypto/BLAKE2b.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BLAKE2b.h",
+      "sha256": "5c455888fc618f50a3558c387f53039c8d7c2bdcff74fa88149cbbd56a582111"
+    },
+    {
+      "local_file": "Crypto/BLAKE2s.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BLAKE2s.cpp",
+      "sha256": "85d883ddc375a0e8b39971ab1b85b78bec1158359a09e6652b8b1348e28040a0"
+    },
+    {
+      "local_file": "Crypto/BLAKE2s.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BLAKE2s.h",
+      "sha256": "cedc790da20f4f2ff7d4b3bdff823f26edebfd2f3533045efed9a711af4bf91b"
+    },
+    {
+      "local_file": "Crypto/BigNumberUtil.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BigNumberUtil.cpp",
+      "sha256": "fb832ff438d9f6eeee86b3be0496e1875cbdc3ddc371f053f5193f53e0e68c0c"
+    },
+    {
+      "local_file": "Crypto/BigNumberUtil.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BigNumberUtil.h",
+      "sha256": "f09ff6316582ed456018d44c972ef8b05536abb2cad3267daecd9ae41f9024e5"
+    },
+    {
+      "local_file": "Crypto/BlockCipher.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BlockCipher.cpp",
+      "sha256": "e5cbebfe2a4c02f0c96b2a114cfebe24b9c82d1d52bc5f27fc7478c0ea4e903e"
+    },
+    {
+      "local_file": "Crypto/BlockCipher.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/BlockCipher.h",
+      "sha256": "2dcb6084e792b93374d526086f6a4e07b8acfc9025a7014eb30a0814c4f1a0c5"
+    },
+    {
+      "local_file": "Crypto/CTR.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/CTR.cpp",
+      "sha256": "f81ab997a3d4ca85b00c4417b46746d699c3bde826158916a0e493e7ac0f7f31"
+    },
+    {
+      "local_file": "Crypto/CTR.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/CTR.h",
+      "sha256": "5ee08127f969ae05ca766f8cf5d66e2837a285eedfb9353fd22eaf5cf32b4437"
+    },
+    {
+      "local_file": "Crypto/ChaCha.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/ChaCha.cpp",
+      "sha256": "8e8c8d0874c8ce2874a95f4f27d4f32eab820b1b06b6588cd2488682a8fcb379"
+    },
+    {
+      "local_file": "Crypto/ChaCha.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/ChaCha.h",
+      "sha256": "782597cb0b3ee504947ba2fb9ff7c9c726150d3c9bc3824bacb79fd31ebeaa07"
+    },
+    {
+      "local_file": "Crypto/ChaChaPoly.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/ChaChaPoly.cpp",
+      "sha256": "0719f1ea6f392768701287f1d137d2013245befd2fa176213d1a5f7e69679dc4"
+    },
+    {
+      "local_file": "Crypto/ChaChaPoly.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/ChaChaPoly.h",
+      "sha256": "61c7da2b03c36f823615b2131babd9ffab9feedc66eedbcbf9b14c3dbbbd0483"
+    },
+    {
+      "local_file": "Crypto/Cipher.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Cipher.cpp",
+      "sha256": "57bcf129e5a67442dba6b9242776431f778d3478bbc299f6f8137ba4bd9fd965"
+    },
+    {
+      "local_file": "Crypto/Cipher.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Cipher.h",
+      "sha256": "2cc91ba1037587068f6e729b96f0442b0d4e1c1dba09efed8ba64d086c8823e0"
+    },
+    {
+      "local_file": "Crypto/Crypto.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Crypto.cpp",
+      "sha256": "ee661a18648ccf5e04bb62b4a012e29f1ad214d08e7897fa73fd7c2c317d8ff7"
+    },
+    {
+      "local_file": "Crypto/Crypto.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Crypto.h",
+      "sha256": "9fa162c8380948d9e5d5e1b05ccb238119333bb2277ed9568c5484e8b99c26bb"
+    },
+    {
+      "local_file": "Crypto/Curve25519.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Curve25519.cpp",
+      "sha256": "0f712b4bac4c573f112b4772c9f66dcc85df1c35de2949dd6267fa1903e7368e"
+    },
+    {
+      "local_file": "Crypto/Curve25519.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Curve25519.h",
+      "sha256": "b649c9cc3262e5ccee89c1bdbd32eed5a944edc997132365edc5f31d313d8527"
+    },
+    {
+      "local_file": "Crypto/EAX.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/EAX.cpp",
+      "sha256": "f83e3a89685a4dd0688e45ac9dbad74dde30aae298d3e16feb87fe44dd6c51ed"
+    },
+    {
+      "local_file": "Crypto/EAX.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/EAX.h",
+      "sha256": "3749c7309c20ee40a69ec79117235ac004cb866792a2c7e0cb4746105bf1f4b1"
+    },
+    {
+      "local_file": "Crypto/Ed25519.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Ed25519.cpp",
+      "sha256": "a5de86ae207e45fbad89e098f0f861bc53829760ee45bfa0389fdfb8b1aa2fb4"
+    },
+    {
+      "local_file": "Crypto/Ed25519.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Ed25519.h",
+      "sha256": "a8b25da7c5cd6f2caef9d3cd81079f0e6709c5b612c952a87d6cb1297e272098"
+    },
+    {
+      "local_file": "Crypto/GCM.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/GCM.cpp",
+      "sha256": "f414e8b421ce5aa2c4ef1248b35dcc01dbd9e1129b7e75f02163e85a6fd19972"
+    },
+    {
+      "local_file": "Crypto/GCM.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/GCM.h",
+      "sha256": "3a613b1d3f224a68328911e53ca893ce2a23dfc967a978803a2accad5c824fb1"
+    },
+    {
+      "local_file": "Crypto/GF128.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/GF128.cpp",
+      "sha256": "05adb37095de40b05d265d4419ef07f2e8ab4664459fd0443e2dee283d4a942c"
+    },
+    {
+      "local_file": "Crypto/GF128.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/GF128.h",
+      "sha256": "35d05ca5e9691e2e8dae4dc06502f3dc821e7838392f396ddb2274c772eb756d"
+    },
+    {
+      "local_file": "Crypto/GHASH.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/GHASH.cpp",
+      "sha256": "fb98a62c767410b9f5b73be1c540d20d3eb84595b0a6abb26f85dc25ea5aa551"
+    },
+    {
+      "local_file": "Crypto/GHASH.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/GHASH.h",
+      "sha256": "87eab1072d0491573b1dd7454fce9501f529d6b8c8808716cce7b5e3811d03ce"
+    },
+    {
+      "local_file": "Crypto/HKDF.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/HKDF.cpp",
+      "sha256": "4239969e0248aafe2b9d6b7d052daf897196481d9ed38596893b6621b95b2b29"
+    },
+    {
+      "local_file": "Crypto/HKDF.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/HKDF.h",
+      "sha256": "7a5b7fcb102b951d0dc55c966b7523ed55f8768b958a6596f3b1a78f8949f8b2"
+    },
+    {
+      "local_file": "Crypto/Hash.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Hash.cpp",
+      "sha256": "e194af2180148e815f4852f1ba90ad98aa0cad469fb79b077846d2641c24aaae"
+    },
+    {
+      "local_file": "Crypto/Hash.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Hash.h",
+      "sha256": "f15a140cc06ae2b7bead192e5d08c86e6a8c4f6d3fc42147666e7d40cfd2407b"
+    },
+    {
+      "local_file": "Crypto/KeccakCore.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/KeccakCore.cpp",
+      "sha256": "a2928b4200413cb83e93aa224067465dcdb59cd8e318278e78a18a80ce6eb50e"
+    },
+    {
+      "local_file": "Crypto/KeccakCore.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/KeccakCore.h",
+      "sha256": "fe360da996b0727ec3b5e9057824bdbe7f6fb7ee468b6011cf0f8a807be6435b"
+    },
+    {
+      "local_file": "Crypto/NoiseSource.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/NoiseSource.cpp",
+      "sha256": "de8dbc0c2d2b2ecfddc5a6e584ea7c53b230620bfe80d08ea123c4c34c42618d"
+    },
+    {
+      "local_file": "Crypto/NoiseSource.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/NoiseSource.h",
+      "sha256": "89b10fad1816af874809fb618b7d91b7a80af820979f51603c70fe877f630690"
+    },
+    {
+      "local_file": "Crypto/OMAC.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/OMAC.cpp",
+      "sha256": "eeac1a44159ee4d02cdc6671f084654e2d08c19c57fea2aba9dad2b681a95473"
+    },
+    {
+      "local_file": "Crypto/OMAC.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/OMAC.h",
+      "sha256": "34e59e58e265833f5ae97210c17dec5a926157ba5e4c38affab09482609e7b86"
+    },
+    {
+      "local_file": "Crypto/P521.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/P521.cpp",
+      "sha256": "639802382dfad9a12f4ca4f1c798c4420284c3b7e98df21eb01881654eff41df"
+    },
+    {
+      "local_file": "Crypto/P521.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/P521.h",
+      "sha256": "b578e9588f1ce26324a045b85de102a0a6de0c2fcb7041e0a00b10289f12ceb2"
+    },
+    {
+      "local_file": "Crypto/Poly1305.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Poly1305.cpp",
+      "sha256": "99a6fe714655a1f5568db585bf86a9de24facf057388392df7686bb8b13969c2"
+    },
+    {
+      "local_file": "Crypto/Poly1305.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/Poly1305.h",
+      "sha256": "b54d62c7575cf664bc5a53ad0b41035ac6dd604aed83b71662d80a4bbb18a570"
+    },
+    {
+      "local_file": "Crypto/README.md",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/README.md",
+      "sha256": "4e9d84986f66803b9ae83c5c28ff9767230842614673d431ad81411ed35f3e74"
+    },
+    {
+      "local_file": "Crypto/RNG.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/RNG.cpp",
+      "sha256": "ce02a74e6f383de79343e22edad1a9967b44ac37ca604937f28dcb263d4e5888"
+    },
+    {
+      "local_file": "Crypto/RNG.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/RNG.h",
+      "sha256": "526ccd264d6f2b9a3267df816e9212b8505f3d62240a775ae9c5b49e3ff6a909"
+    },
+    {
+      "local_file": "Crypto/SHA224.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA224.cpp",
+      "sha256": "6b38ecae3489c1e61dd1d7d5dd19c4bb40d289434bd8b4446b2ad65f1eef222c"
+    },
+    {
+      "local_file": "Crypto/SHA224.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA224.h",
+      "sha256": "268a1c8b50382baa57680ffaddf5c57eba524571c4f3bd48a98aad4b70bf80c8"
+    },
+    {
+      "local_file": "Crypto/SHA256.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA256.cpp",
+      "sha256": "a53c030e47c60e4638aa22b667907b5f3eefd0c283ad3d8c083ce56cba4c7be3"
+    },
+    {
+      "local_file": "Crypto/SHA256.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA256.h",
+      "sha256": "9a5c177cfc7ea1aff0536a64eee2ee0c6534e9cf752c1349b6d6aec6966cd218"
+    },
+    {
+      "local_file": "Crypto/SHA3.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA3.cpp",
+      "sha256": "2e96496a9b5c020d8c3086cfa7c80d11b59c2a765119081a9d7177d9ee2b385d"
+    },
+    {
+      "local_file": "Crypto/SHA3.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA3.h",
+      "sha256": "8a568284ffe26174a2ce8c519b60008db63275bc230ba3ac35098dd1dcadeda0"
+    },
+    {
+      "local_file": "Crypto/SHA384.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA384.cpp",
+      "sha256": "d872e632cbd1c551085ac044476016a54b7698d458bfde4ff7b9c92e7940402a"
+    },
+    {
+      "local_file": "Crypto/SHA384.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA384.h",
+      "sha256": "3a9e9d400c9888c2d56e02c5949bbe87246f50eb5a4793abe9aecf0328b429c1"
+    },
+    {
+      "local_file": "Crypto/SHA512.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA512.cpp",
+      "sha256": "e519c4be0713efd51fc880b718ec66df4fe42aaead20176ecce9c6f6d0da8691"
+    },
+    {
+      "local_file": "Crypto/SHA512.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHA512.h",
+      "sha256": "7d815590934e1257748e04038f36d2c87562106caa4255d6112445533909c3c6"
+    },
+    {
+      "local_file": "Crypto/SHAKE.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHAKE.cpp",
+      "sha256": "23d4624973c65e08733115b20e2e74afec76a9da5a37b8664c2f73d282d215c8"
+    },
+    {
+      "local_file": "Crypto/SHAKE.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/SHAKE.h",
+      "sha256": "b3778ab565671ed89cc6441b9f5be60486273085742d699e8f89f0d6db749ba9"
+    },
+    {
+      "local_file": "Crypto/XEdDSA.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/XEdDSA.cpp",
+      "sha256": "a876fce2e12161ef7d1811febb119dc8d392d6a7e0c70d894efcac8cdd3a6efd"
+    },
+    {
+      "local_file": "Crypto/XEdDSA.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/XEdDSA.h",
+      "sha256": "8ac4a3786e14f6f0421b68834013561571b77611f03f4766b5b9374a0d5c982d"
+    },
+    {
+      "local_file": "Crypto/XOF.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/XOF.cpp",
+      "sha256": "ca5fd2123cb6f85296b22eeadb66d3d6bbd0b0b7af1e88e00c8feff6ca670640"
+    },
+    {
+      "local_file": "Crypto/XOF.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/XOF.h",
+      "sha256": "229afe8ce7b3569e10667b12c22eecef5d2f75a20d1c27fc3ec804516234df3b"
+    },
+    {
+      "local_file": "Crypto/XTS.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/XTS.cpp",
+      "sha256": "437911baf49d8884cac68211791079d65d1321e70a66b64534666c9a886c01d6"
+    },
+    {
+      "local_file": "Crypto/XTS.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/XTS.h",
+      "sha256": "d40f4134477375270cd739f7018ed8e74087118ffcf7c914be6c97df1275ca3f"
+    },
+    {
+      "local_file": "Crypto/utility/EndianUtil.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/utility/EndianUtil.h",
+      "sha256": "00b98849950847786f2fba9c94c4da3e5a2f1785440455f618c4b775b86fc1d0"
+    },
+    {
+      "local_file": "Crypto/utility/LimbUtil.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/utility/LimbUtil.h",
+      "sha256": "6360e30ed0168411cd84c58bba71ab918b5541317d51ecbd50eb1ef7e1a50f11"
+    },
+    {
+      "local_file": "Crypto/utility/ProgMemUtil.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/utility/ProgMemUtil.h",
+      "sha256": "b540e8494892f13ceafb77d3b982f678510a3f41258d1a7517b7d4ac409c3ec8"
+    },
+    {
+      "local_file": "Crypto/utility/RotateUtil.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/Crypto/1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae/utility/RotateUtil.h",
+      "sha256": "8c134e9afa92b28793bc65160a38bb013a31eff9155adcc7371ec8c40cfd0a23"
+    }
+  ]
+}

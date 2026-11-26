@@ -1,0 +1,7 @@
+name = codec2
+repository = https://github.com/meshtastic/codec2.git
+revision = 3e347e0b70fc72af9357fbbd32b10a125321d6c5
+upstream-firmware = https://github.com/meshtastic/firmware
+upstream-firmware-revision = 8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c
+upstream-source = src/modules/esp32/AudioModule.cpp
+source-layout = src/*.c plus pinned src headers and generated codebook sources

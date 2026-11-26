@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: Sen6x stock I2C telemetry accessory
+compatible: "sensirion,sen6x"
+include: i2c-device.yaml

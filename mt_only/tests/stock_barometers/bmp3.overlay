@@ -1,0 +1,7 @@
+/* Alternative 0x77 accessory. */
+/ { aliases { zt-bmp3xx = &stock_bmp3; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    stock_bmp3: pressure@77 { compatible = "zephtastic,bmp3xx"; reg = <0x77>; };
+};

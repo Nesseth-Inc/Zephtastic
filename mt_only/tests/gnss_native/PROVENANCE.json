@@ -1,0 +1,33 @@
+{
+  "SDK_own_git_identity_claimed": false,
+  "files": {
+    "drivers/gnss/gnss_nmea0183.h": {
+      "bytes": 6099,
+      "sha256": "fe7b88d7c9fbc6cc7737a3a810f59d03ece0618dc069fc15728257ba0c47249d"
+    },
+    "drivers/gnss/gnss_nmea0183_match.h": {
+      "bytes": 3286,
+      "sha256": "3f085d8555ec3588b090dd71c44c44400438d9095133402b546666c49b99e600"
+    },
+    "drivers/gnss/gnss_parse.c": {
+      "bytes": 3008,
+      "sha256": "6da7ce2d3b5d54e5ff5ae9fed399064eae717b85c666ae01765b1e06803fede5"
+    },
+    "drivers/gnss/gnss_parse.h": {
+      "bytes": 1693,
+      "sha256": "b8263d75737d5f486851972ce28497610e23a6e1f81a239729d940bf6882cdec"
+    },
+    "include/zephyr/data/navigation.h": {
+      "bytes": 1909,
+      "sha256": "3ecbf8ce1e9cecc7a37e2585f6d24fb140dff178a3ceab68ea78983df6400b4b"
+    },
+    "include/zephyr/drivers/gnss.h": {
+      "bytes": 17784,
+      "sha256": "66ceaf31f218ad67ad12dcebfd11663b14bc5bb36e187a06b6325a3c07ca9288"
+    }
+  },
+  "kernel_runtime_modeled": true,
+  "operating_radio_data": false,
+  "schema": "zt-gnss-native-sdk-fixtures/v1",
+  "source": "actual m104-native-store-deps-r1 SDK files, pinned before M106 changes"
+}

@@ -1,0 +1,33 @@
+{
+  "commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "slices": [
+    {
+      "path": "src/mesh/PhoneAPI.cpp",
+      "first": 503,
+      "last": 521,
+      "file": "PhoneHeartbeat.inc",
+      "sha256": "efed1deed2886783e99e9615f0e55c6d6da9eb1a10fda7ff7bd1262df5559481"
+    },
+    {
+      "path": "src/mesh/Throttle.cpp",
+      "first": 35,
+      "last": 39,
+      "file": "Throttle.inc",
+      "sha256": "1a2d08f37bd72eae1c5a4f3b235238aeb210b925990941c6c56320d3e5523a7b"
+    },
+    {
+      "path": "src/modules/NodeInfoModule.cpp",
+      "first": 98,
+      "last": 145,
+      "file": "SendNodeInfo.inc",
+      "sha256": "5581a409fb6871e3b5e0807c5c9d84cb27beb932cd30e895647b08717c2042ca"
+    },
+    {
+      "path": "src/modules/NodeInfoModule.cpp",
+      "first": 153,
+      "last": 213,
+      "file": "AllocNodeInfo.inc",
+      "sha256": "f0cc98add7951f9c35d1fb5253e467e64fe15ef731bedf141541454d6300da53"
+    }
+  ]
+}

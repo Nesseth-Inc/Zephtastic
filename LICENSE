@@ -1,0 +1,42 @@
+MIT License
+
+Copyright (c) 2025-2026 ZephCore contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Component notices in this source tree
+
+The MIT terms above accompany the ZephCore code identified by that notice.
+The original ZephCore notice is preserved in zephcore/helpers/LICENSE.ZephCore.
+
+The application and Meshtastic-derived files that carry GPL-3.0-only
+headers refer to the license text in
+zephcore/bench/upstream-differential/source/LICENSE. Examples include
+mt_only/src/main.cpp and mt_only/src/stock/position/PositionPrecision.cpp.
+
+Monocypher's source headers under zephcore/lib/monocypher/ carry the
+BSD-2-Clause OR CC0-1.0 notice. mt_only/dependency-overlay/zephyr/LICENSE
+contains the Zephyr overlay license. Additional sensor-component notices
+are under mt_only/docs/licenses/. Other bundled files retain their own
+headers and accompanying notices.
+
+mt_only/dependency-lock.json records the separately fetched build inputs
+and the vendor license path for each downloaded radio blob.

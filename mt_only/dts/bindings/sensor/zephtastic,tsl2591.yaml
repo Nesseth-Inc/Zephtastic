@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: AMS TSL2591 with Meshtastic broadband and infrared lux conversion
+compatible: "zephtastic,tsl2591"
+include: i2c-device.yaml

@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: GPL-3.0-only
+#pragma once
+#define DT_ALIAS(n) n
+#define DT_NODE_HAS_STATUS(n,s) status(n)
+#define status(n) status_##n
+#define status_zt_scd30 0
+#define status_zt_sen5x 0
+#define status_zt_sen6x 0
+#define status_zt_as3935 0
+#define status_zt_nau7802 0
+#define status_zt_environment 1
+#define status_zt_environment_2 0
+#ifdef TEST_TSL2561
+#define status_zt_tsl2561 1
+#else
+#define status_zt_tsl2591 1
+#endif
+#define DT_NODE_HAS_COMPAT(n,c) 1
+#define DT_FOREACH_STATUS_OKAY(c, fn)
+#define DT_REG_ADDR(n) 0x29
+#define address_zt_tsl2561 0x29
+#define address_zt_tsl2591 0x29

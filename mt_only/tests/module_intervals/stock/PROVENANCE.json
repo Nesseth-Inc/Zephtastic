@@ -1,0 +1,21 @@
+{
+  "schema": "zt-stock-module-interval-fixtures/v1",
+  "stock_commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "upstream": "https://github.com/meshtastic/firmware",
+  "files": {
+    "Default.cpp": {
+      "stock_path": "src/mesh/Default.cpp",
+      "bytes": 4095,
+      "sha256": "a0a46f1b5a6173fc0365f4cb50353fb52ae6748ee2e036ddec4a7900918f9443",
+      "git_blob_sha1": "95e4132bf0f86cbb0cee33049885249544c9653d"
+    },
+    "Default.h": {
+      "stock_path": "src/mesh/Default.h",
+      "bytes": 9135,
+      "sha256": "9874226a4ee5719ade291a4e541f3475f87973edd8497deb72e193fc6970aa1b",
+      "git_blob_sha1": "b6d93eb21867689e519de0561ac78e37cbc7d495"
+    }
+  },
+  "scope": "Complete unmodified pinned Default sources. Host resolver/role/profile dependencies are explicit stubs; comparisons cover supplied valid resolved modem inputs, not hardware or stock modem resolution.",
+  "conservative_boundary": "Production adds a post-float INT32_MAX clamp. Literal stock can round a double-below-limit product to2^31; this intentional conservative difference is asserted, not called universal bit identity."
+}

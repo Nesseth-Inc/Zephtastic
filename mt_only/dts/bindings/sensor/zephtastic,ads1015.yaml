@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: TI ADS1015 on the Meshtastic single-ended telemetry worker
+compatible: "zephtastic,ads1015"
+include: i2c-device.yaml

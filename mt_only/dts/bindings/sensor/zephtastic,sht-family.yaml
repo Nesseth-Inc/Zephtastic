@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Explicit I2C slot for the single stock SHTXX environmental sensor
+compatible: "zephtastic,sht-family"
+include: i2c-device.yaml

@@ -1,0 +1,21 @@
+&i2c0 {
+    status = "okay";
+    ina226: current-monitor@41 {
+        compatible = "ti,ina226";
+        reg = <0x41>;
+        current-lsb-microamps = <25>;
+        rshunt-micro-ohms = <100000>;
+        zephyr,deferred-init;
+    };
+    ina3221: current-monitor@42 {
+        compatible = "ti,ina3221";
+        reg = <0x42>;
+        shunt-resistors = <100 100 100>;
+        zephyr,deferred-init;
+    };
+    ina260: current-monitor@45 {
+        compatible = "ti,ina260";
+        reg = <0x45>;
+        zephyr,deferred-init;
+    };
+};

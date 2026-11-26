@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: MLX90632 object temperature for Meshtastic environmental reports
+compatible: "zephtastic,mlx90632"
+include: i2c-device.yaml

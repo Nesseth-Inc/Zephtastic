@@ -1,0 +1,16 @@
+{
+  "commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "functions": {
+    "default.inc": {
+      "source": "src/mesh/Default.cpp",
+      "source_sha256": "a0a46f1b5a6173fc0365f4cb50353fb52ae6748ee2e036ddec4a7900918f9443",
+      "sha256": "7ffa4996d229d3e5837f28db02529ace0b675d93c99409f41b4b2e5d613197bf"
+    },
+    "response.inc": {
+      "source": "src/modules/RoutingModule.cpp",
+      "source_sha256": "82d54c9dc9e2c81f2f427d27c8c2dbc9a8409739b030f7e48db95901e21e8031",
+      "sha256": "299f51b214e22c3dff4d70982d3b784b6c29e26ddf534c1dd4d837cb5089fd77"
+    }
+  },
+  "limits": "Literal functions; test stub supplies known modern header getHopsAway, event mode disabled. No stock node/config/runtime execution."
+}

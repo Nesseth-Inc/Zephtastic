@@ -1,0 +1,11 @@
+{
+  "revision": "1ee3b93134be23c16ab16b9eb4183bfef63447a6",
+  "path": "subsys/bluetooth/host/gatt.c",
+  "source_sha256": "730f521d220988693747930640674ae724ca0da3c5df9f4632ad1c0671025fc4",
+  "exact_function_block_sha256": "5f6b71f30c40d2c95e6d2b9d6e3ab8aad4221fa19bd289d2eb750b27f2c03c6e",
+  "functions": [
+    "static void db_hash_store(void)",
+    "static void do_db_hash(void)",
+    "static int db_hash_commit(void)"
+  ]
+}

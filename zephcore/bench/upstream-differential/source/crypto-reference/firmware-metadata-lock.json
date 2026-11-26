@@ -1,0 +1,11 @@
+{
+  "firmware_commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "crypto_commit": "1c817c2f27aa4593e07d0f7e13b3dbf8d980bcae",
+  "files": [
+    {
+      "local_file": "esp32-common.ini",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/variants/esp32/esp32-common.ini",
+      "sha256": "f1c68164a0db80ddfa4b6bb34831b21f98415021fbe1ac3f52354b356f6e2558"
+    }
+  ]
+}

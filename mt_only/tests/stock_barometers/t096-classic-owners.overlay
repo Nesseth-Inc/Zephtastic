@@ -1,0 +1,5 @@
+/* Source-owned raw adapters claim all three addresses on this fixture. */
+&aht20 { status = "disabled"; };
+&bme280 { status = "disabled"; };
+&bme280_alt { status = "disabled"; };
+&bmp388 { status = "disabled"; };

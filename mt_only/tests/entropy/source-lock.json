@@ -1,0 +1,79 @@
+[
+  {
+    "dependency": "zephyr",
+    "url": "https://github.com/zephyrproject-rtos/zephyr",
+    "commit": "1ee3b93134be23c16ab16b9eb4183bfef63447a6",
+    "files": [
+      {
+        "path": "drivers/entropy/entropy_nrf5.c",
+        "sha256": "51f09f58ed0055a64941a4b6a3332f01f7206d728a5670041ce6a09c2a448808"
+      },
+      {
+        "path": "drivers/entropy/entropy_esp32.c",
+        "sha256": "b4f911aca76884d3a3731fe3194381301ee0e1036fd08e013975e6731118e571"
+      },
+      {
+        "path": "include/zephyr/drivers/entropy.h",
+        "sha256": "9ac65cf182d2a2e2e8b0c40765481452ab3b96b84b0e8b400a2f754e71e8a51a"
+      },
+      {
+        "path": "include/zephyr/arch/xtensa/irq.h",
+        "sha256": "7441e21087969263e530962d854c75fae3b7e8d7e2970d33f7a5656c4bd2b640"
+      },
+      {
+        "path": "drivers/interrupt_controller/intc_esp32.c",
+        "sha256": "c394330b3f0f607735558710195bf888ef6862077a4c983324af99839a3341ad"
+      }
+    ]
+  },
+  {
+    "dependency": "modules/hal/espressif",
+    "url": "https://github.com/zephyrproject-rtos/hal_espressif",
+    "commit": "0bd7ba4cdeb218fad291ae06f728c335a97e588d",
+    "files": [
+      {
+        "path": "components/bt/controller/esp32c3/bt.c",
+        "sha256": "e3c81c222297133359f1332796123918f052861f49474504fcf6e99940c0f59a"
+      },
+      {
+        "path": "components/esp_phy/src/phy_init.c",
+        "sha256": "9703caf917251472622e9b446981650a4531a5ac97fa66979daf6bc31956a2c9"
+      },
+      {
+        "path": "components/esp_phy/src/phy_common.c",
+        "sha256": "e4439c0c38cafdc77f8bfbb7478d07997c830b264a6b3df48de3bb30a4f24912"
+      },
+      {
+        "path": "components/esp_phy/include/esp_private/phy.h",
+        "sha256": "efcbb02ee7665902beeb293d8c95f790c3bca39c8cedf46c46654f70878877b5"
+      },
+      {
+        "path": "components/esp_hw_support/esp_clk.c",
+        "sha256": "75648f99ce39bd7d5f116bfd04f5d8d40d9285694c87efd563beb59a81a73343"
+      },
+      {
+        "path": "components/hal/esp32s3/include/hal/rng_ll.h",
+        "sha256": "8edba1d233c428a15f1edb2f533ebe5b32656f5298631ea618b8b233b51e9788"
+      },
+      {
+        "path": "components/esp_hw_support/include/esp_random.h",
+        "sha256": "ed9b73e4c6a74e2de0e4c2807d6172b8bfbbb9060efbf3a89228859c02fb34c9"
+      },
+      {
+        "path": "zephyr/esp32s3/CMakeLists.txt",
+        "sha256": "d36127e5e07e08d1d38c20c0be726808bedda562e58687734f3455fdb24c001c"
+      }
+    ]
+  },
+  {
+    "dependency": "modules/hal/nordic",
+    "url": "https://github.com/zephyrproject-rtos/hal_nordic",
+    "commit": "153373591c84109bbca866381e213ec09809cdd2",
+    "files": [
+      {
+        "path": "nrfx/hal/nrf_rng.h",
+        "sha256": "b4f994796787ebaa30827438ed4ff6fa2f6cbccda9c376e968346e1326a49f2f"
+      }
+    ]
+  }
+]

@@ -1,0 +1,80 @@
+/*
+ * Copyright (c) 2022 Andreas Sandberg
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @file
+ * @brief Header file for extended Display API of SSD16XX
+ * @ingroup ssd16xx_interface
+ */
+
+#ifndef ZEPHYR_INCLUDE_DISPLAY_SSD16XX_H_
+#define ZEPHYR_INCLUDE_DISPLAY_SSD16XX_H_
+
+/**
+ * @brief Solomon SSD16xx EPD display controller
+ * @defgroup ssd16xx_interface SSD16xx
+ * @ingroup display_interface_ext
+ * @{
+ */
+
+#include <zephyr/drivers/display.h>
+
+/**
+ * SSD16xx RAM type for direct RAM access
+ *
+ * @see ssd16xx_read_ram
+ */
+enum ssd16xx_ram {
+	/** The black RAM buffer. This is typically the buffer used to
+	 * compose the contents that will be displayed after the next
+	 * refresh.
+	 */
+	SSD16XX_RAM_BLACK = 0,
+	/** The red RAM buffer. This is typically the old frame buffer
+	 * when performing partial refreshes or an additional color
+	 * channel.
+	 */
+	SSD16XX_RAM_RED,
+};
+
+/**
+ * @brief Read data directly from an SSD16xx display controller's internal
+ * RAM.
+ *
+ * @param dev Pointer to device structure
+ * @param ram_type Type of RAM to read from
+ * @param x Coordinate relative to the upper left corner
+ * @param y Coordinate relative to the upper left corner
+ * @param desc Structure describing the buffer layout
+ * @param buf Output buffer
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+int ssd16xx_read_ram(const struct device *dev, enum ssd16xx_ram ram_type,
+		     const uint16_t x, const uint16_t y,
+		     const struct display_buffer_descriptor *desc,
+		     void *buf);
+
+/**
+ * @brief Clear both RAM banks (Black and Red) to white without refreshing.
+ *
+ * Fills the controller's Black and Red RAM with white, matching the state
+ * established by ssd16xx_controller_init() at boot, without updating the
+ * panel.  Intended for a full-refresh-to-white followed by a partial redraw:
+ * the all-white reference makes the next partial drive every content pixel
+ * with nothing stale to erase, avoiding both the fade (unchanged regions left
+ * on the neutral waveform) and the overlap (stale pixels not cleared) that
+ * occur when a partial follows a full refresh of non-white content.
+ *
+ * @param dev Pointer to device structure
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+int ssd16xx_fill_ram_white(const struct device *dev);
+
+/** @} */
+
+#endif /* ZEPHYR_INCLUDE_DISPLAY_SSD16XX_H_ */

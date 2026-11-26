@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: Scd30 stock I2C telemetry accessory
+compatible: "sensirion,scd30"
+include: i2c-device.yaml

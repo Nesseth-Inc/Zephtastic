@@ -1,0 +1,15 @@
+{
+  "source_revision": "ab0e34b306de9b02a6244eebdb27b8b63c007316",
+  "tree": "187240558a09da79f0d3bdd4b2b4dd2c1fada74d",
+  "scope": "Exact unchanged Config14 and Journal5 bodies used only by synthetic native fixture producer; no device settings",
+  "files": {
+    "Config.h": {
+      "bytes": 19671,
+      "sha256": "f4815f1845eeb41c1395bf84763e35141df0a68f17bc0a4d7ca92d0e56a46350"
+    },
+    "SettingsJournal.h": {
+      "bytes": 6110,
+      "sha256": "a4b47da5e2b5710d34b707a88ce2eb14e1b338d78956096582aceabeccb8d2b7"
+    }
+  }
+}

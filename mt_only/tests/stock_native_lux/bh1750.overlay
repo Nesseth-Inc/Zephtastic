@@ -1,0 +1,7 @@
+/* Stock continuous high-resolution producer, external accessory at 0x23. */
+/ { aliases { zt-bh1750 = &stock_bh; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    stock_bh: light@23 { compatible = "zephtastic,bh1750"; reg = <0x23>; };
+};

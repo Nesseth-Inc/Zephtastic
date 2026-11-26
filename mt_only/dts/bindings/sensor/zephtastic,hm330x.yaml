@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Seeed HM330x standard particle mass sampling through the Meshtastic worker
+compatible: "zephtastic,hm330x"
+include: i2c-device.yaml

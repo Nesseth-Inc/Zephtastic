@@ -1,0 +1,17 @@
+{
+  "commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "files": [
+    {
+      "upstream_path": "src/mesh/MeshModule.cpp",
+      "local_file": "MeshModule.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/MeshModule.cpp",
+      "sha256": "99e87c0efd96963726420bc8e30ec83bc64b263e9f2efe9f0df96df081f73137"
+    },
+    {
+      "upstream_path": "src/modules/RoutingModule.cpp",
+      "local_file": "RoutingModule.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/modules/RoutingModule.cpp",
+      "sha256": "82d54c9dc9e2c81f2f427d27c8c2dbc9a8409739b030f7e48db95901e21e8031"
+    }
+  ]
+}

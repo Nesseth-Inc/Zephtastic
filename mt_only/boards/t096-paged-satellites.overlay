@@ -1,0 +1,3 @@
+/* Keep the warm index inside LittleFS metadata. The shared volume then has
+ * room for a one-sector public upload while a private table is replaced. */
+&mt_sat_fs { cache-size = <128>; };

@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/Erriez/ErriezCRC32",
+  "tag": "1.0.1",
+  "commit": "0bd91795ee09a4268b9b4a0abcd1394677f419c1",
+  "files": [
+    {
+      "local_file": "LICENSE",
+      "url": "https://raw.githubusercontent.com/Erriez/ErriezCRC32/0bd91795ee09a4268b9b4a0abcd1394677f419c1/LICENSE",
+      "sha256": "83e4dd21429a91fb7cea67a476032a9641425e5355df2e0f589a738b6ec9fd2c"
+    },
+    {
+      "local_file": "README.md",
+      "url": "https://raw.githubusercontent.com/Erriez/ErriezCRC32/0bd91795ee09a4268b9b4a0abcd1394677f419c1/README.md",
+      "sha256": "a559913bb968b28fc90d2dd1ef2c4810d66a3095d1e31b793647580eb354a179"
+    },
+    {
+      "local_file": "src/ErriezCRC32.c",
+      "url": "https://raw.githubusercontent.com/Erriez/ErriezCRC32/0bd91795ee09a4268b9b4a0abcd1394677f419c1/src/ErriezCRC32.c",
+      "sha256": "62d9707843293244d681299eba51803a330223f0fde35022b4f567690e926050"
+    },
+    {
+      "local_file": "src/ErriezCRC32.h",
+      "url": "https://raw.githubusercontent.com/Erriez/ErriezCRC32/0bd91795ee09a4268b9b4a0abcd1394677f419c1/src/ErriezCRC32.h",
+      "sha256": "7831a70b7759d5e0e3eca9c2b5e218f0d9e82b189a0c37cb9c94a4dd6a736ed5"
+    }
+  ]
+}

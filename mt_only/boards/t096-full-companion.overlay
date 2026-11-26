@@ -1,0 +1,6 @@
+/* Separate first-install layout. Run the offline --full-companion preflight
+ * on the original board readback before installing. The new application
+ * occupies the previous NVS and part of the former LittleFS volume. */
+&code_partition { reg = <0x00026000 0x000b6000>; };
+&storage_partition { reg = <0x000dc000 0x00004000>; };
+&lfs_partition { reg = <0x000e0000 0x00013000>; };

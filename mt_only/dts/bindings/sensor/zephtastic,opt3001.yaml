@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: TI OPT3001 in the stock 100 ms continuous auto-ranging mode
+compatible: "zephtastic,opt3001"
+include: i2c-device.yaml

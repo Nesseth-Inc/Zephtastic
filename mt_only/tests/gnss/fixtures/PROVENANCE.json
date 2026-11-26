@@ -1,0 +1,27 @@
+{
+  "default_and_short_enum_outputs_identical": true,
+  "files": {
+    "v14-config.bin": {
+      "bytes": 608,
+      "sha256": "930d981bff284937698f6f0775b965293009dcfd8d851f4b84b9ca4de0f5cb01"
+    },
+    "v14-journal.bin": {
+      "bytes": 624,
+      "sha256": "55d5632842f5fb3a15451883ca5ee5efd0543ccc8ab379998506749d47d1cb5d"
+    },
+    "v15-config.bin": {
+      "bytes": 608,
+      "sha256": "5cfcaa7a410d93fc2be3a392cff71201590e8081bb3788ab940fd007f7beb92a"
+    },
+    "v15-journal.bin": {
+      "bytes": 624,
+      "sha256": "6554bb95deac327e01aaf24a3ce85c7112cfdf858e7a68ae7d259fd7491fcccc"
+    }
+  },
+  "operating_identity_or_keys": false,
+  "producer_case_body_unchanged": true,
+  "producer_test_sha256": "a9718f214df1783a7288fc1f2de0dbbf01a22d7aafaecc57a642ab73d7a5c91c",
+  "schema": "zt-m105-synthetic-legacy-fixtures/v1",
+  "source_base": "6f2707d8c9e9b7063bd6e7807a248c08ac1fe0d1",
+  "synthetic": true
+}

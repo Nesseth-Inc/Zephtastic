@@ -1,0 +1,13 @@
+/* Build-only fixture. These devices are external accessories. */
+/ {
+    aliases {
+        zt-ads1x15 = &test_primary_adc;
+        zt-ads1x15-alt = &test_alternate_adc;
+    };
+};
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_primary_adc: adc@48 { compatible = "zephtastic,ads1115"; reg = <0x48>; };
+    test_alternate_adc: adc@4b { compatible = "zephtastic,ads1015"; reg = <0x4b>; };
+};

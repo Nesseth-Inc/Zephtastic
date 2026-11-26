@@ -1,0 +1,4 @@
+/* The stock SHT owner owns these three addresses on this particular fixture. */
+&ina219 { status = "disabled"; };
+&sht4x { status = "disabled"; };
+&shtc3 { status = "disabled"; };

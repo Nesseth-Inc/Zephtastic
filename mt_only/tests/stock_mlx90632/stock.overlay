@@ -1,0 +1,5 @@
+/ { aliases { zt-mlx90632 = &test_mlx32; }; };
+&i2c0 {
+    status = "okay";
+    test_mlx32: thermometer@3a { compatible = "zephtastic,mlx90632"; reg = <0x3a>; };
+};

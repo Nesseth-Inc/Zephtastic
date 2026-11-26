@@ -1,0 +1,7 @@
+/* Build-only external accessory fixture for the stock 0x29 address. */
+/ { aliases { zt-tsl2591 = &tsl_light; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    tsl_light: light@29 { compatible = "zephtastic,tsl2591"; reg = <0x29>; };
+};

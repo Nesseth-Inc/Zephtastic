@@ -1,0 +1,3 @@
+/* Keep the native 0x76 sensor independently available. */
+&bme280_alt { status = "disabled"; };
+&bmp388 { status = "disabled"; };

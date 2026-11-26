@@ -1,0 +1,10 @@
+/* Link fixture for a board with an external pulse watchdog. */
+#include <zephyr/dt-bindings/gpio/gpio.h>
+/ {
+    external-watchdog {
+        compatible = "zephcore,external-watchdog";
+        wake-gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+        done-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+        feed-interval-ms = <10000>;
+    };
+};

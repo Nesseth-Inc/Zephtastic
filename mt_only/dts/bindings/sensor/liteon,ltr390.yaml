@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: Lite-On LTR390 ambient light and UV sensor
+compatible: "liteon,ltr390"
+include: i2c-device.yaml

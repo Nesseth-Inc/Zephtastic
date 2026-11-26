@@ -1,0 +1,8 @@
+/* Four 8 KiB banks immediately above the private LittleFS partition. */
+&flash0 { partitions {
+	mt_pki_contacts_partition: partition@480000 {
+		compatible = "zephyr,mapped-partition";
+		label = "mt-pki-contacts";
+		reg = <0x00480000 0x00008000>;
+	};
+}; };

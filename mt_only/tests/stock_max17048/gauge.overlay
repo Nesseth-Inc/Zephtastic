@@ -1,0 +1,8 @@
+/ { aliases { zt-max17048 = &test_gauge; }; };
+&i2c0 {
+    status = "okay";
+    test_gauge: fuel-gauge@36 {
+        compatible = "maxim,max17048";
+        reg = <0x36>;
+    };
+};

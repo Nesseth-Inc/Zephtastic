@@ -1,0 +1,9 @@
+{
+  "stock_revision": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "stock_source": "src/mesh/Channels.cpp",
+  "functions": {
+    "stock_generate_hash.inc": "cbf7ecb3c3223eb40a70b5e8e44b766a6d755393ac984313a38444f7fa9b7d8d",
+    "stock_get_key.inc": "420a6ab66aec6da34840eb4e1f0b6d6d5917e60a5d42c2488b8d4d1b446f58fe"
+  },
+  "extraction": "Complete literal functions from verified stock R1 channel contracts; no elision or rewritten function body"
+}

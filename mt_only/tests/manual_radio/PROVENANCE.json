@@ -1,0 +1,16 @@
+{
+  "scope": "Synthetic factory/default records produced by actual frozen M95 Config and SettingsJournal code on Mac; no radio or operating keys/settings",
+  "source_revision": "179c91720b85641ac73e6985962670c80af3c9ed",
+  "source_tree": "c81120140058929123e113c6a636821961cf641b",
+  "producer_source_sha256": "317e7e2348308234b9d94d92dbbb9f7e65568acd7e2b68160c377f29bca1d7f8",
+  "files": {
+    "v13-config.bin": {
+      "bytes": 576,
+      "sha256": "6e5b99a89e2017daf3af6371e0ed99667e0f78898e5aef8d546021bc0de04384"
+    },
+    "v4-journal.bin": {
+      "bytes": 592,
+      "sha256": "7dbe0ab437ad04590f07bf1269b81358f260b20ed069e04d0af6d43c87863821"
+    }
+  }
+}

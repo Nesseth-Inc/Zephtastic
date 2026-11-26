@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: RCWL9620 ultrasonic distance sensor
+compatible: "rcwl,rcwl9620"
+include: i2c-device.yaml

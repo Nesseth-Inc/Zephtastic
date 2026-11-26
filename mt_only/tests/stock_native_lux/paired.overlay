@@ -1,0 +1,8 @@
+/* Build-only external accessories at their stock addresses with native drivers. */
+/ { aliases { zt-environment = &test_bh1750; zt-environment-2 = &test_opt3001; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_bh1750: light@23 { compatible = "rohm,bh1750"; reg = <0x23>; resolution = <1>; mtreg = <69>; };
+    test_opt3001: light@45 { compatible = "ti,opt3001"; reg = <0x45>; };
+};

@@ -1,0 +1,341 @@
+{
+  "commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "files": [
+    {
+      "upstream_path": "src/mesh/NextHopRouter.cpp",
+      "local_file": "NextHopRouter.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/NextHopRouter.cpp",
+      "sha256": "e108d83d93e31dcd7c52dfdfdba5dd5ef8f45fa7b6b1fd2d99593a797012327d"
+    },
+    {
+      "upstream_path": "src/mesh/NextHopRouter.h",
+      "local_file": "NextHopRouter.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/NextHopRouter.h",
+      "sha256": "20934a7d5590cbd64f245f6532811471448d6ffc9393d2488523c3ea086e0e65"
+    },
+    {
+      "upstream_path": "src/mesh/PacketHistory.cpp",
+      "local_file": "PacketHistory.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/PacketHistory.cpp",
+      "sha256": "e9c8bf0ff55db7ab380e54c4777a388a91306cdbc051722442420395a9e0d503"
+    },
+    {
+      "upstream_path": "src/mesh/PacketHistory.h",
+      "local_file": "PacketHistory.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/PacketHistory.h",
+      "sha256": "ecb65e31a7dc08fdf7c6c467345440edd59c9ba26a7f03c37db304e6fb4b501c"
+    },
+    {
+      "upstream_path": "src/mesh/ReliableRouter.cpp",
+      "local_file": "ReliableRouter.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/ReliableRouter.cpp",
+      "sha256": "a9d073bf64231922178b95dc01943ae1498ad253e90436bee8327f3d019fcd1e"
+    },
+    {
+      "upstream_path": "src/mesh/ReliableRouter.h",
+      "local_file": "ReliableRouter.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/ReliableRouter.h",
+      "sha256": "3fcb06495ee89fae224f9bfb7e6c777da357cb55a02607546122871665bc4937"
+    },
+    {
+      "upstream_path": "src/mesh/FloodingRouter.cpp",
+      "local_file": "FloodingRouter.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/FloodingRouter.cpp",
+      "sha256": "58fb0688f2f449c80ceff29d6e1f2b74fa531c855ee1c6c5a39f41d11d972e9e"
+    },
+    {
+      "upstream_path": "src/mesh/FloodingRouter.h",
+      "local_file": "FloodingRouter.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/FloodingRouter.h",
+      "sha256": "1836a31178044e25983ed8ebc17c004260c2b8a321f4872aab2d7620d89d3ad1"
+    },
+    {
+      "upstream_path": "src/mesh/Router.cpp",
+      "local_file": "Router.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/Router.cpp",
+      "sha256": "d3b4178cdb1ef81a130d70bbe702e857f7ffddae592e551cc907f580ab165620"
+    },
+    {
+      "upstream_path": "src/mesh/Router.h",
+      "local_file": "Router.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/Router.h",
+      "sha256": "0106d41d51b2b3dce1427f5114113ad262da5b7db8a8c1e808971c126ecda74b"
+    },
+    {
+      "upstream_path": "src/mesh/RadioInterface.cpp",
+      "local_file": "RadioInterface.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/RadioInterface.cpp",
+      "sha256": "0de8434b14c3c1deb383b4510b96a9d0d750a797e9140f9cfb08147e4a749506"
+    },
+    {
+      "upstream_path": "src/mesh/RadioInterface.h",
+      "local_file": "RadioInterface.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/RadioInterface.h",
+      "sha256": "4b0a5c41fdfcb9fa886625ee31c77ef83e782d79c2bcfc86128377d5b88b3f75"
+    },
+    {
+      "upstream_path": "src/mesh/mesh-pb-constants.h",
+      "local_file": "mesh-pb-constants.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/mesh-pb-constants.h",
+      "sha256": "1a23a5f3ec3d9af6aa723cfc0e85c71ddc4fe29f175f9a31906368e5133dcaca"
+    },
+    {
+      "upstream_path": "src/mesh/MeshTypes.h",
+      "local_file": "MeshTypes.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/MeshTypes.h",
+      "sha256": "84f661fd5094483e6aebe4a643f9da6cce4563f9181ee1e834065eebca34cd8a"
+    },
+    {
+      "upstream_path": "LICENSE",
+      "local_file": "LICENSE",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/LICENSE",
+      "sha256": "0ae0485a5bd37a63e63603596417e4eb0e653334fa6c7f932ca3a0e85d4af227"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/mesh.pb.cpp",
+      "local_file": "mesh.pb.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/mesh.pb.cpp",
+      "sha256": "a02fc7dcaae88dbdcf50b2f1cf4083fa6f179bce044889afc9742fad93047cb4"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/mesh.pb.h",
+      "local_file": "mesh.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/mesh.pb.h",
+      "sha256": "36d720465ed771d94541fe750068b978aca964d35fa836482edeede1dca84c13"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/config.pb.h",
+      "local_file": "config.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/config.pb.h",
+      "sha256": "23954f24cca6d339d6940b704873d41325bea5a0048b880023493a4bbf96ed10"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/portnums.pb.h",
+      "local_file": "portnums.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/portnums.pb.h",
+      "sha256": "e9133f8fdbb93e901bccfa9de3544a5b4c62b635d5e29187dde45da1e9637dad"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/device_ui.pb.h",
+      "local_file": "device_ui.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/device_ui.pb.h",
+      "sha256": "dbe351c75601295260503496a80bd088b263b6559951fab08ce0f172b6f0fbaa"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/channel.pb.h",
+      "local_file": "channel.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/channel.pb.h",
+      "sha256": "464d9715befbf9a23c062c5f966e6c1a74144f92dcbbe80295e0010e948f2dfe"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/localonly.pb.h",
+      "local_file": "localonly.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/localonly.pb.h",
+      "sha256": "2da415eb05329ff80d2977bd2ac3f35624f6482f2b02b2109a684b53c03659bf"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/telemetry.pb.h",
+      "local_file": "telemetry.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/telemetry.pb.h",
+      "sha256": "c534f79d253f4818e944abdb68657e30cb3b76d87d264613bfa5fdd53756b80d"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/module_config.pb.h",
+      "local_file": "module_config.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/module_config.pb.h",
+      "sha256": "f08d46d3713fdcd056fcc6997af2c35db88a7e70677c600afa917455e2945671"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/admin.pb.h",
+      "local_file": "admin.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/admin.pb.h",
+      "sha256": "5dd83418156d92c75b15a14dd7dd44e2773d3526eddab871a632a4029104848a"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/deviceonly.pb.h",
+      "local_file": "deviceonly.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/deviceonly.pb.h",
+      "sha256": "f1716f50a9d182bac1a1937359f68b83b4f7c296a10423a152bcaf88f435cef2"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/storeforward.pb.h",
+      "local_file": "storeforward.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/storeforward.pb.h",
+      "sha256": "fa45b84ac6b260972c77270ec0c74b61d1492c602a6b1cbc2aed378626f30ee7"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/atak.pb.h",
+      "local_file": "atak.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/atak.pb.h",
+      "sha256": "9e17d038d11003203b2eeb9820f7a2e7960644d55c247f0e1615fc21ba4a15e8"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/apponly.pb.h",
+      "local_file": "apponly.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/apponly.pb.h",
+      "sha256": "24f1c47f7bb47af4ae6b5c999a514f8df6bbdad3ea162c6829d52941e5db438a"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/mqtt.pb.h",
+      "local_file": "mqtt.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/mqtt.pb.h",
+      "sha256": "c44838ebaa409d6e170ab87462895d6e88dc37738138e8d13ad73ff38052ba07"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/paxcount.pb.h",
+      "local_file": "paxcount.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/paxcount.pb.h",
+      "sha256": "b5381b0f80c02b5a74d50dbdae1f3694702318b2e1ae262b2ebd896a53e1a1a5"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/powermon.pb.h",
+      "local_file": "powermon.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/powermon.pb.h",
+      "sha256": "a091bb15c80db50f781bde0d8bcc30556f410002d0a5bfb746f052a77126c0a7"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/remote_hardware.pb.h",
+      "local_file": "remote_hardware.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/remote_hardware.pb.h",
+      "sha256": "fd20927f917e92393d6ab11e6d60e9f23c5bda652301a04a3803ec2211eee881"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/xmodem.pb.h",
+      "local_file": "xmodem.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/xmodem.pb.h",
+      "sha256": "2db32ade7e53ccdc4af3b807e19021c33237e3a4e9492f0b88f520213c9561ac"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/connection_status.pb.h",
+      "local_file": "connection_status.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/generated/meshtastic/connection_status.pb.h",
+      "sha256": "3f80a90fcd7816c97f6dbef7773b115efe47dfa7caa54b62be7f8bbcbd4e38d4"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb.h",
+      "local_file": "nanopb/pb.h",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb.h",
+      "sha256": "a2ecdca9fdaeef5f4972ed983540c0d6fb0a5c402a2e0b0349d7e1bc5e188d29"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb_common.c",
+      "local_file": "nanopb/pb_common.c",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb_common.c",
+      "sha256": "8d2ec28baaaf2b7a5e90e4cb2fa9700d21cef7f826f051a637c30b7a1e6a0516"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb_common.h",
+      "local_file": "nanopb/pb_common.h",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb_common.h",
+      "sha256": "6495a691aca68d6973f2274b5dd54b74fbb57f6b019c45fff255a857fe1abcfd"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb_decode.c",
+      "local_file": "nanopb/pb_decode.c",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb_decode.c",
+      "sha256": "6c2fc2f357bffdb774c1d329b533e981498d58405c0b1ef066f5a87fd46b5a17"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb_decode.h",
+      "local_file": "nanopb/pb_decode.h",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb_decode.h",
+      "sha256": "1747746e5961de5789bcf0795588da0790cd18b2e4e706ad9c7099a0fa1cc83f"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb_encode.c",
+      "local_file": "nanopb/pb_encode.c",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb_encode.c",
+      "sha256": "d8dff2a1acc58683095a41b0dc3103ba46248e4a8d8c4e20f5810be04127b650"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "pb_encode.h",
+      "local_file": "nanopb/pb_encode.h",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/pb_encode.h",
+      "sha256": "9aa00fee4ff08adf0da16e33a55be08810ea657800a648dc78f82e89c60c10cf"
+    },
+    {
+      "repository": "nanopb/nanopb",
+      "version": "0.4.9.1",
+      "upstream_path": "LICENSE.txt",
+      "local_file": "nanopb/LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/nanopb/nanopb/0.4.9.1/LICENSE.txt",
+      "sha256": "e2f2fc8fe3faa7dcb09dbe995db48c6ec5c1f72705db915101e4a83fed44f66d"
+    },
+    {
+      "upstream_path": "src/mesh/generated/meshtastic/field_metadata.pb.h",
+      "local_file": "field_metadata.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/field_metadata.pb.h",
+      "sha256": "f73035f36d096af7f2363b0eeb34c1ad9ef553cf7f9dad934303b9182754ac5a"
+    },
+    {
+      "upstream_path": "src/mesh/CryptoEngine.cpp",
+      "local_file": "CryptoEngine.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/CryptoEngine.cpp",
+      "sha256": "4a4b8385eceef33c647c7cf868a8518218fe20873d01260473271be4d5c4056d"
+    },
+    {
+      "upstream_path": "src/platform/esp32/ESP32CryptoEngine.cpp",
+      "local_file": "ESP32CryptoEngine.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/platform/esp32/ESP32CryptoEngine.cpp",
+      "sha256": "90330ca29dddf756ecfdd261acdc97d90d3de791425e23769933fc0d0067a5b6"
+    },
+    {
+      "upstream_path": "src/meshUtils.h",
+      "local_file": "meshUtils.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/meshUtils.h",
+      "sha256": "84e385211e4d91499ee5b98122131b55b2eb5d1cce2287042d9e75c9123279bb"
+    },
+    {
+      "upstream_path": "src/meshUtils.cpp",
+      "local_file": "meshUtils.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/meshUtils.cpp",
+      "sha256": "fb6af883c563c096289e9cbd3813214b28b030aac0afe9999005dcbab52b0ab7"
+    },
+    {
+      "upstream_path": "src/mesh/CryptoEngine.h",
+      "local_file": "CryptoEngine.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/CryptoEngine.h",
+      "sha256": "80f7a361c5f0c3d5e3c6d5f3c440c996865405602ac6190e663373dbad36f445"
+    },
+    {
+      "upstream_path": "src/mesh/NodeDB.cpp",
+      "local_file": "NodeDB.cpp",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/NodeDB.cpp",
+      "sha256": "82c1491c1542fb96e28a653b1e8e381f44996ff67d5c2256d3564bf990f9534c"
+    },
+    {
+      "upstream_path": "src/mesh/NodeDB.h",
+      "local_file": "NodeDB.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/NodeDB.h",
+      "sha256": "8ab02f02bfbb7b68d5c05ebc60bd207fc91c1e6a0a089b45207803757e04037f"
+    },
+    {
+      "local_file": "Channels.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/Channels.h",
+      "sha256": "8fa5aa4d5f1775210b09e1f08aa78b9da94fa2a9ae73b890b9d5fcda9dcc7f86",
+      "upstream_path": "src/mesh/Channels.h"
+    },
+    {
+      "local_file": "mesh_beacon.pb.h",
+      "upstream_path": "src/mesh/generated/meshtastic/mesh_beacon.pb.h",
+      "url": "https://raw.githubusercontent.com/meshtastic/firmware/d5f16191ca28b01b5024f590f04a67f25d66f1b1/src/mesh/generated/meshtastic/mesh_beacon.pb.h",
+      "sha256": "e7e7cb9cf1048cd1f2f60324410628a8a48b70496824877ee82fa544c7b904fe"
+    }
+  ],
+  "generated_firmware_commit": "d5f16191ca28b01b5024f590f04a67f25d66f1b1",
+  "protobuf_commit": "8d0ed0c135f91ad1d6f9c60bc341277d64946bce"
+}

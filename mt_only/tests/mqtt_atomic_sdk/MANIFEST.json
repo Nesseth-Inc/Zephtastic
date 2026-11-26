@@ -1,0 +1,29 @@
+{
+  "files": {
+    "include/zephyr/sys/atomic.h": {
+      "bytes": 13683,
+      "sha256": "481f1db477226e0b10249fd4e935172a62ace18e73aa13883c5d9ccbd68c6290"
+    },
+    "include/zephyr/sys/atomic_builtin.h": {
+      "bytes": 3195,
+      "sha256": "9b1eaba67523c2e4f699f8ac4ff1d7288261c366c0255c0580ec5dc6d9ac80a1"
+    },
+    "include/zephyr/sys/atomic_c.h": {
+      "bytes": 2573,
+      "sha256": "5154c21e037ac302d72f50c6b9f8019e129f897ce2246c19fb9c2266ec8f2c01"
+    },
+    "include/zephyr/sys/atomic_types.h": {
+      "bytes": 1420,
+      "sha256": "f8b812ad804e7f1770a8ce40426e08a019c08ac0970b00c6fbd6e398de74324e"
+    },
+    "lib/cpp/minimal/include/initializer_list": {
+      "missing": true
+    }
+  },
+  "minimal_cpp_headers": [
+    "new",
+    "cstdint",
+    "cstddef"
+  ],
+  "provenance": "Four unmodified public Zephyr atomic API headers from the preserved SDK. Exact byte hashes are independently joined to the complete 68226-file SDK map. Utility headers are fixture stubs, atomic API/implementation bodies are actual. Host ABI canary only; actual target build required."
+}

@@ -1,0 +1,25 @@
+/* The linked ESP32-S3 partitions end at 0x3e0000. Leave the separate
+ * 0x7ef000 identity retirement page and high settings partition untouched. */
+&flash0 { partitions {
+    mt_sat_partition: partition@400000 {
+        compatible = "zephyr,mapped-partition";
+        label = "mt-satellite-history";
+        reg = <0x00400000 0x00080000>;
+    };
+}; };
+/ {
+    fstab {
+        compatible = "zephyr,fstab";
+        mt_sat_fs: sat-history {
+            compatible = "zephyr,fstab,littlefs";
+            mount-point = "/zt-history";
+            partition = <&mt_sat_partition>;
+            no-format;
+            read-size = <16>;
+            prog-size = <16>;
+            cache-size = <64>;
+            lookahead-size = <16>;
+            block-cycles = <512>;
+        };
+    };
+};

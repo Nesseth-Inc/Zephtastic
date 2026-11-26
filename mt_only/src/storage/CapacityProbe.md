@@ -1,0 +1,7 @@
+# M153 T096 numeric capacity probe
+
+`zt_storage_capacity_status_v1` is admitted only by the existing exact USB PKI provisioning dispatcher. It therefore inherits the connected owner-0, canonical local packet, current USB epoch checks; the T096 capacity handler additionally binds and rechecks that epoch around its reads. The parser admits this one complete command string, not a prefix.
+
+The handler reports only NVS `free_bytes`/error from the already initialized SETTINGS_NVS instance and 32 decimal per-4-KiB LittleFS erased-byte counts plus scan progress/error. LFS read uses `flash_read()` over fixed `lfs_partition`; scratch is 64 bytes and wiped after every callback. NVS free-space inspection takes the existing NVS mutex once with `K_NO_WAIT`; if settings are not ready or the lock is busy it reports the error and no free-space value. This does not initialize/mount NVS or LittleFS. It performs no write, erase, hash, or filesystem signature check and does not authorize reuse.
+
+The code is guarded for `CONFIG_BOARD_HELTEC_T096` and static-asserts the known partition geometry: SETTINGS_NVS 0xD0000/16 KiB and LittleFS 0xD4000/128 KiB. XIAO builds do not compile the T096-specific handler or flash/NVS adapter. The 233-byte local text reply is compact: `nrc` NVS status, `nf` free bytes (−1 when unavailable), `scanned`, `sectors` complete count, `rc` scan status, and comma-separated `ff` byte counts for only completed sectors. A failed or short scan remains incomplete; it is never reported as a blankness or free-capacity claim.

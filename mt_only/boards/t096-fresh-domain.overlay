@@ -1,0 +1,6 @@
+/* Opt-in T096 layout for a new PKI identity. Install only on a unit that
+ * passes the full blank-region preflight. Never apply this to a legacy T096.
+ * Leaving NVS and /lfs at their original offsets is not an upgrade guarantee:
+ * this extended application occupies the historical append journal. */
+/delete-node/ &mt_pki_history;
+&code_partition { reg = <0x00026000 0x000aa000>; };

@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Melexis MLX90614 object-temperature sensor on the Meshtastic health worker
+compatible: "zephtastic,mlx90614"
+include: i2c-device.yaml

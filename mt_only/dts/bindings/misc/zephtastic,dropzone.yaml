@@ -1,0 +1,11 @@
+description: Stock Dropzone status ADC input and optional Lark weather station
+compatible: "zephtastic,dropzone"
+include: base.yaml
+properties:
+  io-channels:
+    type: phandle-array
+    required: true
+    description: Dedicated analog input, sampled at the board's configured resolution.
+  lark:
+    type: phandle
+    description: Optional DFRobot Lark I2C child node with its address in reg.

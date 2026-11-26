@@ -1,0 +1,53 @@
+{
+  "resolution.inc": {
+    "original_artifact": "work/m96-manual-radio-assertions-r1/recovery-r2/02-task-91a7405413a74969-c57946a3bf1042e9806013a45fdcb91c.txt",
+    "artifact_sha256": "09dba90008243ce7cfaaea52a0179bc7e597b0c7fa9a06b94bad7cf524b805f3",
+    "root_adaptations": [
+      "actual Profile field names",
+      "nested Request alias",
+      "fieldwise output preservation instead of padding comparison"
+    ]
+  },
+  "power.inc": {
+    "original_artifact": "work/m96-manual-radio-assertions-r1/recovery-r2/04-task-ff3f5b01f59f4577-6800ace6d53d4a20a7d233b15ab3acbe.txt",
+    "artifact_sha256": "bd1f8b9f42f8bac4774883d12855a2458b28175ac510488c9ba3364d0e2ee9a9",
+    "root_adaptations": [
+      "actual nested RadioSettings::Request and effectivePower owner"
+    ]
+  },
+  "normalization.inc": {
+    "original_artifact": "work/m96-four-attempt-progress-r1/artifacts/normalization-d5d5a0572db3420081ded98c1ffcd7aa-part1.txt",
+    "artifact_sha256": "f7d0e19cf2779b0b3cd13c4f59ec6245706a3b674189ffa8201bd42971e2bc59",
+    "root_adaptations": [
+      "fieldwise profile assertions avoid uninitialized padding",
+      "literal SF11 and CR5 expected values"
+    ]
+  },
+  "frequency.inc": {
+    "original_artifact": "work/m96-four-attempt-progress-r1/artifacts/frequency-3e2dcb893efd426c9ebb3a695d8b7b9b-part1.txt",
+    "artifact_sha256": "6d2530ddeac938b08b31e4a0be5e0748ad86afe380fca52a6ed24e9085f48d46",
+    "root_adaptations": [
+      "actual USChannel static owner",
+      "failed checks now fail suite instead of silently succeeding",
+      "host-only includes at translation unit scope"
+    ]
+  },
+  "mode-transition.inc": {
+    "original_artifact": "work/m96-four-attempt-progress-r1/artifacts/mode-transition-39cf4bbdc87f4384a23df45fd2731e44-part1.txt",
+    "artifact_sha256": "fad4138b8eda200bf6691e82bb37620ef1e0e288e17147c5d9f54a7453ce49ac",
+    "root_adaptations": [
+      "usePreset mode API",
+      "stored names checked through Config and ChannelRecord",
+      "actual Selection bytes/length fields",
+      "actual existing public factory key symbol"
+    ]
+  },
+  "v13-migration.inc": {
+    "original_artifact": "work/m96-four-attempt-progress-r1/artifacts/v13-migration-39650d4670af433f911fc45a688e4d4b-part1.txt",
+    "artifact_sha256": "37184ae20efc91423bbe5dbf9ad67b6860765a23bb8b252700d5f3df282afe22",
+    "root_adaptations": [
+      "null guard before fixture byte access",
+      "actual Config names verified against pinned body"
+    ]
+  }
+}

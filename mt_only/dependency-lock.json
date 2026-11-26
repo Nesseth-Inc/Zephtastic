@@ -1,0 +1,544 @@
+[
+  {
+    "path": "zephyr",
+    "url": "https://github.com/zephyrproject-rtos/zephyr",
+    "commit": "1ee3b93134be23c16ab16b9eb4183bfef63447a6",
+    "overlay": [
+      {
+        "path": "drivers/display/ssd16xx.c",
+        "sha256": "95b884674d42623b944de7bba48ad170cc2f7b10c3ba5928356404b84f53c142"
+      },
+      {
+        "path": "drivers/entropy/fake_entropy_native_sim.c",
+        "sha256": "6a69f05749313b9db5626f6f51006a7c336708db3ce6494963161f4fff9109ee"
+      },
+      {
+        "path": "drivers/flash/flash_simulator.c",
+        "sha256": "cdfa79fe7d7f1062e8decc90624af622c6eb9fc66ee43a312b6fbac849a1e33c"
+      },
+      {
+        "path": "drivers/flash/flash_simulator_native.c",
+        "sha256": "0c735e2d33616fea43c2b14f89bfdbac72c18ddb0c896def90e665acbc698762"
+      },
+      {
+        "path": "drivers/flash/flash_simulator_native.h",
+        "sha256": "e08c6be8a51ca322e024a6085b5528bfd726ba6d8f2c9de09a155dc44a431354"
+      },
+      {
+        "path": "drivers/gnss/Kconfig.luatos_air530z",
+        "sha256": "2c9ec3657e3bf93a664468fcf7fa82329d0129e89f03f7fcb5287bb84dc58ef8"
+      },
+      {
+        "path": "drivers/gnss/gnss_luatos_air530z.c",
+        "sha256": "9a9805ef3575b685667c216ae360ea9f0be5e51afd729b8c2d043b9648ff2e1c"
+      },
+      {
+        "path": "drivers/gnss/gnss_nmea0183.c",
+        "sha256": "78c829117858d57b92300b7d55c03587e2abdcc33ec753283182411563765c51"
+      },
+      {
+        "path": "drivers/gnss/gnss_nmea0183_match.c",
+        "sha256": "126874df813e393f62182d10d8d06b4d2370452db2472dd231e953c8d179b4b7"
+      },
+      {
+        "path": "drivers/gnss/gnss_nmea_generic.c",
+        "sha256": "b5db77f87dac7c5a27a89ace7d1826edfd3164f8a327c354bdd0a2cd376c9752"
+      },
+      {
+        "path": "drivers/gpio/CMakeLists.txt",
+        "sha256": "d7d75a2f1d36687101e0f36a8927c005979cab15153178c642ecbedaf935dec9"
+      },
+      {
+        "path": "drivers/gpio/Kconfig",
+        "sha256": "2c58544fdddb1dde4d6f5d6db84680643dc213cdc628ff05c4acb3e07e461d39"
+      },
+      {
+        "path": "drivers/gpio/Kconfig.native_linux",
+        "sha256": "cd1014e23f53c009f7d5a34b436674d912aadc7344b2df95d5aba49f2a4820d7"
+      },
+      {
+        "path": "drivers/gpio/gpio_native_linux.c",
+        "sha256": "1a1e8f2b34e7b5e0f9722b099cf49e23f6ad7a8db694d5964462f91735884da5"
+      },
+      {
+        "path": "drivers/gpio/gpio_native_linux_adapt.c",
+        "sha256": "ab18f65e2b60acf1aebe79d98e0a28713882b313a17d2725005e6d380c74e8ea"
+      },
+      {
+        "path": "drivers/gpio/gpio_native_linux_adapt.h",
+        "sha256": "d84710f7f54a549ab1346e2e8ce171e52ecc8a38c01361022e7237bc1d4ae408"
+      },
+      {
+        "path": "drivers/lora/CMakeLists.txt",
+        "sha256": "250bfb4421c839322b87e6be7a6bfda1bd57804b45aff42676c93a7e03d78295"
+      },
+      {
+        "path": "drivers/lora/Kconfig",
+        "sha256": "337853a2f635ce1087f540b1947f8279243e688d6532975382b0f3fece3c657e"
+      },
+      {
+        "path": "drivers/lora/loramac-node/sx12xx_common.c",
+        "sha256": "e74433cb20fdb00924049665286a7d37de7c83ebdb69995ca38199456a60a0f1"
+      },
+      {
+        "path": "drivers/lora/lr11xx/CMakeLists.txt",
+        "sha256": "19a6ff4d3a35647dd5867fc220ef56aa2adc97a34b3b724c78ddac9e303c61b6"
+      },
+      {
+        "path": "drivers/lora/lr11xx/Kconfig",
+        "sha256": "64f3206fb4ce857f81aeab2ab561c8e20a3ea52432f35776be7cf847bbee1b21"
+      },
+      {
+        "path": "drivers/lora/lr11xx/lr11xx_cad_peak.h",
+        "sha256": "50bd10806aca97a19679790e4794ee4affd20caa407e81f66078fd6a57874d5e"
+      },
+      {
+        "path": "drivers/lora/lr11xx/lr11xx_hal_zephyr.c",
+        "sha256": "cbb8baf3913c32065c967ae5c1b5366a858c197cb0b7fa2162d080f1bb5d6491"
+      },
+      {
+        "path": "drivers/lora/lr11xx/lr11xx_hal_zephyr.h",
+        "sha256": "6565183d733fc9db9cdc2b13edb5449d3cb991b6629060e3af58ed968bde119f"
+      },
+      {
+        "path": "drivers/lora/lr11xx/lr11xx_lora.c",
+        "sha256": "591750f42559b4d38ce50b075536619acde2abed2a574515d5f048bc3d563db8"
+      },
+      {
+        "path": "drivers/lora/lr20xx/CMakeLists.txt",
+        "sha256": "7ca2dc28aa5ce5497a6dddf65811b468d43c0cf3f276ac509c65aace82985d3c"
+      },
+      {
+        "path": "drivers/lora/lr20xx/Kconfig",
+        "sha256": "29ecdbd36dd9a8e64c104fd49aa41278ba75623ea7b73750e278f56906e68767"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/LICENSE.txt",
+        "sha256": "ef81b9bff0368ad558fc3d21485bafc59f14c3ae957fa6ddffbf6cc4122bf5b7"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_driver_version.c",
+        "sha256": "60f7d23fa48a190862a6a97fd1ba0d1efd521b5bf678a28231d6e557c8e36909"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_driver_version.h",
+        "sha256": "bfd279a9c5177a64d33dd959db5a8c466a33eeae22a26cd34a50f1cadcbf6485"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_hal.h",
+        "sha256": "1f6ea780de93f7042376b788624a9225609a0b45f71b5aa5c07f7a734d15526e"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_patch.c",
+        "sha256": "b25d284e327c2d6e995d2b4eef3370e0247fe1fa3ba75a86a5ea54343f7e74a1"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_patch.h",
+        "sha256": "42fda3412c69afec74e3988c8dc672b2c5facf7087376a9ee0e30add48b3b692"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_patch_types.h",
+        "sha256": "12610f239ded8438d7d56dfc83943ba8e17fe9019d2f2a3a9b06e2d9781adeab"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_pram_lr2021.h",
+        "sha256": "67fa60b03078c5df03789a26f6aab2cdff488ee4280ce5f0449896177156f716"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_common.c",
+        "sha256": "09ce8f3382c9892f7f5e43f9366e9f7957a39a2a670ad11d6dc6d724bc61d89e"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_common.h",
+        "sha256": "1ce7a7c4644ede12fdfc60b969ab00e781a4607da125e8e66980d6e70fa4d8d1"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_common_types.h",
+        "sha256": "9e112651223a1cc0fe26ec2cf121240a180cbe4d9c8db65c7d9b987e14b98d28"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_fifo.c",
+        "sha256": "ac7baa5f62a2532f1563500c0e1a809d21802e32b5062c0538212f4996198fb0"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_fifo.h",
+        "sha256": "4bcd8d8aa915ddefc87d94e881ba1c41a26676866c436b31114e096d8d4f5fc1"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_fifo_types.h",
+        "sha256": "c1d2a4e57cd3c06255b2f4847777f4cdd1321a70d82ec7d022fa81a71c7822ab"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_flrc.h",
+        "sha256": "e6400c66bf7604840ecef2fbf247feb76152d79f642a63e5ab53fab32ed3fd12"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_flrc_types.h",
+        "sha256": "1473eb445bae6586d0bac3e57f278ac84db3ffa7ce49b99378ee0d8f0ce81d28"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_fsk_common_types.h",
+        "sha256": "9e46577448bec31344115f0c712fc36ca285ea68131f0828a7194b520d230568"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_lora.c",
+        "sha256": "0de12343e6f9aa86889096f6196099e63df648ffe75f765dabe5bef19764a184"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_lora.h",
+        "sha256": "6188c7e9c098047f2886a8325fb730ca84774ea01b8234feeca3ae453e466701"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_lora_types.h",
+        "sha256": "34ac086c7f863b973897828b5cb97507d4fc4d30cca932db93cb60f1222957e5"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_ook.h",
+        "sha256": "839a0ac46fe447a7d08a49b5ea7fc65f67dba61e4206432ff9c014f7efeb82c4"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_radio_ook_types.h",
+        "sha256": "cfcbf48e85e300ed38d8fdf29f1461ab5240fb521657fb4097685ad98a75c728"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_regmem.c",
+        "sha256": "751ba7243c980872ccbd2bb06df896c055800980784129f3cad38c34099ae316"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_regmem.h",
+        "sha256": "2829541cecfff3f600edb5749728580fccdec5b37fc9476ea4cdae9ba7e3d1a2"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_status.h",
+        "sha256": "880ca796353cf7af487f21f865f47c1a7f822112607ff40772dcae815444d301"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_system.c",
+        "sha256": "abf533c01738c962a6d4b47269d178a4281a6d45e49363ec2afbfaec335172c3"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_system.h",
+        "sha256": "57947a87338dbcad64a0ef3a8b02c0ab68e3b140dd6294f37db058d551ab1a4c"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_system_types.h",
+        "sha256": "9f89a94339a9f6babbc990811a4e075e72629f1bcb9acc53fbf4a0843caade5d"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_workarounds.c",
+        "sha256": "71e05bb1fb5cb2341b575ea3115f04307ad63e6c78bc4f8ed15072d7c3d76edb"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_driver/lr20xx_workarounds.h",
+        "sha256": "81c7bab57b56e72f2327632c27862a01529f6f5094bcae6df071bd889e12da6a"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_hal_zephyr.c",
+        "sha256": "348667d7b61b61a138c91327920cf5ccacc8dc5f85a457dba0a18bdfb9f81c81"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_hal_zephyr.h",
+        "sha256": "a253418b0e1e5631f5214b757ff22caba7b841a6b50a2df30a65f52cf88cd630"
+      },
+      {
+        "path": "drivers/lora/lr20xx/lr20xx_lora.c",
+        "sha256": "0c61e77633e3e5da7f872f0ba05a67bff075ad9bb6aa7db0c6750d29807a9c70"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x.c",
+        "sha256": "3004ca5068a94764d3d1c3951e5f21ea59af220af0150409e81a78a92b3f1ba9"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x.h",
+        "sha256": "3ade369b4a954fb2cad7d6f93336e2cdcab1f804282fa05e0235eed0800d83e3"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x_airtime_math.h",
+        "sha256": "7a0fce84f22865caf2e3cf5455841499409a12f6c263b33ae3dc9ea7a2855dab"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x_hal.c",
+        "sha256": "e191db81c1b3d5a6e1d87c6e0f8dd8adfffcb3d1a8db3786e56bdfd5787ae5d7"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x_hal.h",
+        "sha256": "9e0e2d1b8722e6f645630bf446f75e00b34213f9a8f572d7a424340b4adda1d1"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x_hal_common.c",
+        "sha256": "9b1cfb9e324fa52a587985b1206fd5d269ac0d186a8b9942790bed553511810a"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x_hal_stm32wl.c",
+        "sha256": "4219e9f919baec62b7da4d52d35bc7cd012578b0c882de069cc4fe39ce64d96b"
+      },
+      {
+        "path": "drivers/lora/native/sx126x/sx126x_regs.h",
+        "sha256": "2dc0adf99c5456a9773ef71e78c13ab23d2aea2e8587cdabd929f844e4dc1d3f"
+      },
+      {
+        "path": "drivers/sensor/sensirion/scd4x/scd4x.c",
+        "sha256": "a634d6eed45e4f6361a931244724f09c34aa0270763bee2636ab4b04f7d6e60c"
+      },
+      {
+        "path": "drivers/sensor/sensirion/scd4x/scd4x.h",
+        "sha256": "9eb2031502819e3cb26d5b4833da90a893266c3d34843d171fc27926a4047bb5"
+      },
+      {
+        "path": "drivers/sensor/sensirion/sht3xd/sht3xd.c",
+        "sha256": "38cf30b9248f5349f493c41d30811730973cdf23ae7e61f15a706b525b24ee66"
+      },
+      {
+        "path": "drivers/sensor/sensirion/sht3xd/sht3xd.h",
+        "sha256": "6b0842e6e9b462d885a3f115b569a8d161c882045e891ef708b8cd268d79f4b7"
+      },
+      {
+        "path": "drivers/sensor/sensirion/sht4x/sht4x.c",
+        "sha256": "28daa0b4ced551f7891d21c1f63bb360635621f929d02cd3668713b4147e864a"
+      },
+      {
+        "path": "drivers/sensor/sensirion/sht4x/sht4x.h",
+        "sha256": "1107e3c39fe10c8ee86a8c282f472917c2ec40afb13a02afee96282f4a160dff"
+      },
+      {
+        "path": "drivers/serial/uart_nrfx_uarte.c",
+        "sha256": "49b2b1a8ae8a07a801508a3e99db5bb5f8c75cf300c92578a7aebfb8200be667"
+      },
+      {
+        "path": "drivers/spi/CMakeLists.txt",
+        "sha256": "f7244c5318fdf89b8df3c3697a1340639bc6e8a1ff23e99947380fdc519ae181"
+      },
+      {
+        "path": "drivers/spi/Kconfig",
+        "sha256": "fd5fabc7d62c88505361d025c5345bc2b866742e3ca08a5184eed3239d0c2830"
+      },
+      {
+        "path": "drivers/spi/Kconfig.native_linux",
+        "sha256": "8e987ca8eb0c01863168b924d01a6ea65b78548e4f235cad987be7e486900dae"
+      },
+      {
+        "path": "drivers/spi/spi_native_linux.c",
+        "sha256": "dead0aae9bdbf9d2150024419aba9d1e4aee01097fe213d7bb40d72810313e2d"
+      },
+      {
+        "path": "drivers/spi/spi_native_linux_adapt.c",
+        "sha256": "510758ab85b31943352721207d70f5bc3b2b0b4dbbc97603b84f60a6bb5f058f"
+      },
+      {
+        "path": "drivers/spi/spi_native_linux_adapt.h",
+        "sha256": "2cf9353d13786a6222efbda250d98ad549e0f0440f839136374e2f349398adfe"
+      },
+      {
+        "path": "drivers/wifi/esp32/src/esp_wifi_drv.c",
+        "sha256": "16b8a3738c5c5472a03601ba995e8d5ee9fab4aeb8ae216922e1f7072a1e2f3e"
+      },
+      {
+        "path": "dts/bindings/gpio/zephcore,gpio-native-linux.yaml",
+        "sha256": "f4961403cfe512070555c48342d2ff1a6d0d7fc1f4945d8d8478139a776261c6"
+      },
+      {
+        "path": "dts/bindings/lora/semtech,lr1110.yaml",
+        "sha256": "a50adabb61ab7f7a77648f554eb8f52414c698223459013b83f57673b2a01666"
+      },
+      {
+        "path": "dts/bindings/lora/semtech,lr2021.yaml",
+        "sha256": "a061a02c7c4e344141ccc5dabccbf433b27b9311347ae08d06db06b3ccdcbcfc"
+      },
+      {
+        "path": "dts/bindings/lora/semtech,sx126x-base.yaml",
+        "sha256": "4babe8f4a6aa4ebcc7093fbff8b4c542548e70e58b242f46eb6bb290477b1c3f"
+      },
+      {
+        "path": "dts/bindings/spi/zephcore,spi-native-linux.yaml",
+        "sha256": "78ada97266a07fed4592442391e71c941bf5f914d64b376f12d8ec50d9f7e602"
+      },
+      {
+        "path": "include/zephyr/display/ssd16xx.h",
+        "sha256": "895a1d380500a5932a7f821d82f68f60c0954015e200b131c56d05bc41737b98"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/lr11xx_lora.h",
+        "sha256": "03cf0e0356b62faefa79f5ab450dd3b3f2e5b067c573404a912512dc411bdfd8"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/lr20xx_lora.h",
+        "sha256": "348afd6b269ebd27bf815887a85afdeb28bac07c5fbb646316567277f2c73a6f"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/sx126x_bench.h",
+        "sha256": "08999b3fd7424454b11c3ea63479eb1c10ba8d1d341d3ad458f371f131233b95"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/sx126x_bench_gate.h",
+        "sha256": "9f9ec1bb4ecccd2d86f086b4a9972d8a468fa14656107466864d8b7312d2c781"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/sx126x_continuous_gate.h",
+        "sha256": "972fb4e34e0d814edc0684efb53ad03135c217fbb2dd5f0d627fda3c78e88a80"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/sx126x_dual_gate.h",
+        "sha256": "b7ab7177bf26265d1afadfb14a46c58f7dd043538e335b6cf191ce634a98f260"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/sx126x_ext.h",
+        "sha256": "139e1a021c22f4d6598217530f3efc448f39719fceef871611a2f21c5666972e"
+      },
+      {
+        "path": "include/zephyr/drivers/lora/zc_lora_timing.h",
+        "sha256": "e4450aa96d55b00e2082ceaf912d5ad5d075eaed264ab51be4e8cae8b6c9dd6e"
+      },
+      {
+        "path": "include/zephyr/drivers/sensor/scd4x.h",
+        "sha256": "116d43168d180cb984b0c5ef7d1f6cdb6d7c96a1e13b9c4b3dc382c2ebb248e1"
+      },
+      {
+        "path": "scripts/west_commands/blobs.py",
+        "sha256": "5132f677a4ac93a554693c3b6ac8bf5b0a75cad28d2605a600556cd21ca01fe0"
+      },
+      {
+        "path": "subsys/bluetooth/host/keys.c",
+        "sha256": "887d5784afe83d49c1d49320fff1eeaa74188806c0310f0158f3cea2e66350ce"
+      },
+      {
+        "path": "subsys/bluetooth/host/settings.c",
+        "sha256": "2d09752913845b81baf331a309ccaf65eb69a43b2595679063c2b5df7d7686f2"
+      },
+      {
+        "path": "subsys/kvss/nvs/nvs.c",
+        "sha256": "861ba3c3cc8d915a3442da6560bf6547e08388afaf628c0267563dcb251af021"
+      },
+      {
+        "path": "subsys/settings/src/settings.c",
+        "sha256": "17695b331af5e2d09badc476495d041d1fe2fd6fd6700bd802137be18e3d375c"
+      },
+      {
+        "path": "subsys/settings/src/settings_nvs.c",
+        "sha256": "1629a9cdafcd3f409925772e7a2d5427672c572dd13f3e5f98d881529e237255"
+      },
+      {
+        "path": "subsys/settings/src/settings_store.c",
+        "sha256": "195d2090fd63f84748aee5190e9b1cb665ad957cd1a6a8efa0fe4dca96f703e5"
+      },
+      {
+        "path": "subsys/usb/device_next/class/usbd_cdc_acm.c",
+        "sha256": "6e9158813a8cbdd08d4c4265a1cb0a335595ae8ac8419c1e237168bd06ead6a2"
+      }
+    ]
+  },
+  {
+    "path": "modules/hal/espressif",
+    "url": "https://github.com/zephyrproject-rtos/hal_espressif",
+    "commit": "0bd7ba4cdeb218fad291ae06f728c335a97e588d",
+    "overlay": [],
+    "blobs": [
+      {
+        "path": "lib/esp32s3/libbtdm_app.a",
+        "sha256": "513488f088f7806c5a815580fd00e189265962a8824091b1e60618b7f345d0c1",
+        "url": "https://github.com/espressif/esp32c3-bt-lib/raw/0a08c4b32f3666003080b662a1a61794da24ff0f/esp32s3/libbtdm_app.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libcore.a",
+        "sha256": "64e8ab87fbecc43fb07e6059f635fbeb8154f3f13accf56af4b1c3f47160cd70",
+        "url": "https://github.com/espressif/esp32-wifi-lib/raw/cde32e0a504ec4083261156f807babf702967bb2/esp32s3/libcore.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libespnow.a",
+        "sha256": "5374e802eb92f110c0bc32897f2e2275bec9950250249f229ce5957c2ea112ab",
+        "url": "https://github.com/espressif/esp32-wifi-lib/raw/cde32e0a504ec4083261156f807babf702967bb2/esp32s3/libespnow.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libnet80211.a",
+        "sha256": "0a9259152e71171399a9189f5995c3da27243e7d5dddf7b75403e88e0d0abf3d",
+        "url": "https://github.com/espressif/esp32-wifi-lib/raw/cde32e0a504ec4083261156f807babf702967bb2/esp32s3/libnet80211.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libpp.a",
+        "sha256": "152d3b09e9ff3dc2bf6ec812ad31e65be19dfb77b384388f1a63450de4069a69",
+        "url": "https://github.com/espressif/esp32-wifi-lib/raw/cde32e0a504ec4083261156f807babf702967bb2/esp32s3/libpp.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libbtbb.a",
+        "sha256": "4d60de87cad0fa9519d68e0e40778a68dc61af040853fd0b5c45efa2a010ee94",
+        "url": "https://github.com/espressif/esp-phy-lib/raw/e37ecdc9c1e93fefda5b1a99f09bd979046d0720/esp32s3/libbtbb.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libphy.a",
+        "sha256": "038ac2bc37dc297e295811bc095d2b360a49aa0dddaa51ccb4b60ce2d1b2b73f",
+        "url": "https://github.com/espressif/esp-phy-lib/raw/e37ecdc9c1e93fefda5b1a99f09bd979046d0720/esp32s3/libphy.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libmesh.a",
+        "sha256": "d71e16bfabcb69f0254ccd124f405c91c60a2868b9616f889fc67d8436dc6383",
+        "url": "https://github.com/espressif/esp32-wifi-lib/raw/cde32e0a504ec4083261156f807babf702967bb2/esp32s3/libmesh.a",
+        "license-path": "zephyr/blobs/license.txt"
+      },
+      {
+        "path": "lib/esp32s3/libcoexist.a",
+        "sha256": "81ef0c4b60fb153faf7e68dc5b63a8c66a578d82986033751e9961fa3abfb79d",
+        "url": "https://github.com/espressif/esp-coex-lib/raw/3c490f8059e0a7eeedda30aaa1e4b3afad06f632/esp32s3/libcoexist.a",
+        "license-path": "zephyr/blobs/license.txt"
+      }
+    ]
+  },
+  {
+    "path": "modules/hal/xtensa",
+    "url": "https://github.com/zephyrproject-rtos/hal_xtensa",
+    "commit": "60224c27bed1466287f0246ac04c902b92331c29",
+    "overlay": []
+  },
+  {
+    "path": "modules/crypto/mbedtls",
+    "url": "https://github.com/zephyrproject-rtos/mbedtls",
+    "commit": "c43f34b93797e81fd0257c30004dcd0ae332ae51",
+    "overlay": []
+  },
+  {
+    "path": "modules/crypto/tf-psa-crypto",
+    "url": "https://github.com/zephyrproject-rtos/tf-psa-crypto",
+    "commit": "765af96a20a2b408474dcd950372ba9af4d26b62",
+    "overlay": []
+  },
+  {
+    "path": "modules/lib/loramac-node",
+    "url": "https://github.com/zephyrproject-rtos/loramac-node",
+    "commit": "874544f2a8a0212a0cc12e5eea51a024fd3d93d1",
+    "overlay": [
+      {
+        "path": "src/radio/sx1276/sx1276.c",
+        "sha256": "f88eaeb4067ef4b7275d9d81b0f204c7813aa6ee8c0e251d663fe34bb24395bc"
+      }
+    ]
+  },
+  {
+    "path": "modules/fs/littlefs",
+    "url": "https://github.com/zephyrproject-rtos/littlefs",
+    "commit": "e9a8638fc228e43a3156ed3ac602229af3e3c1d5",
+    "overlay": []
+  },
+  {
+    "path": "modules/hal/cmsis",
+    "url": "https://github.com/zephyrproject-rtos/cmsis",
+    "commit": "512cc7e895e8491696b61f7ba8066b4a182569b8",
+    "overlay": []
+  },
+  {
+    "path": "modules/hal/cmsis_6",
+    "url": "https://github.com/zephyrproject-rtos/CMSIS_6",
+    "commit": "1c1840af7a7e757d6e2fec3ddb0e5ce0dfcc93c8",
+    "overlay": []
+  },
+  {
+    "path": "modules/hal/nordic",
+    "url": "https://github.com/zephyrproject-rtos/hal_nordic",
+    "commit": "153373591c84109bbca866381e213ec09809cdd2",
+    "overlay": []
+  }
+]

@@ -1,0 +1,9 @@
+/* Opt-in new-hardware layout. Keep the entire app, settings and bootloader
+ * ranges fixed. Old LittleFS devices must use the ordinary profile. The
+ * reset owner requires every byte of the original volume erased before its
+ * first enrollment and never erases even one byte of a previous filesystem. */
+&lfs_partition { reg = <0x000d4000 0x0001f000>; };
+/* The base T096 overlay removes fstab, so boot never automounts or formats this volume. */
+&flash0 { partitions {
+    mt_reset_floor: partition@f3000 { label = "mt-reset-floor"; reg = <0x000f3000 0x1000>; };
+}; };

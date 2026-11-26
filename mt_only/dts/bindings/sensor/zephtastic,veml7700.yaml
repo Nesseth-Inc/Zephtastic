@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Vishay VEML7700 with Meshtastic automatic exposure and white-light telemetry
+compatible: "zephtastic,veml7700"
+include: i2c-device.yaml

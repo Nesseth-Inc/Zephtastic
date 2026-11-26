@@ -1,0 +1,21 @@
+# Cold-boot peer observations
+
+Add `--satellite-history` to a T096 fresh-domain companion build or a XIAO private-runtime build. The profile adds the LittleFS module at the Zephyr west revision locked in `mt_only/dependency-lock.json`. The ordinary profiles retain their existing partition map.
+
+The private mount is `/zt-history`. Firmware mounts existing supported media with Zephyr's no-format flag. On first use, `--initialize-erased-satellite-history` permits formatting only after a successful read of every byte in the declared partition shows the flash erase value. An occupied, unrecognized or partially formatted volume stays untouched. With the T096 device-reset variant, initialization also waits until the independent identity retirement floor is already active. Its first enrollment continues to require the entire original LittleFS extent to be erased. A fresh boot with an inactive floor therefore leaves the blank volume available for that enrollment.
+
+| Profile | Private volume | Flash outside the volume |
+| --- | --- | --- |
+| T096 ordinary fresh-domain history | 124 KiB from 0xd4000 through 0xf2fff | The 16 KiB settings address remains 0xd0000. The retirement page begins at 0xf3000. |
+| T096 high-capacity fresh layout | 76 KiB from 0xe0000 through 0xf2fff | The relocated 16 KiB settings address is 0xdc000. The retirement page begins at 0xf3000. |
+| XIAO history | 512 KiB from 0x400000 through 0x47ffff | The linked boot, primary, OTA and board storage partitions end at 0x3e0000. The retirement and settings partitions start at 0x7ef000 and 0x7f0000. |
+
+The snapshot holds PositionLite, DeviceMetrics, canonical EnvironmentMetrics and public status text for up to 16 tracked peers. Only admitted broadcasts on configured shared channels qualify. Reports retain their separate source channels, received signal, hop count and MQTT provenance. Private replies and private timestamps never enter the snapshot. PhoneAPI uses the peer's last known receive UTC when replaying these public packets, including after reboot. [Pinned Meshtastic PhoneAPI](https://github.com/meshtastic/firmware/blob/8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c/src/mesh/PhoneAPI.cpp)
+
+Each snapshot binds the local identity public key, node ID, channel generation, channel configuration digest and a random factory-reset epoch. Every peer row binds its node ID, key and verified lifetime in NodeJournal v7. Renames, route changes and other peers' contact edits preserve matching rows. Ignore, unignore, key changes, removal and reenrollment give that node a new lifetime. The current firmware reads journal versions 1 through 7. Earlier firmware that predates v7 requires its own compatibility assessment before rollback. A config reset removes the epoch in every current profile. An inaccessible old file cannot become active under the new epoch.
+
+Every two hours the firmware checks for changes while storage is quiescent. A changed snapshot is streamed one peer at a time to a private staging file, synced, closed and atomically renamed. An unchanged snapshot skips flash writes. A failed save preserves the previous generation and retries after a minute. Recovery validates the complete BLAKE2b digest and row headers before applying the file. Public file transfer, if separately enabled, is confined to the public subdirectory.
+
+The format is bounded to 7,368 bytes per committed generation. The 16-peer fixture with all 41 Environment fields and 79-byte statuses uses 6,504 bytes. The NVS-native T096 capacity fixture measured 3,980 bytes free with two 1,572-byte v7 NodeJournals, a 16-byte epoch, 16 PKI peers, and five modeled BLE bonds. The corresponding baseline measured 4,184 bytes free. Report data lives entirely on the separate volume.
+
+Run `python3 mt_only/tests/stock_satellite_history/run.py --littlefs <pinned-module-directory>` to exercise both enum ABIs, the actual LittleFS engine, cold PhoneAPI output, source ownership, corrupted files, write interruption and independent retirement-page guards. The test accepts the locked Git checkout or a byte-verified source export. The NOR fixture models short and torn writes. Physical flash wear, reset timing and on-device BLE transfer require hardware qualification.

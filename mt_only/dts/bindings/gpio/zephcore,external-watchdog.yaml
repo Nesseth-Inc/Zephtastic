@@ -1,0 +1,14 @@
+description: External watchdog with a wake input and a pulsed done output
+compatible: "zephcore,external-watchdog"
+include: base.yaml
+properties:
+  wake-gpios:
+    type: phandle-array
+    required: true
+  done-gpios:
+    type: phandle-array
+    required: true
+  feed-interval-ms:
+    type: int
+    required: true
+    description: Time between DONE pulses prescribed by the external watchdog

@@ -1,0 +1,17 @@
+/* Native OPT3001 and BH1750 with dedicated TSL2591 and VEML7700. */
+/ {
+    aliases {
+        zt-environment = &lux_native_opt;
+        zt-environment-2 = &lux_native_bh;
+        zt-tsl2591 = &lux_stock_tsl;
+        zt-veml7700 = &lux_stock_veml;
+    };
+};
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    lux_native_opt: light@45 { compatible = "ti,opt3001"; reg = <0x45>; };
+    lux_native_bh: light@23 { compatible = "rohm,bh1750"; reg = <0x23>; resolution = <1>; mtreg = <69>; };
+    lux_stock_tsl: light@29 { compatible = "zephtastic,tsl2591"; reg = <0x29>; };
+    lux_stock_veml: light@10 { compatible = "zephtastic,veml7700"; reg = <0x10>; };
+};

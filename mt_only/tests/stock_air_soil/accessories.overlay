@@ -1,0 +1,17 @@
+/* Build-only external accessory fixture. The reset pin is a test assignment. */
+/ {
+    aliases {
+        zt-sfa30 = &test_sfa30;
+        zt-rak12035 = &test_soil;
+    };
+};
+&i2c0 {
+    status = "okay";
+    clock-frequency = <100000>;
+    test_sfa30: sfa30@5d { compatible = "sensirion,sfa30"; reg = <0x5d>; };
+    test_soil: soil@20 {
+        compatible = "rakwireless,rak12035";
+        reg = <0x20>;
+        reset-gpios = <&gpio1 1 GPIO_ACTIVE_LOW>;
+    };
+};

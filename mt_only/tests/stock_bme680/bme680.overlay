@@ -1,0 +1,11 @@
+/ {
+    aliases { zt-bme680 = &iaq_sensor; };
+};
+&i2c0 {
+    status = "okay";
+    iaq_sensor: bme680@76 {
+        compatible = "bosch,bme680";
+        reg = <0x76>;
+        zephyr,deferred-init;
+    };
+};

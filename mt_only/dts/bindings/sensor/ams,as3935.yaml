@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: As3935 stock I2C telemetry accessory
+compatible: "ams,as3935"
+include: i2c-device.yaml

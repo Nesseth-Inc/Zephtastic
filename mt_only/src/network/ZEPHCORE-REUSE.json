@@ -1,0 +1,73 @@
+{
+  "PSRAM_placement_reuse": {
+    "SDK_actual_original_68226_map_join": {
+      "boards/seeed/xiao_esp32s3/xiao_esp32s3_procpu_common.dtsi": {
+        "bytes": 1486,
+        "mode": 420,
+        "sha256": "82b5de5d0758c0e1bd67280e605cae331929ed88a137b607e122cce7b36b9a4e"
+      },
+      "drivers/wifi/esp32/Kconfig.esp32": {
+        "bytes": 32317,
+        "mode": 420,
+        "sha256": "00865c3d4b69a259a15ae6708ae04dad476b063ac613226a3902a5d291fafdd5"
+      },
+      "soc/espressif/common/Kconfig.spiram": {
+        "bytes": 8888,
+        "mode": 420,
+        "sha256": "865c0126f19afff11b90af4f6b39297ebcdcaad6ae2b161c4e6675b348f2b240"
+      },
+      "soc/espressif/common/esp_psram.c": {
+        "bytes": 4788,
+        "mode": 420,
+        "sha256": "3fc3bff47582082be194770980a4856de4b19f58560ff7613bfe3df227aee879"
+      },
+      "soc/espressif/esp32s3/default.ld": {
+        "bytes": 45664,
+        "mode": 420,
+        "sha256": "3160dfa20b8036d3a3a6e85988ab3366fc7947add720282960c19031f3720557"
+      },
+      "soc/espressif/esp32s3/soc.c": {
+        "bytes": 2293,
+        "mode": 420,
+        "sha256": "817c676df3c35e74e5ef8f9efad981bf6baf6ba48aa8aa268f3a740341a87e98"
+      }
+    },
+    "SDK_locked_commit": "1ee3b93134be23c16ab16b9eb4183bfef63447a6",
+    "actual_PSRAM_boot_and_peak_qualified": false,
+    "donor_bytes": 40039,
+    "donor_fragment_sha256": "78588f8e6a4908f4cde831b6d1adae47417deef57ae6e0514c91478a3e45fb2a",
+    "donor_license": "MIT",
+    "donor_path": "src/main_companion.cpp",
+    "donor_sha256": "308f2f50cba230974227d3fee951c082d1bf62859c70b9f1d4919abbe8117eb4",
+    "scope": "PSRAM section placement pattern for thread-only TCP outgoing queue; whole Service is not relocated"
+  },
+  "adapted_connection_manager": "ZephTastic adapts these donor files for its station and transport interfaces. Hashes identify the original inputs.",
+  "files": {
+    "adapters/transport/TcpCompanionTransport.c": {
+      "adaptation": "Socket setup, partial-send and bounded-congestion primitives in src/network/TcpTransport.cpp; no incompatible MeshCore wire framing copied.",
+      "bytes": 10597,
+      "donor_sha256": "0dc894faa64cba73e2712be46c0dde02e86fd309a99efc31a4bded4554510f57",
+      "license": "MIT"
+    },
+    "adapters/wifi/ZephyrWiFiStation.c": {
+      "bytes": 7597,
+      "donor_scope": "literal dirty-checkout bytes, not a clean donor commit claim",
+      "donor_sha256": "fe476dc04ed58a06b6709d195151df1746da7739bad194be11b1ad844aa61f04",
+      "license": "MIT"
+    },
+    "adapters/wifi/ZephyrWiFiStation.h": {
+      "bytes": 1833,
+      "donor_scope": "literal dirty-checkout bytes, not a clean donor commit claim",
+      "donor_sha256": "d0088c5b208bfb5fe7d456890bf2288d40c4a4d38778fed764b1617fbf4356a5",
+      "license": "MIT"
+    },
+    "helpers/pm_sleep_guard.h": {
+      "bytes": 2353,
+      "donor_scope": "literal dirty-checkout bytes, not a clean donor commit claim",
+      "donor_sha256": "6eba4ace14137ddf92e327396e048b6e06145d0dc18e5105939a36851c8e3a57",
+      "license": "MIT"
+    }
+  },
+  "no_credential_source_read": true,
+  "source_donor": "ZephCore working tree (donor file digests recorded above)"
+}

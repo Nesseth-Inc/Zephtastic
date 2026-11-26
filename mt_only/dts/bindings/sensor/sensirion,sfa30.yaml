@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
+description: Sensirion SFA30 formaldehyde sensor on the telemetry worker
+compatible: "sensirion,sfa30"
+include: i2c-device.yaml

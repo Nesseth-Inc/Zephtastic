@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+
+description: RadSens static radiation monitor
+compatible: "climateguard,radsens"
+include: i2c-device.yaml

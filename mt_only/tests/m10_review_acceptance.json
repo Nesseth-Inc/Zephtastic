@@ -1,0 +1,43 @@
+{
+  "scope": "Independent offline private-message runtime review; synthetic keys only",
+  "stock_commit": "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c",
+  "stock_sources": {
+    "nonce_cipher": "zephcore/bench/upstream-differential/source/CryptoEngine.cpp:287-354,591-600",
+    "signature_envelope": "zephcore/bench/upstream-differential/source/CryptoEngine.cpp:137-172",
+    "first_contact": "zephcore/bench/upstream-differential/source/Router.cpp:705-780",
+    "outbound_no_fallback": "zephcore/bench/upstream-differential/source/Router.cpp:1324-1376",
+    "ack_policy": "zephcore/bench/upstream-differential/source/ReliableRouter.cpp:221-303",
+    "ack_wire": "mt_only/experimental/pki/reference/AckProof.cpp",
+    "ack_advisory_limits": "mt_only/experimental/pki/reference/AckProof.h"
+  },
+  "acceptance_groups": [
+    {
+      "name": "private_peer_authority",
+      "cases": ["Absent identity or ledger refuses private operation", "Unverified NodeInfo and phone-supplied public_key never create trust", "Wrong-key same-node claims cannot replace explicit pin", "Another valid pairwise peer cannot authenticate recipient ACK", "Self-signed CRC32-bound first contact is observed separately from operator-authorized trust", "Key-generation/revocation invalidates old sessions without releasing same-key nonce history"]
+    },
+    {
+      "name": "private_send_and_rf_gates",
+      "cases": ["Explicit private request cannot fall back to Public on any failure", "Reply/reaction metadata remains encrypted with original request semantics", "Broadcast and invalid-destination private requests rejected before reservation", "Compiled RX-only, disarmed, stopped, faulted, busy and airtime-limited paths cannot bypass Service", "Active send uses stable buffer until completion", "Retries preserve exact ciphertext/id/extra nonce and never call entropy/crypto/storage again", "Disconnect/cancel/expiry cannot resurrect pending work"]
+    },
+    {
+      "name": "private_receive_and_replay",
+      "cases": ["Gate exact local destination, channel zero, nonlocal pinned sender, packet ID and bounded size before crypto", "Wrong key/from/id/tag/extra nonce fails without output", "No Public decode fallback after failed private candidate", "Authenticate before replay mutation; commit replay before delivery", "Corrupt/readback-failed/full ledger fails closed", "Reset replay cannot redeliver", "Duplicate ACK requires reauthentication; ID-only ledger cannot claim exact-ciphertext equivalence", "No user-controlled inbound pki_encrypted/public_key/ack_proof_status flag is trusted"]
+    },
+    {
+      "name": "private_ack",
+      "cases": ["Cheap pending/recipient/request gate precedes X25519", "Absent/malformed/duplicate/wrong-wire/invalid/unknown-key proof never completes private job", "MAC covers exact Routing bytes with proof excised, including unknown fields", "Authenticated NONE vs NAK vs route-discovery variants interpreted distinctly", "Wrong request/peer/destination and replayed completed ACK do not affect another job", "Bare Public ACK, app response, NodeInfo request_id and own echo cannot complete private job", "Early valid ACK waits for native send completion without use-after-free", "No ACK-of-ACK amplification or unarmed reply generation"]
+    },
+    {
+      "name": "durable_nonce",
+      "cases": ["Stable public-key/local-node domain across same-key generation/import/reset", "Reservation commits before entropy/encryption", "Failed entropy/crypto attempts burn IDs", "Uncertain writes/readbacks freeze without retry", "No live eviction or automatic reset of full ledger", "Different-key migration rejected unless separately implemented and reviewed", "CRC snapshots provide crash consistency only; no malicious rollback guarantee"]
+    }
+  ],
+  "intentional_stock_differences": [
+    "Authenticated-only private ACK completion is stricter than pinned stock advisory AckProof policy.",
+    "Pinned-peer runtime authorization is stricter than accepting self-certifying first contact as sufficient private trust.",
+    "No header-only implicit private ACK cancellation.",
+    "Fixed no-eviction durable ledgers eventually exhaust and require an explicit future lifecycle; no silent recovery.",
+    "No transit-router, key-verification handshake, admin-key fallback, live provisioning or stock-client qualification claim."
+  ],
+  "not_qualification": ["No hardware", "No persistent credentials", "No RF", "No BLE/iPhone validation", "No malicious flash-rollback defense"]
+}

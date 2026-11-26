@@ -1,0 +1,3 @@
+/* The selected BME680 occupies the default 0x76 BME280 footprint. */
+#include "bme680.overlay"
+&bme280 { status = "disabled"; };

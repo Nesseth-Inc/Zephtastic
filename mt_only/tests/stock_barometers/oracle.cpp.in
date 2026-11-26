@@ -1,0 +1,104 @@
+// The runner inserts the named pinned production function bodies at the markers.
+#include "meshtastic/telemetry.pb.h"
+#include <cstring>
+#include <cstdint>
+#include <cassert>
+#define LOG_DEBUG(...)
+struct sensors_event_t { float temperature,relative_humidity,pressure; unsigned version,sensor_id,type,timestamp; };
+static unsigned millis() { return 0; }
+static void delay(unsigned) {}
+#define AHTX0_CMD_TRIGGER 0xac
+#define AHTX0_STATUS_BUSY 0x80
+#define AHT10_TEMP_OFFSET 0
+struct AhtWire {
+    const uint8_t *raw=nullptr;
+    bool write(const uint8_t *v,unsigned n){return n==3&&v[0]==0xac&&v[1]==0x33&&v[2]==0;}
+    bool read(uint8_t *r,unsigned n){assert(n==6);memcpy(r,raw,n);return true;}
+};
+struct Adafruit_AHTX0 {
+    float _humidity=0,_temperature=0;
+    AhtWire *i2c_dev;
+    int getStatus(){return 8;}
+    bool getEvent(sensors_event_t *,sensors_event_t *);
+    void fillTempEvent(sensors_event_t *e,unsigned){e->temperature=_temperature;}
+    void fillHumidityEvent(sensors_event_t *e,unsigned){e->relative_humidity=_humidity;}
+};
+@AHT_READ@
+struct AHT10Sensor { Adafruit_AHTX0 aht10; bool getMetrics(meshtastic_Telemetry *); };
+@AHT_METRICS@
+struct Adafruit_BMP085 {
+    int16_t ac1,ac2,ac3,b1,b2,mc,md;
+    uint16_t ac4,ac5,ac6; uint8_t oversampling=3;
+    int32_t temp1,temp2,pressure;
+    int temperatureReads=0;
+    uint16_t readRawTemperature(){return temperatureReads++==0?temp1:temp2;}
+    uint32_t readRawPressure(){return pressure;}
+    int32_t computeB5(int32_t UT);
+    float readTemperature();
+    int32_t readPressure();
+};
+@BMP085_FUNCS@
+struct BMP085Sensor { Adafruit_BMP085 bmp085; bool getMetrics(meshtastic_Telemetry *); };
+@BMP085_METRICS@
+struct DpsWire { const uint8_t *c,*raw; };
+struct Adafruit_BusIO_Register {
+    DpsWire *chip; unsigned reg,bytes;
+    Adafruit_BusIO_Register(DpsWire *i,int,int,unsigned r,unsigned n,int=0):chip(i),reg(r),bytes(n){}
+    int32_t read(){
+        if(reg==8) return 0xf0;
+        if(reg>=0x10){assert(reg<=0x21);return chip->c[reg-0x10];}
+        assert(bytes==3&&(reg==3||reg==0));auto r=chip->raw+reg;
+        return int32_t(r[0])<<16|int32_t(r[1])<<8|r[2];
+    }
+};
+struct Adafruit_BusIO_RegisterBits {
+    Adafruit_BusIO_Register *r; int index;
+    Adafruit_BusIO_RegisterBits(Adafruit_BusIO_Register *reg,int,int at):r(reg),index(at){}
+    bool read(){return (r->read()>>index)&1;}
+};
+#define ADDRBIT8_HIGH_TOREAD 0
+#define DPS310_MEASCFG 8
+#define DPS310_PRSB2 0
+#define DPS310_TMPB2 3
+#define MSBFIRST 0
+#define SENSOR_TYPE_AMBIENT_TEMPERATURE 0
+#define SENSOR_TYPE_PRESSURE 1
+struct Adafruit_DPS310 {
+    DpsWire *i2c_dev;
+    int spi_dev=0,_sensorID=0;
+    int32_t raw_temperature=0,raw_pressure=0;
+    int32_t _c0=0,_c1=0,_c00=0,_c10=0,_c01=0,_c11=0,_c20=0,_c21=0,_c30=0;
+    float _scaled_rawtemp=0,_temperature=0,_pressure=0;
+    float temp_scale=3670016,pressure_scale=3670016;
+    void _readCalibration(); void _read();
+    bool getEvents(sensors_event_t *,sensors_event_t *);
+};
+@DPS_FUNCS@
+struct DPS310Sensor { Adafruit_DPS310 dps310; bool getMetrics(meshtastic_Telemetry *); };
+@DPS_METRICS@
+extern "C" void bmp3_oracle(const uint8_t *,const uint8_t *,double *,double *);
+struct BMP3XXSingleton {
+    const uint8_t *c,*raw;
+    double temperature=0,pressure=0;
+    static BMP3XXSingleton *GetInstance(){assert(false);return nullptr;}
+    void performReading(){bmp3_oracle(c,raw,&temperature,&pressure);}
+};
+struct BMP3XXSensor {BMP3XXSingleton *bmp3xx;bool getMetrics(meshtastic_Telemetry *);};
+@BMP3_METRICS@
+meshtastic_EnvironmentMetrics donorSample(int part,const uint8_t *c,const uint8_t *raw,uint32_t secondTemp) {
+    meshtastic_Telemetry m{};m.which_variant=meshtastic_Telemetry_environment_metrics_tag;
+    if(part==0){AhtWire wire{raw}; AHT10Sensor sensor{{0,0,&wire}};assert(sensor.getMetrics(&m));}
+    if(part==1){
+        auto be=[](const uint8_t *b,int i){return uint16_t(uint16_t(b[i*2])<<8|b[i*2+1]);};
+        Adafruit_BMP085 driver{};driver.ac1=be(c,0);driver.ac2=be(c,1);driver.ac3=be(c,2);
+        driver.ac4=be(c,3);driver.ac5=be(c,4);driver.ac6=be(c,5);
+        driver.b1=be(c,6);driver.b2=be(c,7);driver.mc=be(c,9);driver.md=be(c,10);
+        driver.temp1=be(raw,0);driver.temp2=secondTemp;driver.pressure=((int32_t(raw[2])<<16)|(raw[3]<<8)|raw[4])>>5;
+        BMP085Sensor sensor{driver};assert(sensor.getMetrics(&m));
+    }
+    if(part==2){DpsWire wire{c,raw};DPS310Sensor sensor{{&wire}};sensor.dps310._readCalibration();assert(sensor.getMetrics(&m));}
+    if(part==3){BMP3XXSingleton driver{c,raw};BMP3XXSensor sensor{&driver};
+        m.variant.environment_metrics.has_relative_humidity=true;m.variant.environment_metrics.relative_humidity=82;
+        assert(sensor.getMetrics(&m));}
+    return m.variant.environment_metrics;
+}

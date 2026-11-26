@@ -1,0 +1,53 @@
+{
+  "captured_M108_source": "43cb756831db7bac8fa65dce490c6eb518deeaa3",
+  "captured_compiler_profile_sha256": "2a065edde4c8d6b45d91bae8a752ccd70aa509103da6605fc79a9b8229f000e1",
+  "groups": {
+    "subsys__bluetooth__controller": [
+      "subsys/bluetooth/controller/crypto/crypto.c",
+      "subsys/bluetooth/controller/flash/soc_flash_nrf_ticker.c",
+      "subsys/bluetooth/controller/hci/hci.c",
+      "subsys/bluetooth/controller/hci/hci_driver.c",
+      "subsys/bluetooth/controller/ll_sw/ll_addr.c",
+      "subsys/bluetooth/controller/ll_sw/ll_feat.c",
+      "subsys/bluetooth/controller/ll_sw/ll_tx_pwr.c",
+      "subsys/bluetooth/controller/ll_sw/lll_chan.c",
+      "subsys/bluetooth/controller/ll_sw/lll_common.c",
+      "subsys/bluetooth/controller/ll_sw/ull.c",
+      "subsys/bluetooth/controller/ll_sw/ull_adv.c",
+      "subsys/bluetooth/controller/ll_sw/ull_chan.c",
+      "subsys/bluetooth/controller/ll_sw/ull_conn.c",
+      "subsys/bluetooth/controller/ll_sw/ull_filter.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_chmu.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_common.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_conn_upd.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_enc.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_local.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_pdu.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_phy.c",
+      "subsys/bluetooth/controller/ll_sw/ull_llcp_remote.c",
+      "subsys/bluetooth/controller/ll_sw/ull_peripheral.c",
+      "subsys/bluetooth/controller/ll_sw/ull_tx_queue.c",
+      "subsys/bluetooth/controller/ticker/ticker.c",
+      "subsys/bluetooth/controller/util/dbuf.c",
+      "subsys/bluetooth/controller/util/mayfly.c",
+      "subsys/bluetooth/controller/util/mem.c",
+      "subsys/bluetooth/controller/util/memq.c",
+      "subsys/bluetooth/controller/util/util.c"
+    ],
+    "subsys__bluetooth__controller__ll_sw__nordic": [
+      "subsys/bluetooth/controller/ll_sw/nordic/hal/nrf5/cntr.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/hal/nrf5/ecb.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/hal/nrf5/mayfly.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/hal/nrf5/radio/radio.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/hal/nrf5/ticker.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/hci/hci_vendor.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/lll/lll.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/lll/lll_adv.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/lll/lll_clock.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/lll/lll_conn.c",
+      "subsys/bluetooth/controller/ll_sw/nordic/lll/lll_peripheral.c"
+    ]
+  },
+  "schema": "zt-pinned-controller-profile-fixture/v1"
+}

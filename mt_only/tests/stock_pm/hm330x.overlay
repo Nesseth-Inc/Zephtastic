@@ -1,0 +1,7 @@
+/* Compile-only. Exercise the existing generic alias using its stock producer. */
+/ { aliases { air-quality-2 = &test_hm; }; };
+&i2c0 {
+    status = "okay";
+    clock-frequency = <400000>;
+    test_hm: hm330x@40 { compatible = "seeed,hm330x"; reg = <0x40>; };
+};
