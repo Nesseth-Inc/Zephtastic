@@ -73,6 +73,9 @@ private:
     generation=get32(p+4);channelGeneration=p[3]==7?get32(p+8):0;return true;
   }
 public:
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+  void seedFresh(const Config &value) { if(state_==State::Fresh)config_=value; }
+#endif
   const Config &config()const{return config_;}
   State state()const{return state_;}
   uint32_t generation()const{return generation_;}

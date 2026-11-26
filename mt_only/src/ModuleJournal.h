@@ -38,6 +38,9 @@ private:
     generation=get32(p+4);return true;
   }
 public:
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+  void seedFresh(const ModuleSettings &value) { if(state_==State::Fresh)config_=value; }
+#endif
   const ModuleSettings &config()const{return config_;}
   State state()const{return state_;}
   uint32_t generation()const{return generation_;}

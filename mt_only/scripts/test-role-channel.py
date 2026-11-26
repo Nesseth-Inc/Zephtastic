@@ -4,7 +4,9 @@ from pathlib import Path
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', required=True, type=Path)
 parser.add_argument('--short-enums', action='store_true')
-parser.add_argument('--config', action='store_true')
+cases = parser.add_mutually_exclusive_group()
+cases.add_argument('--config', action='store_true')
+cases.add_argument('--router', action='store_true', help='Exercise the USB-only T096 policy')
 parser.add_argument('--stock', type=Path, help='Compare radio timing with a pinned 2.8.2 checkout')
 a = parser.parse_args()
 out = a.output.resolve()
@@ -26,12 +28,15 @@ assert len(boot)==1
 
 for h in proto.glob('*.pb.h'):shutil.copyfile(h,out/'meshtastic'/h.name)
 flags=(["-fshort-enums"]if a.short_enums else[])+['-fsanitize=address,undefined','-g','-I'+str(app/'src'),'-I'+str(vendor),'-I'+str(mono),'-I'+str(out),'-I'+str(proto/'nanopb'),*host.crypto_compile_flags()]
+if a.router:
+    flags += ['-DCONFIG_MT_T096_ROUTER_ONLY=1']
 if sys.platform == 'darwin':
     flags.append('-DEKEYREJECTED=129')
 commands=[];objects=[]
 for src in [mono/'monocypher.c',mono/'monocypher-ed25519.c',*(proto/'nanopb'/n for n in ['pb_common.c','pb_encode.c','pb_decode.c'])]:
  obj=out/(src.stem+'.o');cmd=[*host.cc(),'-std=c11',*flags,'-c',str(src),'-o',str(obj)];subprocess.run(cmd,check=True);commands.append(cmd);objects.append(str(obj))
-cmd=[*host.cxx(),'-std=c++17','-Wall','-Wextra','-Werror',*flags,str(app/('tests/role_channel_config_cases.cpp'if a.config else'tests/role_channel_tests.cpp')),str(app/'src/Protobuf.cpp'),str(vendor/'MtCodec.cpp'),str(vendor/'MtSignature.cpp'),str(app/'src/pki/PkiSigner.cpp'),str(app/'src/pki/PkiIdentity.cpp'),*objects,*host.crypto_link_flags(),'-o',str(out/'role-channel-tests')]
+case = 'router_only.cpp' if a.router else 'role_channel_config_cases.cpp' if a.config else 'role_channel_tests.cpp'
+cmd=[*host.cxx(),'-std=c++17','-Wall','-Wextra','-Werror',*flags,str(app/'tests'/case),str(app/'src/Protobuf.cpp'),str(vendor/'MtCodec.cpp'),str(vendor/'MtSignature.cpp'),str(app/'src/pki/PkiSigner.cpp'),str(app/'src/pki/PkiIdentity.cpp'),*objects,*host.crypto_link_flags(),'-o',str(out/'role-channel-tests')]
 subprocess.run(cmd,check=True);commands.append(cmd)
 r=subprocess.run([str(out/'role-channel-tests')],text=True,capture_output=True,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0','UBSAN_OPTIONS':'halt_on_error=1'})
 (out/'role-channel.log').write_text(r.stdout+r.stderr);print(r.stdout+r.stderr);r.check_returncode()

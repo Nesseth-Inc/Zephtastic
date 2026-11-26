@@ -23,7 +23,22 @@ The release includes the project source, the Nordic dependency and notices archi
 
 Use the image for your board. The TX-capable builds share one routing implementation across roles. A fresh configuration starts as CLIENT_MUTE, which suppresses forwarding. Use the phone to select CLIENT for ordinary rebroadcast, or ROUTER or ROUTER_LATE for a dedicated routing node. The T114 V2 and RAK4631 builds also start with transmission disabled. Both Meshtastic 2.8.2 and this firmware map the retired REPEATER setting to CLIENT. Forwarding also requires an appropriate region, enabled transmission and a rebroadcast setting that permits the packet. The receive-only Heltec V4 profiles cannot forward packets. Physical three-node relay testing is still open.
 
-On a fresh T096, complete the [USB identity enrollment](mt_only/docs/T096-FRESH-DOMAIN.md#first-enrollment) before testing the radio. The two T096 downloads are feature and storage profiles. The 680 KiB companion leaves 43,960 bytes of flash and 14,304 bytes of static RAM. The 728 KiB extended build leaves 1,960 and 3,300 bytes respectively. Changing the role does not free either resource. A dedicated router build could omit phone or display features at compile time. This release ships the two companion-capable T096 profiles.
+On a fresh T096, complete the [USB identity enrollment](mt_only/docs/T096-FRESH-DOMAIN.md#first-enrollment) before testing the radio. The two T096 downloads are feature and storage profiles. The 680 KiB companion leaves 43,960 bytes of flash and 14,304 bytes of static RAM. The 728 KiB extended build leaves 1,960 and 3,300 bytes respectively. Changing the role does not free either resource. The 0.1-beta downloads include both companion-capable T096 profiles.
+
+### Experimental USB-managed T096 router
+
+The source profile `t096-router-680` uses the same 680 KiB fresh-domain partition layout. It runs the SX1262 relay without a phone. USB supports local settings and PKI enrollment. The image omits Bluetooth, the display, GNSS and accessory telemetry. USB refuses phone-originated RF messages and MQTT proxy downlinks. This experimental build is available from source and has no hardware qualification or downloadable release image.
+
+A fresh unit reports `ROUTER`, the stock core-port rebroadcast mode and an unmessagable owner. Select the appropriate region and complete USB enrollment before operation. Explicit TX disable, region restrictions and the T096 fixed −9 dBm chip-drive limit still apply. A compatible 680 KiB installation with a stored companion role keeps that setting and holds RF until you select `ROUTER` or `ROUTER_LATE` over USB and reboot. Existing 728 KiB, legacy or unknown layouts require their own recovery and installation procedure. The [T096 fresh-install guide](mt_only/docs/T096-FRESH-DOMAIN.md) describes the storage requirements.
+
+With SDK 1.0.1's `arm-zephyr-eabi` toolchain, CMake, Ninja, DTC, gperf and a Python virtual environment, run these commands from the checkout with `ZT_WORK` set to a new directory outside it. The build produces `t096-router-680/zephyr/zephyr.uf2` and `t096-router-680/memory.json`.
+
+```sh
+python mt_only/scripts/prepare-deps.py "$ZT_WORK/deps"
+python -m pip install -r "$ZT_WORK/deps/zephyr/scripts/requirements-base.txt"
+python mt_only/scripts/ci-board-build.py t096-router-680 --deps "$ZT_WORK/deps" \
+  --sdk "$ZEPHYR_SDK_INSTALL_DIR" --build "$ZT_WORK/t096-router-680"
+```
 
 ## Board identity for source builds
 

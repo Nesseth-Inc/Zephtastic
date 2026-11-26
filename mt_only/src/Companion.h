@@ -2941,7 +2941,7 @@ private:
     }
   }
   void handleMqttClientProxy(uint32_t now,DeferredProxy &deferred) {
-#if defined(CONFIG_MT_M119_TLS_TEST)
+#if defined(CONFIG_MT_M119_TLS_TEST) || defined(CONFIG_MT_T096_ROUTER_ONLY)
     (void)now;
     (void)deferred;
     ++unsupported;
@@ -3149,6 +3149,9 @@ private:
       p.ack_proof_status=meshtastic_MeshPacket_AckProofStatus_ACK_PROOF_ABSENT;
       handleAdmin(p,now);return;
     }
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+    reject(p.id,meshtastic_Routing_Error_NO_INTERFACE,MT_NOTICE("Router USB supports local administration only"));
+#else
     if(service_.config.licensedOperation()&&p.pki_encrypted) {
       reject(p.id,meshtastic_Routing_Error_PKI_FAILED,
         MT_NOTICE("Licensed operation sends public channel packets; encrypted private requests are unavailable"));return;
@@ -3220,6 +3223,7 @@ private:
     else if(service_.normalMode()&&p.decoded.portnum==meshtastic_PortNum_POSITION_APP)sendPositionQuery(p,now);
     else if(service_.normalMode()&&p.decoded.portnum==meshtastic_PortNum_TELEMETRY_APP)sendTelemetryQuery(p,now);
     else sendEndpoint(p,now);
+#endif
     return;
   }
   void handle(uint32_t now,DeferredProxy &deferred) {

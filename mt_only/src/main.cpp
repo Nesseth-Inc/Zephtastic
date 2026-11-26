@@ -84,6 +84,9 @@ static mt::RuntimeResources runtimeResources;
 #include "PendingBluetoothAdmin.h"
 #include "ModuleController.h"
 #include "modules/RouterLateRoleDefaults.h"
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+#include "modules/RouterInitialSettings.h"
+#endif
 #include "modules/RouterRoleDefaults.h"
 #include "modules/OperatingRole.h"
 #include "modules/CompletionEdit.h"
@@ -3410,6 +3413,7 @@ public:
   bool mqttAvailable()const override{return mqttAdmin.ready();}
   bool mqttRegionRootRetryPending()const override{return mqttAdmin.regionRootRetryPending();}
   bool mqttRuntimeSupported()const override {
+    if(IS_ENABLED(CONFIG_MT_T096_ROUTER_ONLY))return false;
     // This profile always has the cross-profile Companion proxy core; direct
     // MQTT remains compile-time limited to the WiFi gateway.
     return true;
@@ -4142,6 +4146,7 @@ public:
     scheduleOrdinaryReboot(seconds,uint64_t(k_uptime_get()));return true;
   }
   void nodeInfoPing(uint32_t now)override {
+    if(IS_ENABLED(CONFIG_MT_T096_ROUTER_ONLY))return;
     if(ready()&&!settingsEdit.open()&&!persistentWorkPending()&&!administrationWorkPending()&&
        !rebootSchedule.pending()&&!firmwareUpdate.pending())
       (void)service.phoneNodeInfoPing(now,sys_rand32_get());
@@ -5282,14 +5287,21 @@ static bool neighborSnapshot(void *,meshtastic_NeighborInfo &out) {
   if(storageReady&&recoverRemoteDeviceAtBoot()) {storageReady=false;remoteConfigHeld=true;}
 #endif
   if(storageReady)storageReady=journal.load(settings)==0;
+  if(storageReady) {
+    (void)moduleJournal.load(settings);
+    (void)completionJournal.load(settings);
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+    storageReady=mt::modules::seedRouterDefaults(journal,moduleJournal,completionJournal);
+#endif
+  }
   if(storageReady)(void)uiConfigJournal.load(settings);
   if(storageReady)storageReady=mt::NormalTxStartup::migrate(
     journal,settings,IS_ENABLED(CONFIG_MT_NORMAL_TX_DEFAULT))==0;
   if(storageReady)storageReady=service.apply(journal.config());
   // A separate unavailable module journal disables modules; it cannot reset
   // core settings, identity, contact keys or the existing NodeDB journal.
-  if(storageReady&&moduleJournal.load(settings)==0)(void)moduleEdit.load();
-  if(storageReady&&completionJournal.load(settings)==0)(void)completionEdit.load();
+  if(storageReady&&moduleJournal.ready())(void)moduleEdit.load();
+  if(storageReady&&completionJournal.ready())(void)completionEdit.load();
   settingsCommit.completion(completionEdit);
   service.nodeInfoIntervalProvider([](mt::Service &owner,uint32_t &interval){
     return modules.nodeInfoInterval(owner,ztUptimeMsProvider(nullptr),interval);

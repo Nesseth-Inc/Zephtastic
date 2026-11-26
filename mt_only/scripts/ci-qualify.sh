@@ -37,6 +37,7 @@ if [[ $group == native ]]; then
     python3 mt_only/scripts/test-role-channel.py --stock "$work/stock" --output "$work/roles-$abi" "${args[@]}"
   done
   python mt_only/tests/stock_node_position/run.py --stock "$work/stock" --output "$work/node-position.json"
+  python mt_only/scripts/test-role-channel.py --router --output "$work/router-policy"
   python mt_only/tests/stock_operating_roles/run.py --release 2.8.2 --stock "$work/stock" --output "$work/device-config.json"
   exit 0
 fi

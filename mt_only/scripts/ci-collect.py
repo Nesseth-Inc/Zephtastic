@@ -25,6 +25,10 @@ if args.group == "native":
     report["upstream"] = upstream
     report["node_info_and_position"] = read("node-position.json")
     report["device_config"] = read("device-config.json")
+    router = read("router-policy/results.json")
+    if router["status"] != "PASS" or router["groups"] != 4:
+        raise ValueError("Incomplete T096 router policy evidence")
+    report["router_policy"] = router
     report["roles"] = {}
     for abi in ("native", "short"):
         roles = read(f"roles-{abi}/results.json")

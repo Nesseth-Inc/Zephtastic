@@ -26,6 +26,9 @@ private:
     generation=Config::get32(raw+4);out=candidate;return true;
   }
 public:
+#ifdef CONFIG_MT_T096_ROUTER_ONLY
+  void seedFresh(const CompletionSettings &value) { if(state_==State::Fresh)current_=value; }
+#endif
   const CompletionSettings &config()const{return current_;}
   State state()const{return state_;}
   bool ready()const{return state_==State::Fresh||state_==State::Loaded||state_==State::Recovered;}
