@@ -21,6 +21,18 @@ def tlv(tag, value):
     return struct.pack("<HH", tag, len(value)) + value
 
 
+class SigningBudget(unittest.TestCase):
+    def test_largest_supported_signature_fits_at_the_unsigned_limit(self):
+        # Two 33-byte positive integers, their DER headers, and the SEQUENCE.
+        integer = bytes.fromhex("02210080") + bytes(31)
+        signature = bytes.fromhex("3046") + integer * 2
+        entries = tlv(1, bytes(32)) + tlv(0x10, bytes(32)) + tlv(0x22, signature)
+        metadata = struct.pack("<HH", 0x6907, 4 + len(entries)) + entries
+        raw_limit = release.unsigned_update_capacity(release.SLOT)
+        self.assertEqual(raw_limit + len(metadata) + release.SWAP_TRAILER_RESERVE, release.SLOT)
+        self.assertGreater(raw_limit + 1 + len(metadata), release.SLOT - release.SWAP_TRAILER_RESERVE)
+
+
 class ExpandedBuild(unittest.TestCase):
     def test_refuse_missing_large_directory_or_first_use_support(self):
         base = {

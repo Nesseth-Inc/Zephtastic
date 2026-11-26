@@ -75,6 +75,7 @@ args=()
 if [[ $group == esp32 ]]; then
   fetch_commit "$work/mcuboot" https://github.com/mcu-tools/mcuboot.git aa32eaaad41cc345e6f6e6633368a4766fe23c25
   python -m pip -q install -r "$work/deps/modules/hal/espressif/zephyr/requirements.txt" "$work/mcuboot/scripts"
+  python mt_only/tests/stock_signed_ota/test_release.py
   args+=(--mcuboot "$work/mcuboot")
 fi
 for profile in "${profiles[@]}"; do
