@@ -76,7 +76,7 @@ def run_profile(out, abi):
     common = ["-g", "-fsanitize=address,undefined", "-fno-omit-frame-pointer", *abi]
     default_obj = out / "stock-default.o"
     subprocess.run([*host.cxx(), "-std=c++17", *common, "-DUSERPREFS_EVENT_MODE=0",
-                    "-I", out, "-I", APP / "tests/module_intervals/stubs", "-c", HERE / "default.cpp",
+                    "-I", out, "-I", APP / "tests/module_intervals/stubs", "-c", HERE / "interval_reference.cpp",
                     "-o", default_obj], check=True)
     flags = [*common, "-DCONFIG_MT_TAK_TRACKER=1", "-I", out, "-I", proto / "nanopb",
              "-I", APP / "src", "-I", APP / "tests", "-I", mono, "-I", vendor,
