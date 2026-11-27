@@ -2,9 +2,18 @@
 """Materialize pinned dependencies in a NEW directory; never modifies a prior checkout."""
 import argparse,hashlib,json,shutil,subprocess,urllib.request
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('destination',type=Path);a=p.parse_args();dest=a.destination.resolve()
+p=argparse.ArgumentParser()
+p.add_argument('destination',type=Path)
+p.add_argument('--project', help='prepare only this project path from the dependency lock')
+a=p.parse_args()
+dest=a.destination.resolve()
 if dest.exists():p.error('destination must not exist; shared or active dependencies are forbidden')
-app=Path(__file__).resolve().parents[1];lock=json.loads((app/'dependency-lock.json').read_text());dest.mkdir(parents=True)
+app=Path(__file__).resolve().parents[1];lock=json.loads((app/'dependency-lock.json').read_text())
+if a.project is not None:
+    lock = [project for project in lock if project['path'] == a.project]
+    if not lock:
+        p.error('unknown project path')
+dest.mkdir(parents=True)
 for project in lock:
  target=dest/project['path'];target.parent.mkdir(parents=True,exist_ok=True)
  subprocess.run(['git','init',str(target)],check=True)

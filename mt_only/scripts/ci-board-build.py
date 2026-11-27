@@ -177,6 +177,10 @@ def build(args):
     app = out / "app" if profile == "xiao-ordinary" else out
     zephyr = app / "zephyr"
     log = (app / "build.log" if (app / "build.log").is_file() else log_path).read_text()
+    enabled = set((zephyr / ".config").read_text().splitlines())
+    warm_history = "CONFIG_MT_HOP_HISTORY=y" in enabled
+    if warm_history != (profile in (*T096_FLAGS, ROUTER, "xiao-ordinary")):
+        raise ValueError(f"Unexpected HopScaling history configuration on {profile}")
     esp = profile in V4_BOARDS or profile == "xiao-ordinary"
     if esp:
         capacity = flash_capacity(zephyr, profile in V4_BOARDS)
@@ -184,14 +188,13 @@ def build(args):
             capacity = unsigned_update_capacity(capacity)
         flash = usage((zephyr / "zephyr.bin").stat().st_size, capacity)
         ram = linker_usage(log, "dram0_0_seg")
-        if profile in V4_BOARDS and "CONFIG_MT_ALLOW_TX=y" in (zephyr / ".config").read_text().splitlines():
+        if profile in V4_BOARDS and "CONFIG_MT_ALLOW_TX=y" in enabled:
             raise ValueError("V4 beta must be receive-only")
     else:
         flash, ram = linker_usage(log, "FLASH"), linker_usage(log, "RAM")
         if not (zephyr / "zephyr.uf2").is_file():
             raise ValueError("Nordic build is missing its UF2")
     if profile == ROUTER:
-        enabled = set((zephyr / ".config").read_text().splitlines())
         required = ["MT_T096_ROUTER_ONLY", "MT_T096_OWNER_TX", "MT_ALLOW_TX", "MT_NORMAL_ENDPOINT",
                     "MT_NORMAL_TX_DEFAULT", "MT_PKI_STOCK_TRIAL", "MT_PKI_TARGET_RUNTIME",
                     "MT_PKI_FRESH_DOMAIN_ONLY", "MT_RF_ADMIN_GET", "USB_DEVICE_STACK_NEXT",
@@ -207,7 +210,7 @@ def build(args):
         "flash_measure": ("simple-boot bytes / bytes before storage" if profile in V4_BOARDS else
                           "unsigned application bytes / signable update payload budget" if esp else "linker FLASH"),
         "ram_measure": "linker internal DRAM" if esp else "linker static RAM",
-        "flash": flash, "ram": ram}
+        "flash": flash, "ram": ram, "hop_history_enabled": warm_history}
     (out / "memory.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
     if summary := os.getenv("GITHUB_STEP_SUMMARY"):

@@ -64,6 +64,17 @@ elif args.group.startswith("modules-"):
     evidence = read("modules.json")
     verify_module_evidence(args.group.removeprefix("modules-"), evidence)
     report["module_evidence"] = evidence
+    if args.group == "modules-core":
+        restart = read("hop-restart.json")
+        nvs = restart["nvs"]
+        if (restart["stock_revision"] != evidence["stock_revision"] or
+                restart["status"] != "PASS" or nvs["status"] != "PASS" or
+                {run["enum"] for run in restart["runs"]} != {"normal", "short"} or
+                {row["sectors"] for row in nvs["runs"]} != {4, 8} or
+                any(row["interruption_cases"] <= 0 or row["checkpoints_with_collection"] <= 0
+                    for row in nvs["runs"])):
+            raise ValueError("Incomplete HopScaling restart or storage evidence")
+        report["hop_restart"] = restart
 else:
     profiles = {}
     for profile in boards[args.group]:
