@@ -76,7 +76,7 @@ static int sx126x_airtime_observer_take(unsigned,sx126x_airtime_observation *){r
 }
 struct TestRadio final : mt::Radio {
     mt::Config applied;
-    bool isolated=false,blockScan=false,complete=false,rxBusy=false,rxPending=false,rxCallback=false;
+    bool isolated=false,blockScan=false,complete=false,rxBusy=false,rxPending=false,rxCallback=false,retiredBusy=false;
     int state=0;
     unsigned scans=0,configures=0,homeFailures=0,startFailures=0,restoreFailures=0;
     unsigned aborts=0,invalidPauses=0,abortFailures=0,homeStartFailures=0,targetConfigureFailures=0;
@@ -100,6 +100,8 @@ struct TestRadio final : mt::Radio {
     int stopForStorage()override{
         if(rxPending)return -EAGAIN;
         if(state!=1||!rxCallback){++invalidPauses;return -EIO;}
+        // A sticky IRQ after native standby/retirement is a hard raw -EBUSY.
+        if(retiredBusy){retiredBusy=false;state=3;rxCallback=false;return -EBUSY;}
         state=0;rxCallback=false;return 0;
     }
     int restore()override{if(restoreFailures){--restoreFailures;return -EIO;}state=1;rxCallback=true;return 0;}
@@ -303,6 +305,15 @@ static void faultRecovery(){
     h.poll(10);assert(!h.runtime.busy()&&!h.radio.isolated&&h.radio.frames.empty());
     assert(!h.service.faulted()&&!h.radio.aborts&&!h.radio.invalidPauses&&h.service.receiving());
 }
+static void retiredTarget(){
+    Fixture f;const auto target=f.resolve(Medium);draw=1;
+    assert(f.enqueue(205,target,0));f.poll(10);auto now=10+f.delay(draw);f.poll(now);
+    f.radio.retiredBusy=true;f.finish(++now);
+    assert(f.service.faulted()&&f.runtime.radioHeld()&&f.radio.isolated&&!f.radio.rxCallback);
+    f.poll(++now);
+    assert(!f.runtime.radioHeld()&&f.service.faulted()&&!f.radio.isolated&&f.radio.rxCallback&&
+           f.radio.aborts==1&&!f.radio.invalidPauses);
+}
 static void terminalSignal(){
     Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
     assert(f.enqueue(210,home,0));f.poll(10);f.frame(0,210,"LongFast");
@@ -391,6 +402,6 @@ static void boundedAdmission(bool recover,bool unsupported=false){
 }
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
-    terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
-    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":17,\"refilled_slots\":24}");
+    retiredTarget();terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
+    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":18,\"refilled_slots\":24}");
 }

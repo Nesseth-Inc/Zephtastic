@@ -182,7 +182,7 @@ bool BeaconTargetRuntime::restoreHome()
     if(service_.radio_.busy())return false;
     const int stopped=service_.radio_.stopForStorage();
     if(stopped) {
-      if(stopped!=-EAGAIN&&stopped!=-EBUSY){phase_=RadioPhase::NeedsAbort;service_.fault_=true;}
+      if(stopped!=-EAGAIN){phase_=RadioPhase::NeedsAbort;service_.fault_=true;}
       return false;
     }
     phase_=RadioPhase::Parked;
