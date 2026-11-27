@@ -24,7 +24,7 @@ public:
   bool targetSupported(const BeaconExcursion::RadioProfile &profile);
   void poll(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch,bool mainReady);
   void receiveAccepted();
-  void cancelAll(uint32_t settingsEpoch,uint32_t identityEpoch);
+  void cancelAll(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch);
   bool busy()const{return radioHeld()||excursion_.queued()!=0;}
   bool homeRxPending()const;
   // While radioHeld(), this permits the read-only USB recovery lane. RF,

@@ -281,6 +281,9 @@ void BeaconTargetRuntime::recover(uint32_t now,uint32_t settingsEpoch,uint32_t i
     // the normal start/configure queue purge.
     finishTransmit(now,settingsEpoch,identityEpoch);return;
   }
+  // All off-profile RX is isolated and no TX remains borrowed here. After
+  // the fault grace, a stuck busy/-EAGAIN target may be joined and parked.
+  if(service_.fault_&&phase_==RadioPhase::TargetRx)phase_=RadioPhase::NeedsAbort;
   apply({BeaconExcursion::ActionKind::RestoreHome,activeId_},now,settingsEpoch,identityEpoch);
 }
 
@@ -373,7 +376,7 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
 void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch,bool mainReady)
 {
   if(!mainReady||identityEpoch!=service_.route.identity()) {
-    cancelAll(settingsEpoch,identityEpoch);
+    cancelAll(now,settingsEpoch,identityEpoch);
     if(!radioHeld())return;
   }
   if(recovering_){recover(now,settingsEpoch,identityEpoch);return;}
@@ -434,13 +437,13 @@ void BeaconTargetRuntime::receiveAccepted()
   }
 }
 
-void BeaconTargetRuntime::cancelAll(uint32_t settingsEpoch,uint32_t identityEpoch)
+void BeaconTargetRuntime::cancelAll(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch)
 {
   pendingAction_={};pendingActionReady_=false;
   for(auto &r:rows_)if(r.id) {
     const auto action=excursion_.cancel(r.id,settingsEpoch,identityEpoch);
     if(action.kind==BeaconExcursion::ActionKind::None)release(r.id);
-    else if(!recovering_&&action.kind!=BeaconExcursion::ActionKind::HoldPacket)apply(action,0,settingsEpoch,identityEpoch);
+    else if(!recovering_&&action.kind!=BeaconExcursion::ActionKind::HoldPacket)apply(action,now,settingsEpoch,identityEpoch);
   }
 }
 

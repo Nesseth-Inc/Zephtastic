@@ -37,9 +37,11 @@ struct Memory:mt::SettingsBackend {
  int write(const char*k,const uint8_t*p,size_t n)override{++writes;if(onWrite)onWrite();if(fail)return -EIO;values[k]={p,p+n};return 0;}
 };
 struct Radio:mt::Radio {
- unsigned sends=0;int healthValue=0;bool occupied=false,done=false;std::vector<Bytes> frames;
+ unsigned sends=0,failedJoins=0,joins=0;int healthValue=0;bool occupied=false,done=false;std::vector<Bytes> frames;
+ const uint8_t *borrowed=nullptr;
+ int abortBeaconTransmit()override{++joins;if(failedJoins){--failedJoins;return -EIO;}borrowed=nullptr;done=false;healthValue=0;return 0;}
  bool ready()override{return true;}int start()override{healthValue=1;return 0;}int restore()override{healthValue=1;return 0;}int stop()override{healthValue=0;return 0;}int health()override{return healthValue;}bool busy()override{return occupied;}
- uint32_t airtime(size_t)override{return 100;}int send(uint8_t*p,size_t n)override{++sends;frames.emplace_back(p,p+n);done=false;return 0;}bool completion(int&r)override{r=0;return done;}
+ uint32_t airtime(size_t)override{return 100;}int send(uint8_t*p,size_t n)override{++sends;borrowed=p;frames.emplace_back(p,p+n);done=false;return 0;}bool completion(int&r)override{if(done)borrowed=nullptr;r=0;return done;}
 };
 struct Gate:LedgerStorageGate {mt::Service*service=nullptr;bool quiescent()const override{return service&&service->privateStoragePaused();}};
 struct NonceEntropy:EntropySource {bool fail=false;unsigned calls=0;bool fill(uint8_t*p,size_t n)override{++calls;memset(p,0x71,n);return !fail;}};
@@ -303,8 +305,22 @@ void targetedBeacons(){
   assert(metadata.signatureLength==(sign?64u:0u)&&metadata.signatureVerified==sign&&f->signing.calls==(sign?1u:0u));
   assert(metadata.portnum==packet.decoded.portnum&&metadata.payloadLength==packet.decoded.payload.size&&
          !memcmp(metadata.payload,packet.decoded.payload.bytes,metadata.payloadLength));
-  f->radio.done=true;
-  targets.poll(now+2,epoch,packet.from,true);
+  if(policy==1&&mode==0){
+   mt::RadioTiming::Deadline timing{};assert(mt::RadioTiming::resolve(f->radio.airtime(frame.size()),timing));
+   uint32_t at=now+1+timing.hostMs;targets.poll(at,epoch,packet.from,true);
+   const auto *lease=f->radio.borrowed;assert(lease&&targets.recovering()&&f->service.faulted());
+   f->radio.failedJoins=2;
+   for(unsigned i=1;i<=2;++i){
+    at+=targets.RecoveryRetryMs;targets.poll(at,epoch,packet.from,true);
+    assert(targets.radioHeld()&&f->radio.joins==i&&f->radio.borrowed==lease);
+    const Bytes retained(lease,lease+frame.size());
+    assert(retained==frame&&decoded(*f,retained).signatureVerified&&f->signing.calls==1&&f->ledger.sent(packet.id));
+   }
+   targets.poll(at+targets.RecoveryRetryMs,epoch,packet.from,true);
+   assert(!targets.recovering()&&!f->radio.borrowed&&f->radio.joins==3&&f->service.localStats().packetsTx==0);
+  }else{
+   f->radio.done=true;targets.poll(now+2,epoch,packet.from,true);
+  }
   assert(!targets.busy()&&f->radio.sends==1);
  }
  group("enrolled MeshBeacon target ciphertext, verified signature, durable ID and stock FromRadio channel across all three policies and CTR, CCM or licensed plaintext");
