@@ -2,6 +2,7 @@
 // Adapt stock's ingress and observation points to a real ZT Service, radio
 // recorder and phone serializer. The selected stock test bodies are unchanged.
 #include "../device_config_fixture.h"
+#include "../relay_fixture_provider.h"
 #include "unity.h"
 
 using PacketId = uint32_t;
@@ -44,6 +45,7 @@ static meshtastic_MeshPacket makePkiUnicastBetween(RelayIdentity from, RelayIden
     std::abort();
 }
 
+static RelayFixtureProvider licensedProvider(Node);
 static std::unique_ptr<Fixture> relay;
 static unsigned observations;
 static uint32_t tick;
@@ -115,7 +117,10 @@ static void startRelay()
     auto cfg=relay->service.config;
     cfg.bytes[4]=1;
     cfg.seal();
-    if(owner.is_licensed) TEST_ASSERT_TRUE(cfg.enableLicensedOperation());
+    if(owner.is_licensed) {
+        TEST_ASSERT_TRUE(relay->service.bindPrivateRuntime(licensedProvider));
+        TEST_ASSERT_TRUE(cfg.enableLicensedOperation());
+    }
     TEST_ASSERT_TRUE(cfg.setDeviceRole(config.device.role,config.device.rebroadcast_mode));
     TEST_ASSERT_TRUE(cfg.setPacketSignaturePolicy(signaturePolicy));
     TEST_ASSERT_TRUE(relay->service.apply(cfg));
@@ -139,12 +144,16 @@ static void runPipelineIngress(const meshtastic_MeshPacket &packet)
     uint8_t wire[255]{};
     size_t size=0;
     if(packet.which_payload_variant==meshtastic_MeshPacket_decoded_tag){
-        // Channel frames pass the same codec as ZT-originated text.
-        uint8_t bytes[128];
-        auto out=pb_ostream_from_buffer(bytes,sizeof(bytes));
+        // The donor's decoded cases come from a peer on the licensed plaintext channel.
+        mt::PrimaryChannel::Selection channel{};
+        TEST_ASSERT_TRUE(relay->service.config.channelSelection(0,channel));
+        TEST_ASSERT_TRUE(channel.licensedPlaintext);
+        putLE32(wire,packet.to);putLE32(wire+4,packet.from);putLE32(wire+8,packet.id);
+        wire[13]=channel.hash;
+        mt::PrimaryChannel::clear(channel);
+        auto out=pb_ostream_from_buffer(wire+16,sizeof(wire)-16);
         TEST_ASSERT_TRUE(pb_encode(&out,meshtastic_Data_fields,&packet.decoded));
-        TEST_ASSERT_TRUE(relay->service.codec.encodeZeroHopData(packet.from,packet.to,packet.id,
-            bytes,out.bytes_written,wire,sizeof(wire),size));
+        size=16+out.bytes_written;
     } else {
         TEST_ASSERT_EQUAL(meshtastic_MeshPacket_encrypted_tag,packet.which_payload_variant);
         size=16+packet.encrypted.size;
