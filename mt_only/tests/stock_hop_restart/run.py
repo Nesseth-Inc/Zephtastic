@@ -31,16 +31,19 @@ def main():
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
     sources = {}
-    for name, expected in fixture.PINS.items():
+    pins = {**fixture.PINS, 'meshUtils.h': '1ab754c75cda9663380181870a4d52f53058cdb1449f08522007d9d26a43fcf0'}
+    for name, expected in pins.items():
         data = (args.stock / 'src' / name).read_bytes()
         if hashlib.sha256(data).hexdigest() != expected:
             raise ValueError(f'{name} differs from {fixture.STOCK}')
         sources[name] = data.decode()
-    report = {'stock_revision': fixture.STOCK, 'input_sha256': fixture.PINS, 'runs': [],
+    report = {'stock_revision': fixture.STOCK, 'input_sha256': pins, 'runs': [],
               'hardware': False, 'asan_ubsan': True, 'nvs': {'status': 'NOT_RUN'}}
     with tempfile.TemporaryDirectory(prefix='hop-restart-') as tmp:
         build = Path(tmp)
         fixture.prepare(build, sources)
+        helper = fixture.method(sources['meshUtils.h'], 'template <typename T> constexpr bool is_pow_of_2')
+        (build / 'meshUtils.h').write_text('#pragma once\n'+helper+'\n')
         (build / 'FSCommon.h').write_text('#include "StockFilesystem.h"\n')
         proto = ROOT / 'zephcore/bench/upstream-differential/source'
         (build / 'meshtastic').symlink_to(proto, target_is_directory=True)

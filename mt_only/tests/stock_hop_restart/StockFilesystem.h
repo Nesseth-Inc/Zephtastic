@@ -32,4 +32,3 @@ struct SafeFile {
 };
 inline int spiLock;
 namespace concurrency { struct LockGuard {explicit LockGuard(int&){};}; }
-inline bool is_pow_of_2(unsigned n){return n && !(n&(n-1));}
