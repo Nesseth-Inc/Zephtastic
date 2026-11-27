@@ -462,7 +462,7 @@ static mt::Service service MT_WIFI_PSRAM_BSS(service)(radio,IS_ENABLED(CONFIG_MT
 // Drain-time attribution follows stock log-call accounting; callback delay can
 // shift a boundary bucket. No payload bytes, IRQ reads, SPI or application locks.
 static void drainChannelObservations(mt::ChannelMeter &meter,void *) {
-  meter.supported(service.receiving()&&sx126x_airtime_observer_supported(radioDevice));
+  meter.supported((service.receiving()||atomic_get(&beaconOffProfileRx))&&sx126x_airtime_observer_supported(radioDevice));
   if(sx126x_airtime_observer_take_loss(radioDevice))meter.uncertain(zt::ChannelEvent::NativeLoss);
   sx126x_airtime_observation event{};
   unsigned count=0;
@@ -5578,6 +5578,42 @@ static void pollBackgroundHistories(uint64_t now,bool clientIngressSaturated){
   (void)checkpointBroadcasts(false);
 #endif
 }
+static void drainHomeRadioEvents() {
+#if !defined(CONFIG_MT_M119_TLS_TEST)
+  // Drain already-completed RF events before local admin. The storage-stop
+  // barrier below also closes callbacks that race after this bounded drain.
+  Rx event;
+  for(unsigned count=0;count<8&&k_msgq_get(&rxQueue,&event,K_NO_WAIT)==0;++count)
+  {
+    const uint64_t receiveUptime=uint64_t(k_uptime_get());
+    const uint32_t receiveNow=uint32_t(receiveUptime),receiveUtc=wallClock.at(receiveUptime);
+    if(event.length)mt::notification::radioReceived(receiveNow);
+    service.measuredUptime(receiveUptime/1000);
+    if(extendedEdit.trusted()&&!settingsEdit.open()){
+      trafficWindow.configure(extendedEdit.config().traffic());service.trafficManagement(&trafficWindow,receiveUptime);
+    }else service.trafficManagement(nullptr,receiveUptime);
+    bool accepted=false;
+    service.rx(event.length?event.data:nullptr,event.length,event.snr,receiveNow,sys_rand32_get(),true,&accepted,false,
+               receiveUtc,uint32_t(receiveUptime/1000u),event.rssi,event.snrKnown?mt::packetSnrDb(event.snrRaw):float(event.snr));
+    pollKeyVerification(receiveNow);
+    if(accepted){beaconTargets.receiveAccepted();
+      recordApiEvent(mt::api::ApiLogBuffer::Event::RadioRxAcceptedBytes,event.length);}
+    if(service.trafficSuppressed())continue;
+    companion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
+    bleCompanion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
+#if defined(CONFIG_MT_SERIAL_MODULE)
+    serialCompanion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
+#endif
+#if defined(CONFIG_MT_TCP_COMPANION)
+    tcpCompanion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
+#endif
+#if defined(CONFIG_MT_REPLY_BOT) || defined(CONFIG_MT_REPLY_EXAMPLE)
+    service.flushStockReply(receiveNow,sys_rand32_get());
+#endif
+  }
+#endif
+}
+
 int main() {
 #if defined(CONFIG_MT_SIGNED_WIFI_OTA)
   mt::update::signedOta::initializeBootVersion();
@@ -5706,6 +5742,7 @@ int main() {
     if(beaconTargets.radioHeld()){
       // Exclusive native owner until target completion and verified home RX.
       // USB/BLE/TCP callbacks retain their bounded ingress queues meanwhile.
+      if(beaconTargets.homeRxPending())drainHomeRadioEvents();
       beaconTargets.poll(k_uptime_get_32(),beaconSettingsEpoch(),service.route.identity(),
         initialized&&storageReady&&extendedEdit.trusted()&&!settingsEdit.open()&&!rebootSchedule.pending());
       k_mutex_unlock(&serviceLock);
@@ -5745,39 +5782,7 @@ int main() {
       continue;
     }
     drainChannelObservations(service.channelMeter(),nullptr);
-#if !defined(CONFIG_MT_M119_TLS_TEST)
-    // Drain already-completed RF events before local admin. The storage-stop
-    // barrier below also closes callbacks that race after this bounded drain.
-    Rx event;
-    for(unsigned count=0;count<8&&k_msgq_get(&rxQueue,&event,K_NO_WAIT)==0;++count)
-    {
-      const uint64_t receiveUptime=uint64_t(k_uptime_get());
-      const uint32_t receiveNow=uint32_t(receiveUptime),receiveUtc=wallClock.at(receiveUptime);
-      if(event.length)mt::notification::radioReceived(receiveNow);
-      service.measuredUptime(receiveUptime/1000);
-      if(extendedEdit.trusted()&&!settingsEdit.open()){
-        trafficWindow.configure(extendedEdit.config().traffic());service.trafficManagement(&trafficWindow,receiveUptime);
-      }else service.trafficManagement(nullptr,receiveUptime);
-      bool accepted=false;
-      service.rx(event.length?event.data:nullptr,event.length,event.snr,receiveNow,sys_rand32_get(),true,&accepted,false,
-                 receiveUtc,uint32_t(receiveUptime/1000u),event.rssi,event.snrKnown?mt::packetSnrDb(event.snrRaw):float(event.snr));
-      pollKeyVerification(receiveNow);
-      if(accepted){beaconTargets.receiveAccepted();
-        recordApiEvent(mt::api::ApiLogBuffer::Event::RadioRxAcceptedBytes,event.length);}
-      if(service.trafficSuppressed())continue;
-      companion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
-      bleCompanion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
-#if defined(CONFIG_MT_SERIAL_MODULE)
-      serialCompanion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
-#endif
-#if defined(CONFIG_MT_TCP_COMPANION)
-      tcpCompanion.receive(event.length?event.data:nullptr,event.length,event.rssi,event.snr,receiveNow,receiveUtc,event.snrKnown,event.snrRaw,true,companionWorkspaceProof());
-#endif
-#if defined(CONFIG_MT_REPLY_BOT) || defined(CONFIG_MT_REPLY_EXAMPLE)
-      service.flushStockReply(receiveNow,sys_rand32_get());
-#endif
-    }
-#endif
+    drainHomeRadioEvents();
 #if defined(CONFIG_MT_MQTT_GATEWAY) && !defined(CONFIG_MT_M119_TLS_TEST)
     // Socket callbacks only copy bounded publishes into the receive mailbox.
     // Decode and route at most its fixed two messages here on the Service owner.

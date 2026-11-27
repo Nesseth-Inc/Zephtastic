@@ -27,7 +27,7 @@ BeaconExcursion::RadioProfile BeaconTargetRuntime::runningProfile(const Config &
 }
 
 BeaconTargetRuntime::Row *BeaconTargetRuntime::row(uint32_t id)
-{for(auto &r:rows_)if(r.used&&r.id==id)return &r;return nullptr;}
+{for(auto &r:rows_)if(id&&r.id==id)return &r;return nullptr;}
 bool BeaconTargetRuntime::targetSupported(const BeaconExcursion::RadioProfile &profile)
 {
   Config candidate{};
@@ -93,18 +93,26 @@ bool BeaconTargetRuntime::encode(const BeaconExcursion::Request &request,const u
   out.bytes[12]=request.legacyHopOverride?0x20u:0u;return true;
 }
 
+bool BeaconTargetRuntime::ownerIdle()const
+{
+  return service_.normalMode_&&service_.receiving_&&service_.endpointArmed_&&service_.txAllowed_&&
+         service_.storageStopSafe()&&!service_.normalTransitActive_&&!service_.radio_.busy()&&
+         !service_.radio_.receiveEventPending();
+}
+
+bool BeaconTargetRuntime::homeRxPending()const
+{
+  return !retuned_&&!txActive_&&!completionAwaitingRestore_&&service_.radio_.receiveEventPending();
+}
+
 bool BeaconTargetRuntime::enqueue(const BeaconExcursion::Request &input,const uint8_t *data,
     size_t size,uint32_t random,uint32_t now,uint32_t *acceptedId)
 {
   if(acceptedId)*acceptedId=0;
-  if(!service_.normalMode_||!service_.receiving_||!service_.endpointArmed_||
-     !service_.txAllowed_||service_.fault_||service_.active_||service_.own_||
-     service_.normalActive_||service_.normalTransitActive_||service_.endpointActive_||
-     !service_.endpoint_.idle()||service_.route.pending()||service_.route.retransmitting()||
-     service_.radio_.busy()||input.identityEpoch!=service_.route.identity()||
+  if(!ownerIdle()||input.identityEpoch!=service_.route.identity()||
      (input.requiresRetune&&!service_.radio_.beaconIsolationSupported()))
     return false;
-  size_t free=Rows;for(size_t i=0;i<Rows;++i)if(!rows_[i].used){free=i;break;}
+  size_t free=Rows;for(size_t i=0;i<Rows;++i)if(!rows_[i].id){free=i;break;}
   if(free==Rows)return false;
   auto request=input;
   if(request.target.channelIndex>=8)return false;
@@ -119,9 +127,9 @@ bool BeaconTargetRuntime::enqueue(const BeaconExcursion::Request &input,const ui
     bench::wipeKeyBuffer(&frame,sizeof(frame));return false;
   }
   if(!excursion_.enqueue(request)){bench::wipeKeyBuffer(&frame,sizeof(frame));return false;}
-  rows_[free].id=request.packetId;rows_[free].frame=frame;rows_[free].used=true;
+  rows_[free].id=request.packetId;rows_[free].frame=frame;
   rows_[free].enqueuedAt=now;
-  rows_[free].request=request;
+  rows_[free].target=request.target;
   bench::wipeKeyBuffer(&frame,sizeof(frame));
   if(acceptedId)*acceptedId=request.packetId;
   return true;
@@ -136,26 +144,23 @@ void BeaconTargetRuntime::expireQueued(uint32_t now,uint32_t settingsEpoch,uint3
   }
 }
 
-bool BeaconTargetRuntime::admission(const Config &target,bool polite)
+bool BeaconTargetRuntime::admission(uint32_t region)
 {
-  if(!target.regionCode())return false;
+  if(!region)return false;
   const auto observed=service_.channel_.percent();
   if(!service_.channel_.diagnosticSupported()||!observed||!isfinite(*observed)||*observed<0||*observed>100)
     return false;
-  if(TxAdmission::channel(true,*observed,polite)!=TxAdmission::Decision::Allow)return false;
-  const auto tx=service_.airtime_.percent();const auto role=target.role();
+  if(TxAdmission::channel(true,*observed,false)!=TxAdmission::Decision::Allow)return false;
+  const auto tx=service_.airtime_.percent();const auto role=service_.config.role();
   const bool fixed=role==meshtastic_Config_DeviceConfig_Role_ROUTER||
       role==meshtastic_Config_DeviceConfig_Role_ROUTER_LATE;
-  return radio::RegionRuntimePolicy::duty(target.regionCode(),fixed,polite,tx.has_value(),tx?*tx:NAN)==
+  return radio::RegionRuntimePolicy::duty(region,fixed,false,tx.has_value(),tx?*tx:NAN)==
       TxAdmission::Decision::Allow;
 }
 
 bool BeaconTargetRuntime::retune(const BeaconExcursion::RadioProfile &profile)
 {
   Config target{};if(!configureProfile(profile,target,&slotMs_))return false;
-  if(service_.active_||service_.own_||service_.endpointQueued_||service_.endpointActive_||
-     service_.normalActive_||service_.normalTransitActive_||!service_.endpoint_.idle()||
-     service_.route.pending()||service_.route.retransmitting()||service_.radio_.busy())return false;
   homeArmed_=service_.endpointArmed_;homeRelaying_=service_.relaying_;
   const int stopped=service_.pauseForStorage();if(stopped)return false;
   retuned_=true;
@@ -184,11 +189,11 @@ bool BeaconTargetRuntime::restoreHome()
 
 void BeaconTargetRuntime::release(uint32_t id)
 {
-  if(auto *r=row(id)){bench::wipeKeyBuffer(&r->frame,sizeof(r->frame));*r=Row{};}
+  if(auto *r=row(id))bench::wipeKeyBuffer(r,sizeof(*r));
   if(activeId_==id) {
     activeId_=0;
     txActive_=false;deadline_=0;completionAwaitingRestore_=false;pendingTxSuccess_=false;
-    waitingForAdmission_=false;activeSince_=0;activeSinceSet_=false;
+    waitingForAdmission_=false;activeSince_=0;
   }
 }
 
@@ -213,6 +218,24 @@ void BeaconTargetRuntime::contend(const BeaconExcursion::Action &action,uint32_t
   pendingAction_=action;pendingActionReady_=true;
 }
 
+void BeaconTargetRuntime::finishTransmit(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch)
+{
+  completionAwaitingRestore_=true;
+  if(service_.radio_.busy())return;
+  const int restored=service_.radio_.restore();
+  if(restored||service_.radio_.health()!=1){
+    lastError_=restored?restored:-EIO;service_.fault_=true;return;
+  }
+  completionAwaitingRestore_=false;
+  const uint32_t id=activeId_;
+  // A hard fault stays latched. Finish the held packet and restore home
+  // without starting the next member of a split group.
+  if(service_.fault_)excursion_.cancel(id,settingsEpoch,identityEpoch);
+  const auto next=pendingTxSuccess_?excursion_.transmitCompleted(id,settingsEpoch,identityEpoch):
+      excursion_.transmitFailed(id,settingsEpoch,identityEpoch);
+  apply(next,now,settingsEpoch,identityEpoch);
+}
+
 void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t now,
     uint32_t settingsEpoch,uint32_t identityEpoch)
 {
@@ -221,7 +244,7 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
   case BeaconExcursion::ActionKind::DropPacket:
     release(action.packetId);return;
   case BeaconExcursion::ActionKind::ConfigureTarget: {
-    if(!activeSinceSet_){activeSince_=now;activeSinceSet_=true;activeId_=action.packetId;}
+    if(!activeId_){activeSince_=now;activeId_=action.packetId;}
     auto gate=excursion_.beginConfigure(action.packetId,settingsEpoch,identityEpoch);
     const bool ok=gate.kind==BeaconExcursion::ActionKind::ConfigureTarget&&retune(gate.profile);
     if(!ok){lastError_=lastError_?lastError_:-EIO;if(retuned_&&!restoreHome())service_.fault_=true;}
@@ -231,18 +254,19 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
     return;
   }
   case BeaconExcursion::ActionKind::StartTransmission: {
-    if(!activeSinceSet_){activeSince_=now;activeSinceSet_=true;activeId_=action.packetId;}
+    if(activeId_&&activeId_!=action.packetId)release(activeId_); // completed split-group member
+    if(!activeId_){activeSince_=now;activeId_=action.packetId;}
     auto *r=row(action.packetId);Config txConfig{};
-    if(!r||!configureProfile(r->request.target,txConfig,&slotMs_)||!admission(txConfig,false)){
+    if(!r||!configureProfile(r->target,txConfig,&slotMs_)||!admission(txConfig.regionCode())){
       // Stay in ReadyToTransmit and re-evaluate on the next owner poll. This
       // retains the immutable frame while channel/duty measurements recover.
       lastError_=-EAGAIN;waitingForAdmission_=true;deadline_=now;pendingAction_=action;pendingActionReady_=true;return;
     }
-    if(service_.radio_.busy()){waitingForAdmission_=true;contend(action,now);return;}
+    if(service_.radio_.busy()||homeRxPending()){waitingForAdmission_=true;contend(action,now);return;}
     waitingForAdmission_=false;
     const auto gate=excursion_.beginTransmit(action.packetId,settingsEpoch,identityEpoch);
     if(gate.kind!=BeaconExcursion::ActionKind::StartTransmission){apply(gate,now,settingsEpoch,identityEpoch);return;}
-    if(!service_.sharedOriginAllowed(txConfig,r->request.target.channelIndex)) {
+    if(!service_.sharedOriginAllowed(txConfig,r->target.channelIndex)) {
       lastError_=-EACCES;
       apply(excursion_.transmitFailed(action.packetId,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);return;
     }
@@ -257,9 +281,7 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
     }
     if(sent){
       lastError_=sent;pendingTxSuccess_=false;
-      const int restored=service_.radio_.restore();
-      if(restored||service_.radio_.health()!=1){completionAwaitingRestore_=true;service_.fault_=true;return;}
-      apply(excursion_.transmitFailed(activeId_,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);return;
+      finishTransmit(now,settingsEpoch,identityEpoch);return;
     }
     txActive_=true;deadline_=now+timing.hostMs;service_.noteTxAcceptedStart(air);return;
   }
@@ -281,15 +303,17 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
 {
   if(!mainReady||identityEpoch!=service_.route.identity()) {
     cancelAll(settingsEpoch,identityEpoch);
-    if(!txActive_&&!excursion_.holdsRadio())return;
+    if(!radioHeld())return;
   }
   expireQueued(now,settingsEpoch,identityEpoch);
-  if(excursion_.holdsRadio()&&!txActive_&&waitingForAdmission_&&activeSinceSet_&&
+  if(pendingActionReady_&&pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission&&
      bench::due(now,activeSince_+5000u)) {
-    waitingForAdmission_=false;
-    pendingAction_={};pendingActionReady_=false;
-    apply(excursion_.cancel(activeId_,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
-    return;
+    const auto *r=row(activeId_);
+    if(waitingForAdmission_||!r||!admission(r->target.region)) {
+      waitingForAdmission_=false;pendingActionReady_=false;
+      apply(excursion_.cancel(activeId_,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
+      return;
+    }
   }
   if(pendingActionReady_) {
     if(pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission&&!bench::due(now,deadline_))return;
@@ -306,37 +330,17 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     pendingTxSuccess_=result==0;
     if(result){service_.noteTxUncertain();lastError_=result;}
     else service_.creditTxPending();
-    const int restored=service_.radio_.restore();
-    if(restored||service_.radio_.health()!=1){
-      service_.fault_=true;lastError_=restored?restored:-EIO;completionAwaitingRestore_=true;return;
-    }
-    const uint32_t completedId=activeId_;
-    const auto next=pendingTxSuccess_?excursion_.transmitCompleted(completedId,settingsEpoch,identityEpoch):
-      excursion_.transmitFailed(completedId,settingsEpoch,identityEpoch);
-    completionAwaitingRestore_=false;
-    if(next.kind==BeaconExcursion::ActionKind::StartTransmission&&next.packetId!=completedId)
-      release(completedId);
-    apply(next,now,settingsEpoch,identityEpoch);
-    return;
+    completionAwaitingRestore_=true;
   }
-  if(excursion_.holdsRadio()) {
-    if(completionAwaitingRestore_&&!service_.radio_.busy()) {
-      const int restored=service_.radio_.restore();
-      if(!restored&&service_.radio_.health()==1) {
-        completionAwaitingRestore_=false;
-        const auto next=pendingTxSuccess_?excursion_.transmitCompleted(activeId_,settingsEpoch,identityEpoch):
-          excursion_.transmitFailed(activeId_,settingsEpoch,identityEpoch);
-        apply(next,now,settingsEpoch,identityEpoch);return;
-      }
-      lastError_=restored?restored:-EIO;return;
-    }
-    if(lastError_&&restoreHome()) {
-      apply(excursion_.restoreCompleted(true,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
-    }
+  if(completionAwaitingRestore_) {
+    finishTransmit(now,settingsEpoch,identityEpoch);return;
+  }
+  if(excursion_.holdsRadio()||retuned_) {
+    apply({BeaconExcursion::ActionKind::RestoreHome,activeId_},now,settingsEpoch,identityEpoch);
     return;
   }
   const auto id=excursion_.frontId();
-  if(!id||service_.radio_.busy()||!service_.receiving_||service_.fault_)return;
+  if(!id||!ownerIdle())return;
 #if defined(CONFIG_MT_RF_ADMIN_GET)
   if(service_.privateAdminWorkQueued()||service_.privateAdminQueriesPending()||service_.legacyAdminWorkQueued())return;
 #endif
@@ -355,15 +359,11 @@ void BeaconTargetRuntime::receiveAccepted()
 void BeaconTargetRuntime::cancelAll(uint32_t settingsEpoch,uint32_t identityEpoch)
 {
   pendingAction_={};pendingActionReady_=false;
-  for(auto &r:rows_)if(r.used) {
+  for(auto &r:rows_)if(r.id) {
     const auto action=excursion_.cancel(r.id,settingsEpoch,identityEpoch);
-    if(action.kind==BeaconExcursion::ActionKind::RestoreHome||
-       action.kind==BeaconExcursion::ActionKind::ApplyCurrentSettings) {
-      if(txActive_)continue;
-      if(restoreHome())(void)excursion_.restoreCompleted(true,settingsEpoch,identityEpoch);
-    }
+    if(action.kind==BeaconExcursion::ActionKind::None)release(r.id);
+    else if(action.kind!=BeaconExcursion::ActionKind::HoldPacket)apply(action,0,settingsEpoch,identityEpoch);
   }
-  if(!txActive_&&!excursion_.holdsRadio())for(auto &r:rows_)if(r.used)release(r.id);
 }
 
 } // namespace mt::modules

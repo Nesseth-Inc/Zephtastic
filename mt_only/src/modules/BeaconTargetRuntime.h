@@ -25,6 +25,7 @@ public:
   void receiveAccepted();
   void cancelAll(uint32_t settingsEpoch,uint32_t identityEpoch);
   bool busy()const{return radioHeld()||excursion_.queued()!=0;}
+  bool homeRxPending()const;
   bool radioHeld()const{return excursion_.holdsRadio()||txActive_||retuned_;}
   size_t queued()const{return excursion_.queued();}
   int lastError()const{return lastError_;}
@@ -36,9 +37,8 @@ private:
   struct Row {
     uint32_t id=0;
     uint32_t enqueuedAt=0;
-    BeaconExcursion::Request request{};
+    BeaconExcursion::RadioProfile target{};
     bench::Frame frame{};
-    bool used=false;
   };
   Service &service_;
   Draw draw_;
@@ -49,7 +49,6 @@ private:
   bool waitingForAdmission_=false;
   uint32_t deadline_=0,activeId_=0;
   uint32_t activeSince_=0,slotMs_=0;
-  bool activeSinceSet_=false;
   int lastError_=0;
   BeaconExcursion::Action pendingAction_{};
   bool pendingActionReady_=false;
@@ -58,13 +57,15 @@ private:
   bool encode(const BeaconExcursion::Request &request,const uint8_t *data,size_t size,
               uint32_t random,uint32_t now,bench::Frame &out);
   bool configureProfile(const BeaconExcursion::RadioProfile &profile,Config &candidate,uint32_t *slotMs=nullptr);
+  void finishTransmit(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch);
   void contend(const BeaconExcursion::Action &action,uint32_t now);
   bool retune(const BeaconExcursion::RadioProfile &profile);
   bool restoreHome();
   void apply(const BeaconExcursion::Action &action,uint32_t now,
              uint32_t settingsEpoch,uint32_t identityEpoch);
   void release(uint32_t id);
-  bool admission(const Config &radioConfig,bool polite);
+  bool ownerIdle()const;
+  bool admission(uint32_t region);
   void expireQueued(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch);
 };
 } // namespace modules
