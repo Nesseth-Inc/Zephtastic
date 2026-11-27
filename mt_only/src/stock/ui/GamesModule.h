@@ -88,6 +88,11 @@ public:
         }
         initials.clear();state=State::GameOver;
     }
+    bool expireConfirmation(uint32_t now){
+        if(uint32_t(now-next)>=0x80000000u)return false;
+        state=State::Scores;
+        return true;
+    }
     bool poll(uint32_t now){
         if(!onScreen)return false;
         if(state==State::Initials){
@@ -97,7 +102,7 @@ public:
         if(state==State::ConfirmClear){
             // The stock overlay owns its 30-second deadline and suppresses the games inactivity timer.
             lastActivity=now;
-            if(int32_t(now-next)>=0)state=State::Scores;
+            expireConfirmation(now);
             return false;
         }
         if(uint32_t(now-lastActivity)>=15000)return true;
@@ -152,6 +157,7 @@ public:
             else if(back||ev==10)state=State::Attract;
             return true;
         case State::ConfirmClear:
+            if(expireConfirmation(now))return true;
             if((ev>=17&&ev<=20)||ev==12||ev==13||ev==28||ev==29)clearYes=!clearYes;
             if(ev==10||ev==24||ev==30){
                 if(ev==10&&clearYes){scores[selected]={};dirty=true;}

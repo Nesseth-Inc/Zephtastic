@@ -19,7 +19,12 @@ def generate(work, donor, method):
     options = renderer.index("optionWidths[i] = display->getStringWidth")
     first = renderer.index("        if (inEvent.inputEvent == INPUT_BROKER_UP ", options)
     last = renderer.index("\n    } else {", first)
-    (work / "game-banner-input.inc").write_text(renderer[first:last])
+    expiry = renderer.index("    // 0 means", renderer.index("void NotificationRenderer::drawBannercallback"))
+    end = renderer.index("    // Compact panels:", expiry)
+    (work / "game-banner-input.inc").write_text(renderer[expiry:end] + renderer[first:last])
+    throttle = donor("src/mesh/Throttle.h")
+    start = throttle.index("    static bool deadlinePassedAt(")
+    (work / "game-deadline.inc").write_text(throttle[start:throttle.index("\n    }", start)+6])
     (work / "game-types.inc").write_text("\n".join([
         broker[broker.index("enum input_broker_event"):broker.index("#ifdef ARCH_PORTDUINO")],
         header[state:header.index("};", state)+2], base, constants,

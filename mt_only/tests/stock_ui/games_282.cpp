@@ -58,6 +58,10 @@ struct BannerOverlayOptions {
     std::function<void(int)> bannerCallback;
 };
 }
+struct Throttle {
+#include "game-deadline.inc"
+    static bool deadlinePassed(uint32_t deadline){return deadlinePassedAt(now,deadline);}
+};
 struct Screen {
     bool shown=true;
     uint32_t deadline=0;
@@ -66,6 +70,7 @@ struct Screen {
     void overlayInput(input_broker_event code){
         InputEvent inEvent{code,0};
         const int *optionsEnumPtr=nullptr;
+        const bool pauseBanner=false;
         const int alertBannerOptions=2;
         const uint32_t alertBannerUntil=deadline;
         auto alertBannerCallback=confirmation;
@@ -172,8 +177,8 @@ struct Comparison {
     }
     void overlayKey(donor::input_broker_event ev){
         assert(donor::display.confirmation);
-        donor::display.overlayInput(ev);
-        zt.input(ev,++donor::now);
+        ++donor::now;donor::display.overlayInput(ev);
+        zt.input(ev,donor::now);
         if(donor::display.confirmation) assert(zt.clearYes==(donor::display.curSelected==1));
         compare();
     }
@@ -210,6 +215,9 @@ static unsigned exercise(uint32_t start){
         f.key(INPUT_BROKER_SELECT_LONG);f.overlayKey(INPUT_BROKER_RIGHT);f.overlayKey(cancel);
         assert(f.zt.scores[1].entries[0].value);
     }
+    f.key(INPUT_BROKER_SELECT_LONG);f.overlayKey(INPUT_BROKER_DOWN);
+    now=display.deadline-1;f.overlayKey(INPUT_BROKER_SELECT); // expires before handling SELECT, with no poll
+    assert(f.zt.state==State::Scores&&f.zt.scores[1].entries[0].value);
     f.key(INPUT_BROKER_SELECT_LONG);f.overlayKey(INPUT_BROKER_DOWN);f.overlayKey(INPUT_BROKER_SELECT);
     assert(!f.zt.scores[1].entries[0].value);
     f.key(INPUT_BROKER_SELECT_LONG);
