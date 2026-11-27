@@ -44,11 +44,33 @@ def registration_profiles(source, work):
     return checked
 
 
+def sensor_inventory(stock):
+    directory = "src/modules/Telemetry/Sensor"
+    base = "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
+    def objects(revision):
+        lines = subprocess.check_output(["git", "-C", stock, "ls-tree", "-r", revision, directory], text=True)
+        return {path: meta.split()[2] for meta, path in (line.split("\t") for line in lines.splitlines())}
+    old, new = objects(base), objects(STOCK)
+    additions = {"RAKSensorHub.cpp", "RAKSensorHub.h", "RAKSensorHubUplink.cpp"}
+    if not old.items() <= new.items() or {Path(p).name for p in new.keys() - old.keys()} != additions:
+        raise ValueError("A stock sensor backend changed outside the reviewed RAK hub additions")
+    unchanged = sorted(Path(p).stem for p in old if p.endswith(".cpp"))
+    if len(unchanged) != 46:
+        raise ValueError("Unexpected telemetry sensor inventory")
+    for name in ("RAKSensorHub.cpp", "RAKSensorHubUplink.cpp"):
+        source = (stock / directory / name).read_text()
+        if "#if !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && defined(HAS_RAKHUB)" not in source:
+            raise ValueError(f"The RAK2560-only guard changed in {name}")
+    return {"unchanged_translation_units": unchanged, "rak2560_additions": sorted(additions)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stock", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--maxim", required=True, type=Path)
     args = parser.parse_args()
+    sensors = sensor_inventory(args.stock)
     sources = {}
     for name, digest in PINS.items():
         data = (args.stock / "src/modules" / name).read_bytes()
@@ -88,6 +110,9 @@ def main():
         native = json.loads((regression / "RESULT.json").read_text())
         if native["status"] != "PASS" or len(native["executions"]) != 4:
             raise ValueError("Incomplete receive-cache and controller regressions")
+    subprocess.run([sys.executable, APP / "tests/stock_sensor_channels/run.py", "--release", "2.8.2",
+                    "--stock", args.stock, "--maxim", args.maxim], check=True)
+    sensors["execution"] = "Zephyr sensor workers, stock conversion bodies, two enum widths, and pinned Maxim optical sample processing"
     rows = {
         "MeshBeaconListenerModule": {"kind": "differential", "comparisons": counts[0],
             "evidence": "Stock listen admission and retained offer fields compared across ports and offer combinations. ZT receive-service and advisory-cache regressions also ran."},
@@ -98,7 +123,7 @@ def main():
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({"stock_revision": STOCK, "modules": rows, "source_sha256": PINS,
-                                      "registration_profiles": profiles, "hardware": False}, indent=2) + "\n")
+                                      "registration_profiles": profiles, "sensor_backends": sensors, "hardware": False}, indent=2) + "\n")
 
 
 if __name__ == "__main__":

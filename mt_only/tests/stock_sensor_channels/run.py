@@ -10,8 +10,10 @@ import host_test_toolchain as host
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--stock',type=Path,required=True)
 parser.add_argument('--maxim',type=Path,help='SparkFun MAX3010x Git checkout for the independent v1.1.2 optical oracle')
+parser.add_argument('--release', choices=('2.8.1', '2.8.2'), default='2.8.1')
 args=parser.parse_args()
-pin='8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c'
+pin = ('d5f16191ca28b01b5024f590f04a67f25d66f1b1' if args.release == '2.8.2'
+       else '8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c')
 proto=root/'zephcore/bench/upstream-differential/source'
 vendor=root/'zephcore/adapters/bench/vendor'
 mono=root/'zephcore/lib/monocypher'

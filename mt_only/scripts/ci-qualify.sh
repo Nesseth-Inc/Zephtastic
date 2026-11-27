@@ -34,7 +34,12 @@ if [[ $tool_group == native ]]; then
   python -m pip -q install meshtastic==2.7.11
   if [[ $group == modules-* ]]; then
     suite=${group#modules-}
-    python "mt_only/tests/stock_remaining_$suite/run.py" --stock "$work/stock" --output "$work/modules.json"
+    args=()
+    if [[ $suite == core ]]; then
+      fetch_commit "$work/maxim" https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library.git 72d5308df500ae1a64cc9d63e950c68c96dc78d5
+      args+=(--maxim "$work/maxim")
+    fi
+    python "mt_only/tests/stock_remaining_$suite/run.py" --stock "$work/stock" --output "$work/modules.json" "${args[@]}"
     exit 0
   fi
   python mt_only/scripts/test-upstream-282.py --stock "$work/stock" --output "$work/upstream"
