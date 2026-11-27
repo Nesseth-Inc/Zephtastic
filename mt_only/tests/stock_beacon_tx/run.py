@@ -15,6 +15,7 @@ APP=HERE.parents[1]
 ROOT=APP.parent
 sys.path.insert(0,str(ROOT))
 import host_test_toolchain as host
+from usb_sessions import verify_usb
 
 STOCK='d5f16191ca28b01b5024f590f04a67f25d66f1b1'
 PINS={'src/mesh/Channels.cpp':'509d7b9d7c82ee64f4ec3b49629083c63705c0cf5ec52b0515052c1356ee60ff',
@@ -65,6 +66,12 @@ def main():
         before=owner.index(');',poll)+2
         after=owner.index('    if(ringtoneJournal.ready())',before)
         (build/'power-owner-acquisition.inc').write_text(owner[before:after])
+        wipe=owner.index('static void wipeUsbRxLocked()')
+        ring=owner.index('struct UsbBatch {')
+        (build/'usb-rx-owner.inc').write_text(owner[wipe:owner.index('\n}',wipe)+2]+'\n'+
+            owner[ring:owner.index('static int commitVerifiedPeer(',ring)])
+        held=owner.index('      const bool wasRecovering=beaconTargets.recovering();')
+        (build/'usb-held-owner.inc').write_text(owner[held:owner.index('      k_mutex_unlock(&serviceLock);',held)])
         for label,abi in [('normal',[]),('short',['-fshort-enums'])]:
             flags=['-O1','-UNDEBUG','-DCONFIG_MT_RF_ADMIN_GET=1','-fsanitize=address,undefined','-fno-sanitize-recover=all',*abi,
                    *(('-DEKEYREJECTED=129',) if sys.platform=='darwin' else ()),
@@ -83,13 +90,13 @@ def main():
             exe=build/'target'
             subprocess.run([*host.cxx(),'-std=c++17',*flags,*host.crypto_compile_flags(),HERE/'cases.cpp',
                             APP/'src/modules/BeaconTargetRuntime.cpp',APP/'src/modules/BeaconExcursion.cpp',
-                            APP/'src/Protobuf.cpp',vendor/'MtCodec.cpp',vendor/'MtSignature.cpp',*objects,
+                            APP/'src/pki/PkiSigner.cpp',APP/'src/pki/PkiIdentity.cpp',APP/'src/Protobuf.cpp',vendor/'MtCodec.cpp',vendor/'MtSignature.cpp',*objects,
                             *host.crypto_link_flags(),'-o',exe],check=True)
             env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0:halt_on_error=1','UBSAN_OPTIONS':'halt_on_error=1'}
             row=json.loads(subprocess.check_output([exe],env=env,text=True))
-            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':22,'refilled_slots':24,'power_actions':3}:
+            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':26,'refilled_slots':24,'power_actions':3}:
                 raise ValueError(f'Incomplete beacon runtime run: {row}')
-            results.append({'enum':label,**row})
+            results.append({'enum':label,**row,'usb_recovery':verify_usb(exe,env)})
     report={'status':'PASS','hardware':False,'stock_revision':STOCK,'source_sha256':PINS,'runs':results}
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2)+'\n')

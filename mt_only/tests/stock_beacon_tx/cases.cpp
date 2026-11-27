@@ -472,7 +472,9 @@ static void boundedAdmission(bool recover,bool unsupported=false){
 }
 #include "admin.inc"
 #include "power_owner_cases.h"
-int main(){
+#include "usb_recovery.h"
+int main(int argc,char **argv){
+    if(argc==2)return usbRecovery::run(argv[1]);
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
     retiredTarget();terminalSignal();lostCompletion(false);lostCompletion(true);unavailableJoin();missingHome();normalSender();preservedHomeRx();pendingHomeAck();stagedAdminRead();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
     std::printf("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":26,\"refilled_slots\":24,\"power_actions\":%u}\n",beaconPower::cases());
