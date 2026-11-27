@@ -274,13 +274,17 @@ int input(uint32_t eventCode,uint32_t now) {
   case 18:in=Input::Down;break;
   case 19:in=Input::Left;break;
   case 20:in=Input::Right;break;
-#if defined(CONFIG_MT_ONSCREEN_KEYBOARD)
   case 24:
-    if(!model().keyboard.active
-#if defined(CONFIG_MT_BASEUI_GAMES)
-               &&model().page!=Page::Games
+#if defined(CONFIG_MT_ONSCREEN_KEYBOARD)
+    if(model().keyboard.active){in=Input::Back;break;}
 #endif
-    )return -EINVAL;
+#if defined(CONFIG_MT_BASEUI_GAMES)
+    if(model().page==Page::Games){in=Input::Back;break;}
+#endif
+    return -EINVAL;
+#if defined(CONFIG_MT_BASEUI_GAMES)
+  case 30: // ALT_LONG dismisses the stock score-clear overlay.
+    if(model().page!=Page::Games||model().games.state!=stock::ui::GamesModule::State::ConfirmClear)return -EINVAL;
     in=Input::Back;break;
 #endif
   case 27:in=Input::Back;break;

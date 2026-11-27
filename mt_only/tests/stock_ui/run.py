@@ -127,6 +127,8 @@ with tempfile.TemporaryDirectory() as tmp:
             actual = (games / f"{mode}.{ext}").read_text().split("\n", 2)[2].rstrip()
             assert reference == actual, f"core drift in {mode}.{ext}"
     if args.release == "2.8.2":
+        from games_282 import generate
+        generate(work, donor, method)
         stock_games = work / "stock-games"
         stock_games.mkdir()
         for extension in ("cpp", "h"):
@@ -138,6 +140,10 @@ with tempfile.TemporaryDirectory() as tmp:
             binary = work / "compare-tetris"
             run([*flags, *abi, "-I", app / "src", Path(__file__).parent / "tetris_282.cpp",
                  games / "Tetris.cpp", stock_object, "-o", binary])
+            run([binary])
+            binary = work / "compare-games"
+            run([*flags, *abi, "-I", app / "src", Path(__file__).parent / "games_282.cpp",
+                 *sorted(games.glob("*.cpp")), stock_object, "-o", binary])
             run([binary])
     for mode, test in [("Snake","snake"),("Breakout","breakout"),("ChirpyRunner","chirpy")]:
         cases = donor(f"test/test_{test}/test_main.cpp")

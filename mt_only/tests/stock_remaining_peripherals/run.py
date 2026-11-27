@@ -129,7 +129,11 @@ def collect(stock, temp):
     require(ui, "PASS pinned VirtualKeyboard", 1)
     require(ui, "PASS keyboard compose/routing", 4)
     row("OnScreenKeyboardModule", "differential", "The stock keyboard module matches all 256 broker events, including preserving drafts on Back. VirtualKeyboard matches 88 key actions, 5,000 navigation steps and timeout.")
-    row("GamesModule", "behavior", "The production display fixture enters, ticks, pauses and resumes all four games and tests score selection and clearing on two display sizes.")
+    transitions = re.findall(r"^GAMES282 transitions=(\d+)$", ui, re.M)
+    if len(transitions) != 2 or transitions[0] != transitions[1] or int(transitions[0]) <= 0:
+        raise ValueError("Incomplete GamesModule behavioral comparisons")
+    row("GamesModule", "differential", "Compiled stock host methods match ZT menu, Tetris input, pause/resume, tick cadence, game over, score insertion and clear confirmation across timer rollover. Display, clock and persistence sinks are simulated.",
+        cases_per_abi=int(transitions[0]))
     for name in ("Breakout", "ChirpyRunner", "Snake"):
         match = re.search(rf"^{name}: (\d+) pinned stock tests passed$", ui, re.M)
         if not match or int(match[1]) <= 0:

@@ -91,7 +91,10 @@ int main(){
     }
     g.lastScore=123;g.node=42;g.epoch=43;g.recordScore("ZT");g.lastScore=10;g.recordScore("ABC");
     assert(g.dirty&&g.scores[0].entries[0].node==42&&g.scores[0].entries[0].epoch==43&&g.scores[0].entries[1].value==10);
-    key(10);assert(g.state==Games::State::Scores);key(11);key(10);assert(g.scores[0].entries[0].value==123);
+    key(10);assert(g.state==Games::State::Scores);
+    key(11);key(27);assert(g.state==Games::State::ConfirmClear);
+    key(28);assert(g.clearYes);key(30);assert(g.state==Games::State::Scores&&g.scores[0].entries[0].value==123);
+    key(11);key(10);assert(g.scores[0].entries[0].value==123);
     key(11);key(18);key(10);assert(!g.scores[0].entries[0].value);key(27);
     key(10);tick(clockNow+15001);assert(model().page==Page::Home);
     std::cout<<"PASS keyboard compose/routing, physical commands/pairing, four live games, timing and score menu\n";

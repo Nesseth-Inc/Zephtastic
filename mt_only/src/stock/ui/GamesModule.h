@@ -94,8 +94,13 @@ public:
             lastActivity=now;if(initials.expired(now))recordScore("");
             return false;
         }
+        if(state==State::ConfirmClear){
+            // The stock overlay owns its 30-second deadline and suppresses the games inactivity timer.
+            lastActivity=now;
+            if(int32_t(now-next)>=0)state=State::Scores;
+            return false;
+        }
         if(uint32_t(now-lastActivity)>=15000)return true;
-        if(state==State::ConfirmClear){lastActivity=now;return false;}
         if(state!=State::Playing)return false;
         if(int32_t(now-next)<0)return false;
         bool alive=false;
@@ -143,13 +148,13 @@ public:
             if(back)state=State::Attract;else if(ev==10)state=State::Scores;
             return true;
         case State::Scores:
-            if(ev==11){state=State::ConfirmClear;clearYes=false;}
+            if(ev==11){state=State::ConfirmClear;clearYes=false;next=now+30000;if(!next)next=1;}
             else if(back||ev==10)state=State::Attract;
             return true;
         case State::ConfirmClear:
-            if(ev>=17&&ev<=20)clearYes=!clearYes;
-            if(back||ev==10){
-                if(!back&&clearYes){scores[selected]={};dirty=true;}
+            if((ev>=17&&ev<=20)||ev==12||ev==13||ev==28||ev==29)clearYes=!clearYes;
+            if(ev==10||ev==24||ev==30){
+                if(ev==10&&clearYes){scores[selected]={};dirty=true;}
                 state=State::Scores;
             }
             return true;
