@@ -63,7 +63,9 @@ The core job compares the Git objects for the upstream telemetry sensor director
 
 The native job also interrupts settings journal writes at each byte, changes each bit of a saved record, and checks variable-length records under both enum ABIs. These tests cover the shared write-and-readback routine used by 15 settings journals.
 
-The beacon tests cover late completion and recovery after a failed return to the home channel. If a driver never signals completion, or if the radio can never verify the home channel, the current firmware retains the packet and radio ownership. The ordinary USB service loop then pauses until recovery or reset.
+If a beacon transmission times out or the radio cannot verify its return to the home channel, the USB companion continues servicing the stock client. A permitted local console can connect, read the configuration snapshot, request device metadata and connection status, and exchange heartbeats. Radio sends and settings changes wait for ordinary operation or receive an error. USB session and managed-device access controls still apply.
+
+The beacon owner retries radio recovery at one-second intervals. It retains the transmit buffer until the driver reports completion or confirms that transmission has stopped. A late completion after timeout never triggers a second transmission. A permanent radio fault can still require a reset to resume RF. Private-runner tests use simulated completion and home-channel failures.
 
 ## Optional USB bench check
 
