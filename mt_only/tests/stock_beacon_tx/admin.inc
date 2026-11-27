@@ -6,11 +6,13 @@ struct AdminChannelProvider:RelayFixtureProvider {
     bool encodeChannelControl(bench::MtCodec &codec,uint32_t to,uint32_t id,const uint8_t *data,
                               size_t n,bench::Frame &frame)override{
         size_t size=0;
-        if(!codec.encodeZeroHopData(local_,to,id,data,n,frame.bytes,sizeof(frame.bytes),size))return false;
+        if(!codec.encodeAdminChannelResponse(local_,to,id,data,n,frame.bytes,sizeof(frame.bytes),size))return false;
         frame.len=size;return true;
     }
     bool broadcast(bench::MtCodec &codec,uint32_t id,const uint8_t *data,size_t n,bench::Frame &frame)override{
-        return encodeChannelControl(codec,UINT32_MAX,id,data,n,frame);
+        size_t size=0;
+        if(!codec.encodeZeroHopData(local_,UINT32_MAX,id,data,n,frame.bytes,sizeof(frame.bytes),size))return false;
+        frame.len=size;return true;
     }
 };
 static bool ownerData(bool response,uint32_t id,uint8_t *out,size_t capacity,size_t &size){
@@ -66,10 +68,16 @@ static void stagedAdminRead(){
 
     mt::PrimaryChannel::Selection channel{};assert(f.home.channelSelection(1,channel)&&channel.hash);
     bench::MtCodec peerChannel;assert(peerChannel.setKey(channel.hash,channel.bytes,channel.length));
-    mt::PrimaryChannel::clear(channel);
-    uint8_t data[227]{};size_t size=0,n=0;bench::Frame wire{};
-    assert(ownerData(false,id,data,sizeof(data),size)&&
-           peerChannel.encodeZeroHopData(peer,Self,id,data,size,wire.bytes,sizeof(wire.bytes),n));
+    // A peer GET requests a response. The local zero-hop unsolicited
+    // application encoder intentionally rejects that bit; use stock CTR wire framing.
+    bench::Frame wire{};size_t size=0;
+    assert(ownerData(false,id,wire.bytes+16,sizeof(wire.bytes)-16,size));
+    auto put=[](uint8_t *p,uint32_t v){for(unsigned i=0;i<4;++i)p[i]=uint8_t(v>>(8*i));};
+    put(wire.bytes,Self);put(wire.bytes+4,peer);put(wire.bytes+8,id);
+    wire.bytes[13]=channel.hash;wire.bytes[15]=uint8_t(peer);
+    uint8_t nonce[16];bench::MtCodec::nonce(peer,id,nonce);
+    assert(bench::mtAesCtr(nullptr,channel.bytes,channel.length,nonce,wire.bytes+16,size));
+    mt::PrimaryChannel::clear(channel);const auto n=size+16;
     bool routed=true;f.service.rx(wire.bytes,n,1,t+1,32,true,&routed);
     assert(!routed&&f.service.legacyAdminWorkQueued()&&f.service.storageStopSafe()&&!f.service.endpointControls());
     f.poll(t+2);
@@ -77,6 +85,7 @@ static void stagedAdminRead(){
 
     mt::modules::BeaconBroadcaster producer;unsigned queued=0;
     auto scheduled=[&](uint32_t at){
+        assert(f.clock.set(at)&&producer.takeScheduledTick(edit,at));
         producer.pollScheduledTargets(f.service,edit,true,at,0,0x78563412,
             [&](const uint8_t *,size_t,uint32_t,unsigned){++queued;},f.runtime,1);
     };
@@ -90,6 +99,7 @@ static void stagedAdminRead(){
     assert(bench::le32(reply.data())==peer&&peerChannel.decode(reply.data(),reply.size(),meta)&&
            meta.portnum==meshtastic_PortNum_ADMIN_APP&&meta.request_id==id);
     f.radio.complete=true;f.service.poll(t+405,19);
-    scheduled(t+406);
+    assert(!producer.takeScheduledTick(edit,t+406));
+    scheduled(t+3+3600000);
     assert(queued==1&&f.runtime.queued()==1&&settings.writes>baseline&&edit.config().sentBefore());
 }
