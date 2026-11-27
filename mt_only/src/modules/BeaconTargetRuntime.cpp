@@ -51,7 +51,9 @@ bool BeaconTargetRuntime::configureProfile(const BeaconExcursion::RadioProfile &
     auto request=candidate.radioRequest();
     request.regionCode=profile.region;request.preset=profile.preset;request.usePreset=profile.usePreset;
     request.channel=profile.slot;request.overrideMHz=0;
-    if(!candidate.setRadio(request))return false;
+    // The settings editor may normalize an oversized US channel. A resolved
+    // beacon target must retain the exact channel chosen by the broadcaster.
+    if(!candidate.setRadio(request)||candidate.channelNumber()!=profile.slot)return false;
   } else if(!slotMs) return candidate.provisioned();
   LoRaPresets::Profile modem{};USChannelSelection channel{};
   return candidate.provisioned()&&candidate.resolveRadio(modem,channel)&&channel.regionCode==profile.region&&
