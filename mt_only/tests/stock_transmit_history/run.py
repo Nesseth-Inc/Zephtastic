@@ -47,7 +47,7 @@ for label,abi in [('normal',[]),('short',['-fshort-enums'])]:
         start=unit.index(marker);end=unit.index('\n  }',start)+4;parts.append(unit[start:end])
     (build/'sensor-owner.inc').write_text('\n'.join(parts)+'\n')
     fixture=(app/'tests/beacon_controller_tests.cpp').read_text()
-    (build/'beacon-harness.inc').write_text(fixture[:fixture.index('int main(){')])
+    (build/'beacon-harness.inc').write_text(fixture[:fixture.index('static void frequencySlots()')])
     flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-DCONFIG_MT_PERSIST_BROADCAST_HISTORY=1',*abi,
            *['-I'+str(path) for path in (build,app/'src',app/'tests',app/'tests/beacon/stubs',vendor,mono,proto/'nanopb')],*host.crypto_compile_flags()]
     if sys.platform=='darwin':flags.append('-DEKEYREJECTED=129')
