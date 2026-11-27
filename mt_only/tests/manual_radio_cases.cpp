@@ -2,10 +2,10 @@
 #include "SettingsJournal.h"
 #include <cassert>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include <vector>
 #include <string>
-struct Backend:mt::SettingsBackend{std::map<std::string,std::vector<uint8_t>> values;bool fail=false;int read(const char*k,uint8_t*out,size_t cap)override{auto it=values.find(k);if(it==values.end())return -ENOENT;if(it->second.size()>cap)return -E2BIG;memcpy(out,it->second.data(),it->second.size());return int(it->second.size());}int write(const char*k,const uint8_t*p,size_t n)override{values[k]={p,p+n};return fail?-EIO:0;}};
+struct Backend:mt::SettingsBackend{std::unordered_map<std::string,std::vector<uint8_t>> values;bool fail=false;int read(const char*k,uint8_t*out,size_t cap)override{auto it=values.find(k);if(it==values.end())return -ENOENT;if(it->second.size()>cap)return -E2BIG;memcpy(out,it->second.data(),it->second.size());return int(it->second.size());}int write(const char*k,const uint8_t*p,size_t n)override{values[k]={p,p+n};return fail?-EIO:0;}};
 static std::vector<uint8_t> read(const char*n){std::ifstream f(n,std::ios::binary);return {std::istreambuf_iterator<char>(f),{}};}
 #include <iostream>
 #include <limits>
@@ -26,6 +26,14 @@ int main(){
  auto invalidMode=c;invalidMode.bytes[604]=2;invalidMode.seal();assert(!mt::Config::decode(invalidMode.bytes,sizeof(invalidMode.bytes),roundtrip)&&roundtrip.same(c));
  auto reserved=c;reserved.bytes[605]=1;reserved.seal();assert(!mt::Config::decode(reserved.bytes,sizeof(reserved.bytes),roundtrip)&&roundtrip.same(c));
  old[574]^=1;assert(!mt::Config::decode(old.data(),old.size(),roundtrip)&&roundtrip.same(c));std::cout<<"PASS AEAD and CTR roundtrips; invalid mode, reserved byte and old CRC refuse atomically\n";
- Backend backend;backend.values["mtbase/state0"]=read("v4-journal.bin");mt::SettingsJournal journal;assert(!journal.load(backend)&&journal.config().valid()&&journal.generation()==1);assert(!journal.save(backend,c)&&journal.generation()==2);auto &bytes=backend.values["mtbase/state1"];assert(bytes.size()==656&&bytes[3]==6);mt::SettingsJournal reboot;assert(!reboot.load(backend)&&reboot.config().same(c));std::cout<<"PASS actual journal4 migrates to journal6 and reboots\n";
+ Backend backend;const auto original=read("v4-journal.bin");backend.values["mtbase/state0"]=original;
+ mt::SettingsJournal journal;assert(!journal.load(backend)&&journal.config().valid()&&journal.generation()==1&&journal.channelGeneration()==0);
+ assert(!journal.config().provisioned()&&c.provisioned());
+ assert(!journal.save(backend,c)&&journal.generation()==2&&backend.values.at("mtbase/state0")==original);
+ const auto &bytes=backend.values.at("mtbase/state1");assert(bytes.size()==656&&!memcmp(bytes.data(),"ZTJ\x07",4));
+ assert(mt::Config::get32(bytes.data()+4)==2&&mt::Config::get32(bytes.data()+8)==1);
+ assert(!memcmp(bytes.data()+12,c.bytes,640));
+ mt::SettingsJournal reboot;assert(!reboot.load(backend)&&reboot.config().same(c)&&reboot.channelGeneration()==1);
+ std::cout<<"PASS actual journal4 migrates to journal7 and reboots\n";
  backend.fail=true;auto change=c;change.setTxEnabled(true);assert(journal.save(backend,change)==-EIO&&journal.state()==mt::SettingsJournal::State::IoError&&journal.config().same(c));assert(journal.save(backend,c)==-EACCES);std::cout<<"PASS uncertain settings commit retains RAM and stops later writes\n";
 }

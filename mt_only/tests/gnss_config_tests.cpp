@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Pure Config16 / Journal6 persistence tests. The legacy-producer build uses
+// GNSS configuration and journal migration tests. The legacy-producer build uses
 // literal prior Config/SettingsJournal headers supplied by the native runner.
 #include "SettingsJournal.h"
 #include <cassert>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 
 using Bytes=std::vector<uint8_t>;
 struct Memory final:mt::SettingsBackend {
-  std::map<std::string,Bytes> files;
+  std::unordered_map<std::string,Bytes> files;
   unsigned writes=0;
   bool failWrite=false,corruptReadback=false;
   int read(const char *key,uint8_t *out,size_t capacity)override {
@@ -218,7 +218,7 @@ static void journalCases(const std::string &directory) {
     Memory corrupt;corrupt.files["mtbase/state0"]=old;mt::SettingsJournal readback;assert(!readback.load(corrupt));corrupt.corruptReadback=true;
     assert(readback.save(corrupt,next)==-EIO&&readback.config().same(migrated)&&readback.state()==mt::SettingsJournal::State::IoError);
   }
-  puts("PASS actual Journal5 read-only migration, Journal6 save/remount, rollback bytes, corruption fallback and uncertain-write latch");
+  puts("PASS actual Journal5 read-only migration, Journal7 save/remount, rollback bytes, corruption fallback and uncertain-write latch");
 }
 int main(int argc,char **argv) {
   assert(argc==2);codecCases();migrationCases(argv[1]);currentCases();journalCases(argv[1]);return 0;

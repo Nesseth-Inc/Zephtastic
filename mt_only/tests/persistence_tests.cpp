@@ -66,6 +66,13 @@ static void generation(Bytes &b,uint32_t value){
   uint32_t c=UINT32_MAX;for(size_t i=0;i<b.size()-4;++i){c^=b[i];for(unsigned j=0;j<8;++j)c=(c>>1)^(0xedb88320u&uint32_t(-int32_t(c&1)));}
   c=~c;for(unsigned i=0;i<4;++i)b[b.size()-4+i]=uint8_t(c>>(8*i));
 }
+static void expectCurrentRecord(const Bytes &record,const mt::Config &config,
+                                uint32_t expectedGeneration,uint32_t expectedChannelGeneration){
+  assert(record.size()==656 && !memcmp(record.data(),"ZTJ\x07",4));
+  assert(mt::Config::get32(record.data()+4)==expectedGeneration);
+  assert(mt::Config::get32(record.data()+8)==expectedChannelGeneration);
+  assert(!memcmp(record.data()+12,config.bytes,640));
+}
 static unsigned groups=0;
 #define PASS(s) do{++groups;puts(s);}while(0)
 int main(){
@@ -115,16 +122,33 @@ int main(){
     forbidden[forbidden.size()-2]=uint8_t(sum);forbidden.back()=uint8_t(sum>>8);auto unchanged=restored;
     assert(!mt::Config::decode(forbidden.data(),forbidden.size(),restored)&&restored.same(unchanged));
    }PASS("v4/v5 Config migration defaults channel mute false and never reinterprets formerly reserved byte 101");}
-  {Memory b;const auto old=named("Old journal");b.files["mtbase/state0"]=previousJournal(old,9,3);
+  {Memory b;const auto old=named("Old journal");const auto original=previousJournal(old,9,3);
+   b.files["mtbase/state0"]=original;
    mt::SettingsJournal j;assert(!j.load(b)&&j.config().same(old)&&j.generation()==9&&j.activeSlot()==0&&b.writes==0);
-   auto next=old;assert(next.setFixedPosition(123,456,true,0));assert(!j.save(b,next)&&b.files["mtbase/state1"].size()==656&&b.files["mtbase/state1"][3]==6&&b.files["mtbase/state1"][8]==128&&b.files["mtbase/state1"][9]==2);
-   mt::SettingsJournal reboot;assert(!reboot.load(b)&&reboot.config().same(next)&&reboot.generation()==10);
-   PASS("original112 version-1 journal migrates in RAM and coexists with new656 version-6 slot");}
-  {Memory b;const auto old=named("Former journal");b.files["mtbase/state0"]=formerJournal(old,17);const auto original=b.files["mtbase/state0"];
+   auto next=old;assert(next.setFixedPosition(123,456,true,0));assert(!j.save(b,next));
+   assert(b.files.at("mtbase/state0")==original);
+   expectCurrentRecord(b.files.at("mtbase/state1"),next,10,0);
+   mt::SettingsJournal reboot;assert(!reboot.load(b)&&reboot.config().same(next)&&reboot.generation()==10&&reboot.channelGeneration()==0);
+   PASS("original version-1 journal survives migration beside the version-7 fixed-position record");}
+  {Memory b;const auto old=named("Former journal");const auto original=formerJournal(old,17);
+   b.files["mtbase/state0"]=original;
    assert(original.size()==128&&original[3]==2&&original[8]==112);mt::SettingsJournal j;assert(!j.load(b)&&j.config().same(old)&&j.generation()==17&&!b.writes);
-   auto next=old;assert(next.setDeviceRole(0,0)&&next.setPrimaryName("M93"));assert(!j.save(b,next)&&b.files["mtbase/state0"]==original&&b.files["mtbase/state1"].size()==656&&b.files["mtbase/state1"][3]==6);
-   mt::SettingsJournal reboot;assert(!reboot.load(b)&&reboot.config().same(next)&&reboot.generation()==18);
-   PASS("original128 version-2 journal is preserved beside new656 version-6 role/name record and reboots to newer generation");}
+   auto next=old;assert(next.setDeviceRole(0,0)&&next.setPrimaryName("M93"));assert(!j.save(b,next));
+   assert(b.files.at("mtbase/state0")==original);
+   expectCurrentRecord(b.files.at("mtbase/state1"),next,18,1);
+   mt::SettingsJournal reboot;assert(!reboot.load(b)&&reboot.config().same(next)&&reboot.generation()==18&&reboot.channelGeneration()==1);
+   PASS("original version-2 journal survives migration beside the version-7 channel rename");}
+  {Memory b;const auto old=named("V6 journal");auto historical=old;historical.bytes[2]=16;historical.seal();
+   Bytes original(656,0);
+   memcpy(original.data(),"ZTJ\x06",4);original[8]=0x80;original[9]=0x02;  // v6 payload length, 640.
+   memcpy(original.data()+12,historical.bytes,640);generation(original,41);
+   b.files["mtbase/state0"]=original;
+   mt::SettingsJournal j;assert(!j.load(b)&&j.config().same(old)&&j.generation()==41&&j.channelGeneration()==0&&!b.writes);
+   auto next=old;assert(next.setDisplay(120,true)&&!j.save(b,next));
+   assert(b.files.at("mtbase/state0")==original);
+   expectCurrentRecord(b.files.at("mtbase/state1"),next,42,0);
+   mt::SettingsJournal reboot;assert(!reboot.load(b)&&reboot.config().same(next)&&reboot.generation()==42&&reboot.channelGeneration()==0);
+   PASS("version-6 payload length is accepted on read and version-7 writes the channel generation");}
   {Memory b;mt::SettingsJournal j;assert(!j.load(b)&&j.ready()&&j.state()==mt::SettingsJournal::State::Fresh&&b.writes==0);
    assert(j.config().valid()&&!j.config().provisioned()&&j.activeSlot()==-1);
    const auto c=named("First config");assert(!j.save(b,c)&&j.generation()==1&&j.activeSlot()==0&&b.writes==1);
