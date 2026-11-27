@@ -1566,6 +1566,9 @@ private:
     hopScaling_.samplePacketForHistogram(source,(flags>>5)-(flags&7u));
   }
 public:
+#if defined(CONFIG_MT_HOP_HISTORY)
+  stock::HopScalingModule &hopHistory(){return hopScaling_;}
+#endif
   void noteTxUncertain(){airtime_.noteUncertain();channel_.noteUncertain();}
   void creditTxPending(bool relay=false){
     // A known clean terminal completion is counted once, even if clock or

@@ -57,7 +57,7 @@ inline constexpr const char *PreferencePairs[]={"mtbase/state","mtbase/nodes","m
     "mttx/history",
 #endif
     "mt_hot/meta"};
-inline constexpr const char *PreferenceSingles[]={"mtbase/config","mtgames/scores1","mtway/history","mtsat/epoch",
+inline constexpr const char *PreferenceSingles[]={"mtbase/config","mtgames/scores1","mtway/history","mthop/state","mtsat/epoch",
     "mtxsensor/bme680","mtxsensor/nau","mtxsensor/as3935","mtxsensor/sen5","mtxsensor/sen6","mtxsensor/sen5hist","mtxsensor/sen6hist"};
 template<class Erase> int erasePreferences(Erase erase){
   for(const char *stem:PreferencePairs){

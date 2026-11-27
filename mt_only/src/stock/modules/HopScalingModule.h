@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Port of Meshtastic 8e6a88d, src/modules/HopScalingModule.{h,cpp}. ZT uses
-// the live RF histogram and the stock non-filesystem cold-start behavior.
+// Port of Meshtastic src/modules/HopScalingModule.{h,cpp}.
 #pragma once
 #include "meshtastic/config.pb.h"
 #include "meshtastic/portnums.pb.h"
 #include <stdint.h>
+#if defined(CONFIG_MT_HOP_HISTORY)
+#include "../../ChannelRecord.h"
+#include <errno.h>
+#endif
 
 namespace mt::stock {
 class HopScalingModule {
@@ -17,6 +20,23 @@ class HopScalingModule {
     uint8_t suggested_=MaximumHop, required_=MaximumHop, confirm_=0, runs_=0;
     bool congested_=false, started_=false, seeded_=false;
     uint32_t due_=30000;
+#if defined(CONFIG_MT_HOP_HISTORY)
+    // The first 522 bytes are Meshtastic HST2. NVS protects allocation
+    // metadata; a separate CRC covers the contents, including every bitmap.
+    struct Image {
+        uint32_t magic;
+        uint8_t version, sampling, filtering, hold;
+        uint16_t seed;
+        uint8_t rows[Capacity*sizeof(Record)];
+        uint16_t crc;
+    };
+    static_assert(offsetof(Image,rows)==10 && offsetof(Image,crc)==522 && sizeof(Image)==524);
+    enum class History : uint8_t { Disabled, Ready, Due };
+    History history_=History::Disabled;
+    static bool validDenominator(unsigned value) {
+        return value && value<=128 && !(value&(value-1));
+    }
+#endif
 
     static bool passes(uint16_t hash,unsigned denominator) { return !(hash & (denominator-1)); }
 
@@ -67,6 +87,41 @@ class HopScalingModule {
     }
 
 public:
+#if defined(CONFIG_MT_HOP_HISTORY)
+    // Called once before RF admission. An unreadable or unknown image cannot
+    // authorize this session to replace it. A missing key is an ordinary cold boot.
+    template<class Store> void loadHistory(Store &store) {
+        if(seeded_||count_||started_||history_!=History::Disabled)return;
+        Image image;
+        const int n=store.read("mthop/state",reinterpret_cast<uint8_t*>(&image),sizeof(image));
+        if(n==-ENOENT){history_=History::Ready;return;}
+        if(n!=int(sizeof(image))||image.magic!=0x48535432u||image.version!=1||
+           !validDenominator(image.sampling)||!validDenominator(image.filtering)||
+           image.filtering<image.sampling||image.hold>13||
+           ChannelRecord::checksum(reinterpret_cast<const uint8_t*>(&image),offsetof(Image,crc))!=image.crc)return;
+        seed(image.seed);
+        sampling_=image.sampling;filtering_=image.filtering;hold_=image.hold;
+        for(unsigned i=0;i<Capacity;++i){
+            Record r;
+            memcpy(&r,image.rows+i*sizeof(r),sizeof(r));
+            if(r.seen)records_[count_++]=r;
+        }
+        history_=History::Ready;
+    }
+    bool takeCheckpoint(){
+        if(history_!=History::Due)return false;
+        history_=History::Ready;return true;
+    }
+    template<class Store> int saveHistory(Store &store) const {
+        Image image;
+        image.magic=0x48535432u;image.version=1;image.sampling=sampling_;
+        image.filtering=filtering_;image.hold=hold_;image.seed=seed_;
+        memcpy(image.rows,records_,sizeof(records_));
+        auto *bytes=reinterpret_cast<const uint8_t*>(&image);
+        image.crc=ChannelRecord::checksum(bytes,offsetof(Image,crc));
+        return store.write("mthop/state",bytes,sizeof(image));
+    }
+#endif
     void seed(uint16_t value) {
         if(!seeded_) { seed_=value; seeded_=true; }
     }
@@ -95,6 +150,9 @@ public:
         if(++runs_<RollsPerHour)return;
         runs_=0;
         rollHour(util);
+#if defined(CONFIG_MT_HOP_HISTORY)
+        if(history_==History::Ready)history_=History::Due;
+#endif
         if(!congested_) {
             if(required_<MaximumHop)++required_;
             return;

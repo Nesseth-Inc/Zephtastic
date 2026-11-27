@@ -987,13 +987,27 @@ static void flushBroadcastsBeforeReset(){
     (void)broadcastHistory.save(settings,uint64_t(k_uptime_get()));
 }
 #endif
-static void saveWaypoints(uint64_t now){
-  if(!storageReady||!waypointHistory.due(waypoints,journal.channelGeneration(),now))return;
-  waypointHistory.retry(now);
+static void checkpointHistories(uint64_t now){
+  if(!storageReady)return;
+  const bool waypoint=waypointHistory.due(waypoints,journal.channelGeneration(),now);
+#if defined(CONFIG_MT_HOP_HISTORY)
+  // Consume each roll once, even when storage or RF is busy. The next roll
+  // offers a fresh checkpoint without retrying a failed flash write in a loop.
+  const bool hop=service.hopHistory().takeCheckpoint()&&!settingsEdit.open()&&
+                 !rebootSchedule.pending()&&!firmwareUpdate.pending()&&!service.faulted();
+#else
+  constexpr bool hop=false;
+#endif
+  if(!waypoint&&!hop)return;
+  if(waypoint)waypointHistory.retry(now);
   const bool receiving=service.receiving(),relaying=service.relaying(),armed=service.endpointArmed();
   if(service.pauseForStorage()!=0)return;
-  if(service.storageQuiescent()&&radio.ready()&&!radio.busy()&&radio.health()==0)
-    (void)waypointHistory.save(settings,waypoints,waypointHistoryDomain(),waypointHistoryContacts(),now);
+  if(service.storageQuiescent()&&radio.ready()&&!radio.busy()&&radio.health()==0){
+    if(waypoint)(void)waypointHistory.save(settings,waypoints,waypointHistoryDomain(),waypointHistoryContacts(),now);
+#if defined(CONFIG_MT_HOP_HISTORY)
+    if(hop)(void)service.hopHistory().saveHistory(settings);
+#endif
+  }
   if(receiving&&service.start(relaying,uint32_t(now))&&armed)(void)service.armEndpoint(true);
 }
 #if defined(CONFIG_MT_SATELLITE_HISTORY)
@@ -5421,6 +5435,9 @@ static bool neighborSnapshot(void *,meshtastic_NeighborInfo &out) {
 #endif
 #endif
   if(storageReady){
+#if defined(CONFIG_MT_HOP_HISTORY)
+    service.hopHistory().loadHistory(settings);
+#endif
     waypoints.domain(node,service.waypointDomainEpoch());
     (void)waypointHistory.load(settings,waypoints,waypointHistoryDomain(),waypointHistoryContacts(),wallClock.at(k_uptime_get()));
   }
@@ -5968,7 +5985,7 @@ int main() {
 #endif
     }
     waypoints.purgeExpired(wallClock.at(hotNow));
-    saveWaypoints(hotNow);
+    checkpointHistories(hotNow);
 #if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
     if(!settingsEdit.open()&&!persistentWorkPending()&&!rebootSchedule.pending()&&!firmwareUpdate.pending()&&
        !clientIngressSaturated&&!administrationWorkPending()&&!beaconTargets.radioHeld()&&

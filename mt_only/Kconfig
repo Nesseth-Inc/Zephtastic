@@ -136,6 +136,13 @@ config MT_GNSS_T096
 	bool "T096 ZephCore GNSS adapter"
 	depends on BOARD_HELTEC_T096 && GNSS && PM_DEVICE
 	default y
+config MT_HOP_HISTORY
+	bool "Restore the sampled hop histogram across restart"
+	depends on (BOARD_XIAO_ESP32S3 || BOARD_HELTEC_T096) && MT_NORMAL_ENDPOINT && SETTINGS_NVS
+	default y
+	help
+	  Checkpoint the stock hourly histogram in one private native settings
+	  key. A cold or unavailable store keeps the ordinary RF sampling path.
 config MT_PERSIST_BROADCAST_HISTORY
 	bool "Persist stock broadcast cooldowns"
 	depends on BOARD_XIAO_ESP32S3 && MT_NORMAL_ENDPOINT && SETTINGS_NVS
