@@ -83,6 +83,8 @@ struct TestRadio final : mt::Radio {
     int state=0;
     unsigned scans=0,configures=0,homeFailures=0,startFailures=0,restoreFailures=0;
     unsigned aborts=0,invalidPauses=0,abortFailures=0,homeStartFailures=0,targetConfigureFailures=0;
+    unsigned joins=0,joinFailures=0,wrongStandby=0;
+    bool joinSupported=true;
     const uint8_t *borrowed=nullptr;size_t borrowedSize=0;
     std::vector<Bytes> frames;
     bool ready()override{return true;}
@@ -99,6 +101,13 @@ struct TestRadio final : mt::Radio {
         assert(!borrowed);++aborts;
         if(abortFailures){--abortFailures;return -EIO;}
         state=0;rxCallback=false;return 0;
+    }
+    int abortBeaconTransmit()override{
+        ++joins;if(!joinSupported)return -ENOTSUP;
+        if(joinFailures){--joinFailures;return -EIO;}
+        borrowed=nullptr;borrowedSize=0;complete=false;rxCallback=false;
+        if(wrongStandby){--wrongStandby;state=1;}else state=0;
+        return 0;
     }
     int stopForStorage()override{
         if(rxPending)return -EAGAIN;
@@ -253,13 +262,13 @@ static void homeRestoreRetry(){
     f.radio.homeFailures=3;f.radio.homeStartFailures=1;f.finish(++now);
     for(unsigned retry=0;retry<2;++retry){
         assert(f.runtime.radioHeld()&&f.radio.isolated&&!f.service.receiving());
-        f.poll(++now);
+        f.poll(now+=Runtime::RecoveryRetryMs);
     }
-    f.poll(++now);
+    f.poll(now+=Runtime::RecoveryRetryMs);
     assert(f.runtime.radioHeld()&&f.radio.isolated&&f.radio.state==3&&f.radio.health()==0);
-    f.radio.abortFailures=1;f.poll(++now);
+    f.radio.abortFailures=1;f.poll(now+=Runtime::RecoveryRetryMs);
     assert(f.runtime.radioHeld()&&f.radio.isolated&&f.radio.state==3);
-    f.poll(++now);assert(!f.runtime.busy()&&!f.radio.isolated&&f.service.receiving());
+    f.poll(now+=Runtime::RecoveryRetryMs);assert(!f.runtime.busy()&&!f.radio.isolated&&f.service.receiving());
     assert(f.radio.aborts==2&&!f.radio.invalidPauses);
     // A later request gets its own admission timeout after the restore retry.
     now+=6000;assert(f.enqueue(51,target,now));f.poll(now);now+=f.delay(draw);
@@ -294,14 +303,14 @@ static void faultRecovery(){
     f.poll(10);auto now=10+f.delay(draw);f.poll(now);f.frame(0,80,"MediumFast");
     f.radio.restoreFailures=1;f.finish(++now);
     assert(f.service.faulted()&&f.runtime.radioHeld()&&f.radio.isolated);
-    f.poll(++now);assert(f.service.faulted()&&!f.runtime.radioHeld()&&!f.radio.isolated);
-    assert(f.radio.frames.size()==1&&f.runtime.queued()==1);f.runtime.cancelAll(1,Self);
+    f.poll(now+=Runtime::RecoveryRetryMs);assert(f.service.faulted()&&!f.runtime.radioHeld()&&!f.radio.isolated);
+    assert(f.radio.frames.size()==1&&f.runtime.queued()==0);f.runtime.cancelAll(1,Self);
     assert(!f.runtime.busy()&&!f.enqueue(82,target,now));
 
     Fixture g;assert(g.enqueue(90,target,0));g.radio.startFailures=1;g.radio.homeFailures=2;
     g.poll(10);assert(g.radio.homeFailures==0&&g.runtime.radioHeld()&&g.service.faulted());
     // A closed owner gate still owes the device a verified return to home RX.
-    g.runtime.poll(11,1,Self,false);
+    g.runtime.poll(10+Runtime::RecoveryRetryMs,1,Self,false);
     assert(!g.runtime.busy()&&!g.radio.isolated&&g.radio.health()==1&&g.service.receiving());
     assert(g.service.faulted()&&g.radio.frames.empty()&&g.radio.applied.radioRequest().overrideMHz==915);
     assert(g.radio.aborts==1&&!g.radio.invalidPauses);
@@ -315,7 +324,7 @@ static void retiredTarget(){
     assert(f.enqueue(205,target,0));f.poll(10);auto now=10+f.delay(draw);f.poll(now);
     f.radio.retiredBusy=true;f.finish(++now);
     assert(f.service.faulted()&&f.runtime.radioHeld()&&f.radio.isolated&&!f.radio.rxCallback);
-    f.poll(++now);
+    f.poll(now+=Runtime::RecoveryRetryMs);
     assert(!f.runtime.radioHeld()&&f.service.faulted()&&!f.radio.isolated&&f.radio.rxCallback&&
            f.radio.aborts==1&&!f.radio.invalidPauses);
 }
@@ -332,7 +341,63 @@ static void terminalSignal(){
     assert(g.service.faulted()&&g.runtime.lastError()==-ETIMEDOUT&&g.runtime.radioHeld());
     g.runtime.cancelAll(1,Self);g.poll(++at);
     assert(g.radio.borrowed&&!memcmp(g.radio.borrowed,g.radio.frames[0].data(),g.radio.borrowedSize));
-    g.finish(++at);assert(!g.runtime.radioHeld()&&!g.radio.isolated&&g.service.faulted()&&!g.radio.borrowed);
+    g.finish(at+=Runtime::RecoveryRetryMs);assert(!g.runtime.radioHeld()&&!g.radio.isolated&&g.service.faulted()&&!g.radio.borrowed);
+}
+static void lostCompletion(bool away){
+    Fixture f;draw=1;
+    const auto target=away?f.resolve(Medium):
+        Excursion::ResolvedTarget{Runtime::runningProfile(f.home),false,false};
+    uint64_t now=away?uint64_t(UINT32_MAX)-9000u:10u;
+    auto poll=[&](uint64_t t){assert(f.clock.set(t));f.runtime.poll(uint32_t(t),1,Self,true);};
+    assert(f.enqueue(231,target,uint32_t(now),false,3)&&f.enqueue(232,target,uint32_t(now),true,3));
+    poll(now);if(away){now+=f.delay(draw);poll(now);}
+    f.frame(0,231,away?"MediumFast":"LongFast");
+    auto *buffer=f.radio.borrowed;auto n=f.radio.borrowedSize;
+    mt::RadioTiming::Deadline timing{};assert(mt::RadioTiming::resolve(f.radio.airtime(n),timing));
+    now+=timing.hostMs;poll(now-1);assert(!f.runtime.recovering());poll(now);
+    assert(f.runtime.recovering()&&f.runtime.radioHeld()&&f.service.faulted()&&!f.radio.joins);
+    f.radio.joinFailures=2;f.radio.wrongStandby=1;
+    if(!away)f.radio.rxPending=true; // a native join on home must retain this event.
+    for(unsigned i=1;i<=2;++i){
+        now+=Runtime::RecoveryRetryMs;
+        poll(now-1);assert(f.radio.joins==i-1);poll(now);
+        assert(f.radio.joins==i&&f.runtime.recovering()&&f.radio.borrowed==buffer&&
+               !memcmp(buffer,f.radio.frames.front().data(),n));
+    }
+    now+=Runtime::RecoveryRetryMs;poll(now);
+    assert(!f.radio.borrowed&&f.runtime.recovering()&&f.runtime.radioHeld()&&f.radio.joins==3);
+    poll(now+=Runtime::RecoveryRetryMs);
+    assert(!f.runtime.busy()&&!f.runtime.recovering()&&f.radio.joins==4&&!f.radio.isolated&&
+           f.radio.rxPending==!away&&f.radio.health()==1&&f.radio.frames.size()==1&&
+           f.service.localStats().packetsTx==0&&f.service.faulted());
+}
+static void unavailableJoin(){
+    Fixture f;Excursion::ResolvedTarget home{Runtime::runningProfile(f.home),false,false};
+    assert(f.enqueue(241,home,0));f.poll(10);f.frame(0,241,"LongFast");
+    mt::RadioTiming::Deadline timing{};assert(mt::RadioTiming::resolve(f.radio.airtime(1),timing));
+    uint32_t now=10+timing.hostMs;f.poll(now);f.radio.joinSupported=false;
+    for(unsigned i=0;i<10;++i){now+=Runtime::RecoveryRetryMs;f.poll(now);}
+    assert(f.runtime.recovering()&&f.runtime.radioHeld()&&f.radio.joins==10&&f.radio.borrowed&&
+           !memcmp(f.radio.borrowed,f.radio.frames[0].data(),f.radio.borrowedSize));
+    f.finish(now+Runtime::RecoveryRetryMs);
+    assert(!f.runtime.recovering()&&!f.runtime.busy()&&f.radio.frames.size()==1&&
+           f.radio.joins==10&&f.service.localStats().packetsTx==0&&f.service.faulted());
+}
+static void missingHome(){
+    Fixture f;const auto target=f.resolve(Medium);draw=1;
+    assert(f.enqueue(251,target,0));f.poll(10);
+    auto now=10+f.delay(draw);f.poll(now);f.frame(0,251,"MediumFast");
+    f.radio.homeFailures=100;f.finish(++now);
+    assert(f.runtime.recovering()&&f.runtime.radioHeld()&&!f.service.faulted()&&f.radio.isolated);
+    for(unsigned i=0;i<10;++i){
+        const auto previous=f.radio.configures;now+=Runtime::RecoveryRetryMs;f.poll(now-1);
+        assert(f.radio.configures==previous);f.poll(now);
+        assert(f.runtime.recovering()&&f.radio.isolated&&f.radio.configures==previous+1);
+    }
+    assert(f.service.faulted()&&!f.service.receiving()&&f.service.localStats().packetsTx==1);
+    f.radio.homeFailures=0;f.poll(now+Runtime::RecoveryRetryMs);
+    assert(!f.runtime.busy()&&!f.runtime.recovering()&&!f.radio.isolated&&f.radio.health()==1&&
+           f.radio.applied.radioRequest().overrideMHz==915&&f.radio.frames.size()==1);
 }
 static void normalSender(){
     Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
@@ -409,6 +474,6 @@ static void boundedAdmission(bool recover,bool unsupported=false){
 #include "power_owner_cases.h"
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
-    retiredTarget();terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();stagedAdminRead();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
-    std::printf("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":22,\"refilled_slots\":24,\"power_actions\":%u}\n",beaconPower::cases());
+    retiredTarget();terminalSignal();lostCompletion(false);lostCompletion(true);unavailableJoin();missingHome();normalSender();preservedHomeRx();pendingHomeAck();stagedAdminRead();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
+    std::printf("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":26,\"refilled_slots\":24,\"power_actions\":%u}\n",beaconPower::cases());
 }
