@@ -68,18 +68,17 @@ class ModuleController {
     }
     settings_=settings;router_=router;configured_=true;
   }
-  enum class IntervalKind {Position, Telemetry, CongestionOnly, Health};
+  enum class IntervalKind {Position, Telemetry, CongestionOnly};
   bool scaledInterval(Service&service,uint32_t configuredSeconds,uint64_t uptime,IntervalKind kind,uint32_t&out){
     const auto *region=radio::RegionPolicy::lookup(service.config.regionCode());
     if(!region||!radio::RegionPolicy::softwareUsableOnSx126x(*region,false,false))return false;
     const auto role=service.config.role();if(!DeviceRolePolicy::supportedRole(role))return false;
-    const bool useStockRoleDefaults=kind==IntervalKind::CongestionOnly||kind==IntervalKind::Health;
-    const bool router=role==DeviceRolePolicy::Role::ROUTER||
-        (useStockRoleDefaults&&role==DeviceRolePolicy::Role::ROUTER_LATE);
+    // Default::getConfiguredOrDefaultMsScaled uses the same role exceptions for all traffic.
+    const bool router=role==DeviceRolePolicy::Role::ROUTER||role==DeviceRolePolicy::Role::ROUTER_LATE;
     const int8_t throttle=kind==IntervalKind::Position?region->profile->positionThrottle:
         (kind==IntervalKind::CongestionOnly?1:region->profile->telemetryThrottle);
     if(role==DeviceRolePolicy::Role::SENSOR || role==DeviceRolePolicy::Role::TRACKER ||
-       (useStockRoleDefaults && role==meshtastic_Config_DeviceConfig_Role_TAK_TRACKER)){
+       role==meshtastic_Config_DeviceConfig_Role_TAK_TRACKER){
       out=ModuleIntervals::throttle(ModuleIntervals::base(configuredSeconds,false),throttle);
       return true;
     }
@@ -91,9 +90,6 @@ class ModuleController {
       sf=profile.spreadingFactor;bw=float(profile.bandwidthHz)/1000.f;
     }
     return ModuleIntervals::device(configuredSeconds,router,true,count,sf,bw,false,throttle,out);
-  }
-  bool telemetryInterval(Service&service,uint32_t seconds,uint64_t uptime,uint32_t&out){
-    return scaledInterval(service,seconds,uptime,IntervalKind::Telemetry,out);
   }
   bool deviceInterval(Service&service,uint64_t uptime,uint32_t&out){return telemetryInterval(service,Config::get32(settings_.bytes+5),uptime,out);}
   bool environmentInterval(Service&service,uint64_t uptime,uint32_t&out){
@@ -115,10 +111,13 @@ public:
   bool nodeInfoInterval(Service &service,uint64_t uptime,uint32_t &out){
     return scaledInterval(service,1800,uptime,IntervalKind::CongestionOnly,out);
   }
+  bool telemetryInterval(Service&service,uint32_t seconds,uint64_t uptime,uint32_t&out){
+    return scaledInterval(service,seconds,uptime,IntervalKind::Telemetry,out);
+  }
   // AirQualityTelemetry uses Default's three-argument scale. HealthTelemetry
   // requests the TELEMETRY traffic factor in addition to congestion scaling.
   bool sensorInterval(Service& service,uint32_t seconds,uint64_t uptime,bool air,uint32_t& out){
-    return scaledInterval(service,seconds,uptime,air?IntervalKind::CongestionOnly:IntervalKind::Health,out);
+    return scaledInterval(service,seconds,uptime,air?IntervalKind::CongestionOnly:IntervalKind::Telemetry,out);
   }
   // Position and telemetry share stock scaling, with their own profile factors.
   // Position-specific stationary/smart policy remains with its caller.
