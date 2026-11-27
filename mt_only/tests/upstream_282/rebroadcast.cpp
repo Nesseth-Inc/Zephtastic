@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Adapt stock's ingress and observation points to a real ZT Service, radio
-// recorder and phone serializer. The packet, mode decisions and assertions
-// are compiled unchanged from the pinned upstream test and its support file.
+// recorder and phone serializer. The selected stock test bodies are unchanged.
 #include "../device_config_fixture.h"
 #include "unity.h"
 
@@ -16,7 +15,32 @@ static constexpr Mode ALL_MODES[] = {
     meshtastic_Config_DeviceConfig_RebroadcastMode_LOCAL_ONLY,
     meshtastic_Config_DeviceConfig_RebroadcastMode_NONE,
 };
-struct { struct { Mode rebroadcast_mode; } device; } config;
+struct { struct { Mode rebroadcast_mode; uint32_t role; } device; } config;
+
+constexpr uint32_t TARGET_NODE = 0x0D0D0D0D, LOCAL_NODE = Node;
+struct HeaderNodeDB {
+    uint8_t getLastByteOfNodeNum(uint32_t node) const { return static_cast<uint8_t>(node); }
+} headerDB;
+static auto *nodeDB = &headerDB;
+
+// This upstream test varies only clear relay headers. Preserve the foreign
+// sender, recipient, channel and hops and supply an opaque synthetic body.
+// The bench relay has neither party's key and never inspects the plaintext.
+struct RelayIdentity { uint32_t num; };
+static RelayIdentity makeIdentity(uint32_t node) { return {node}; }
+static meshtastic_MeshPacket makePkiUnicastBetween(RelayIdentity from, RelayIdentity to,
+                                                   meshtastic_PortNum, PacketId id) {
+    meshtastic_MeshPacket p{};
+    p.from = from.num;
+    p.to = to.num;
+    p.id = id;
+    p.hop_limit = 2;
+    p.hop_start = 3;
+    p.which_payload_variant = meshtastic_MeshPacket_encrypted_tag;
+    p.encrypted.size = 32;
+    memset(p.encrypted.bytes, 0x5a, p.encrypted.size);
+    return p;
+}
 
 static std::unique_ptr<Fixture> relay;
 static unsigned observations;
@@ -55,7 +79,7 @@ static void runPipelineIngress(const meshtastic_MeshPacket &packet)
     relay = std::make_unique<Fixture>(81, false);
     auto cfg = relay->service.config;
     cfg.bytes[4] = 1;  // provision the bench's test region
-    TEST_ASSERT_TRUE(cfg.setDeviceRole(mt::DeviceRolePolicy::Role::CLIENT, config.device.rebroadcast_mode));
+    TEST_ASSERT_TRUE(cfg.setDeviceRole(config.device.role, config.device.rebroadcast_mode));
     cfg.seal();
     TEST_ASSERT_TRUE(relay->service.apply(cfg));
     TEST_ASSERT_TRUE(relay->service.start(false, 0));
@@ -92,7 +116,7 @@ static void runPipelineIngress(const meshtastic_MeshPacket &packet)
 #include "stock-rebroadcast.inc"
 #include "rebroadcast_oracle.h"
 
-void setUp() {}
+void setUp() { config.device.role = mt::DeviceRolePolicy::Role::CLIENT; }
 void tearDown() { relay.reset(); }
 int main()
 {
@@ -100,6 +124,7 @@ int main()
         return 1;  // This explicit exclusion must be revisited if the firmware gains this mode.
     UNITY_BEGIN();
     RUN_TEST(test_unknown_channel_broadcast_relays_in_core_portnums_only);
+    RUN_TEST(test_opaque_relay_header_gates_hold);
     RUN_TEST(test_zt_forwarding_and_duplicate_queue_against_stock);
-    return UNITY_END() || observations != sizeof(ALL_MODES)/sizeof(ALL_MODES[0]);
+    return UNITY_END() || observations != 5 + sizeof(ALL_MODES)/sizeof(ALL_MODES[0]);
 }

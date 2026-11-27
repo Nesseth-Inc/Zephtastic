@@ -138,14 +138,15 @@ def main():
         subprocess.run([*cxx, f"-DSTOCK_ORACLE={mode}", FIXTURE / "reply_hops.cpp", obj, "-o", exe], check=True)
         results[label] = run_unity(exe, names, out)
 
-    rebroadcast_case = "test_unknown_channel_broadcast_relays_in_core_portnums_only"
+    rebroadcast_cases = ["test_unknown_channel_broadcast_relays_in_core_portnums_only",
+                         "test_opaque_relay_header_gates_hold"]
     all_rebroadcast = tests_in(sources[REBROADCAST], 11)
-    if rebroadcast_case not in all_rebroadcast:
+    if not set(rebroadcast_cases).issubset(all_rebroadcast):
         raise RuntimeError("The upstream rebroadcast test selection changed")
     (out / "stock-rebroadcast.inc").write_text("\n\n".join((
         extract(sources[AUTH_HARNESS], "static const char *modeName(")[0],
         extract(sources[AUTH_HARNESS], "static meshtastic_MeshPacket makeUnknownChannelBroadcast(")[0],
-        extract(sources[REBROADCAST], f"void {rebroadcast_case}(")[0],
+        *(extract(sources[REBROADCAST], f"void {name}(")[0] for name in rebroadcast_cases),
     )) + "\n")
     flooding = sources["src/mesh/FloodingRouter.cpp"]
     (out / "stock-flooding.inc").write_text("\n\n".join(extract(flooding, signature)[0] for signature in (
@@ -157,10 +158,10 @@ def main():
     relay_out = out / "rebroadcast"
     relay_out.mkdir()
     relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity], [obj])
-    results["rebroadcast_zt"] = run_unity(relay, [rebroadcast_case, "test_zt_forwarding_and_duplicate_queue_against_stock"], relay_out)
+    results["rebroadcast_zt"] = run_unity(relay, [*rebroadcast_cases, "test_zt_forwarding_and_duplicate_queue_against_stock"], relay_out)
     results["rebroadcast_modes"] = ["ALL", "CORE_PORTNUMS_ONLY", "KNOWN_ONLY", "LOCAL_ONLY", "NONE"]
     results["excluded_rebroadcast_mode"] = "ALL_SKIP_DECODING (deprecated stock REPEATER only)"
-    results["other_upstream_rebroadcast_cases"] = [c for c in all_rebroadcast if c != rebroadcast_case]
+    results["other_upstream_rebroadcast_cases"] = [c for c in all_rebroadcast if c not in rebroadcast_cases]
     subprocess.run([sys.executable, APP / "scripts/test-endpoint-differential.py", "--stock", stock,
                     "--output", out / "endpoint"], check=True)
     subprocess.run([sys.executable, FIXTURE / "phone_config.py", "--output", out / "phone"], check=True)
