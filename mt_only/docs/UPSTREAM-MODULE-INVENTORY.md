@@ -1,6 +1,6 @@
 # Upstream Meshtastic module inventory
 
-The source baseline is Meshtastic firmware commit `8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c`. Each row names its ZT entry point. Registration and translation-unit coverage are checked against that exact Git object. A row describes the implemented path and its applicable hardware. The comparison does not measure interoperability on physical nodes.
+The table lists the 52 implementation entries shared with the Meshtastic 2.8.1 baseline (`8e6a88d`). The 2.8.2 target (`d5f1619`) has 44 registrations, 46 module translation units and 48 telemetry backend translation units. Its two additional module entries bring the inventory to 54. Stock enables one only on Portduino with shell support and the other only on a dedicated test peer. The two additional sensor units belong to the RAK2560 hub. Each row below identifies its ZT entry point and applicable hardware. [2.8.2 changes and build conditions](MESHTASTIC-2.8.2-DELTA.md)
 
 | Upstream class or unit | Kind | Donor unit | ZT implementation | Reachable behavior |
 | --- | --- | --- | --- | --- |
