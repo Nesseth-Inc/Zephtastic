@@ -554,6 +554,17 @@ private:
     if(m.hasWifi)m.excluded_modules&=~meshtastic_ExcludedModules_NETWORK_CONFIG;
     if(!m.hasBluetooth)m.excluded_modules|=meshtastic_ExcludedModules_BLUETOOTH_CONFIG;
   }
+  [[gnu::noinline]] bool prepareDeviceSnapshotReply(pb_size_t requestTag) {
+    switch(requestTag) {
+    case meshtastic_AdminMessage_get_device_metadata_request_tag:
+      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_metadata_response_tag;
+      metadata(reply_.get_device_metadata_response);return true;
+    case meshtastic_AdminMessage_get_device_connection_status_request_tag:
+      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_connection_status_response_tag;
+      connectionStatus(reply_.get_device_connection_status_response);return true;
+    default:return false;
+    }
+  }
   void channel(meshtastic_Channel &c,unsigned index) const {
     // Stock firmware emits empty settings even for disabled slots. This also
     // supports clients that gate channel updates on settings presence.
@@ -2098,13 +2109,8 @@ private:
     case meshtastic_AdminMessage_get_owner_request_tag:
       reply_.which_payload_variant=meshtastic_AdminMessage_get_owner_response_tag;user(reply_.get_owner_response);break;
     case meshtastic_AdminMessage_get_device_metadata_request_tag:
-      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_metadata_response_tag;metadata(reply_.get_device_metadata_response);break;
-    case meshtastic_AdminMessage_get_device_connection_status_request_tag: {
-      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_connection_status_response_tag;
-      auto &status=reply_.get_device_connection_status_response;
-      connectionStatus(status);
-      break;
-    }
+    case meshtastic_AdminMessage_get_device_connection_status_request_tag:
+      prepareDeviceSnapshotReply(admin_.which_payload_variant);break;
     case meshtastic_AdminMessage_get_config_request_tag:
       reply_.which_payload_variant=meshtastic_AdminMessage_get_config_response_tag;
       if(!config(reply_.get_config_response,unsigned(admin_.get_config_request)+1))error=meshtastic_Routing_Error_BAD_REQUEST;
@@ -3232,15 +3238,7 @@ private:
     admin_={};reply_={};detail::VolatileWipe clearAdmin{&admin_,sizeof(admin_)},clearReply{&reply_,sizeof(reply_)};
     auto in=pb_istream_from_buffer(p.decoded.payload.bytes,p.decoded.payload.size);
     if(!pb_decode(&in,meshtastic_AdminMessage_fields,&admin_)){ack(p.id,meshtastic_Routing_Error_BAD_REQUEST);return;}
-    switch(admin_.which_payload_variant) {
-    case meshtastic_AdminMessage_get_device_metadata_request_tag:
-      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_metadata_response_tag;
-      metadata(reply_.get_device_metadata_response);break;
-    case meshtastic_AdminMessage_get_device_connection_status_request_tag:
-      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_connection_status_response_tag;
-      connectionStatus(reply_.get_device_connection_status_response);break;
-    default:ack(p.id,meshtastic_Routing_Error_NO_INTERFACE);return;
-    }
+    if(!prepareDeviceSnapshotReply(admin_.which_payload_variant)){ack(p.id,meshtastic_Routing_Error_NO_INTERFACE);return;}
     adminReply(p.id);
   }
   void handle(uint32_t now,DeferredProxy &deferred) {
@@ -3451,18 +3449,11 @@ public:
 private:
   bool adminDeviceInfo(const admin::remote_protocol::Query &query) {
     using Operation=admin::remote_protocol::Operation;
-    switch(query.operation){
-    case Operation::DeviceMetadata:
-      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_metadata_response_tag;
-      metadata(reply_.get_device_metadata_response);return true;
-    case Operation::ConnectionStatus:
-      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_connection_status_response_tag;
-      connectionStatus(reply_.get_device_connection_status_response);return true;
-    case Operation::HardwarePins:
+    if(query.operation==Operation::HardwarePins){
       reply_.which_payload_variant=meshtastic_AdminMessage_get_node_remote_hardware_pins_response_tag;
       return host_.hardwarePinInventory(reply_.get_node_remote_hardware_pins_response)==0;
-    default:return false;
     }
+    return prepareDeviceSnapshotReply(static_cast<pb_size_t>(query.operation));
   }
 public:
   // Main calls after a staged remote Config has actually been applied.
