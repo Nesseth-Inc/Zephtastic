@@ -41,15 +41,16 @@ static void moduleReports(){
     m.pollTimed(fixture.s,settings,true,ms,12345,utc,[](const uint8_t*,size_t,uint32_t,bool){});
   };
   poll(modules,f,0,1800000000);poll(modules,f,30000,1800000030);
-  assert(h.has(Kind::Device)&&!h.has(Kind::Environment)&&!h.has(Kind::Power));
+  assert(!h.has(Kind::Device)&&!h.has(Kind::Environment)&&!h.has(Kind::Power));
   poll(modules,f,55000,1800000055);assert(h.has(Kind::Environment)&&!h.has(Kind::Power));
   poll(modules,f,70000,1800000070);assert(h.has(Kind::Power)&&!h.has(Kind::Air)&&!h.has(Kind::Health));
-  assert(!h.save(store,70000));Fixture boot;TransmitHistory recovered;bind(recovered,store,boot);
+  poll(modules,f,90000,1800000090);assert(h.has(Kind::Device));
+  assert(!h.save(store,90000));Fixture boot;TransmitHistory recovered;bind(recovered,store,boot);
   mt::ModuleController cold;
-  poll(cold,boot,0,1800000100);poll(cold,boot,70000,1800000170);
+  poll(cold,boot,0,1800000100);poll(cold,boot,90000,1800000190);
   for(const auto k:{Kind::Device,Kind::Environment,Kind::Power}){
     assert(recovered.has(k)&&!recovered.allows(k,3600000));}
-  assert(!recovered.due(70000)); // No reconfirmation or rewrite of recovered marks.
+  assert(!recovered.due(90000)); // No reconfirmation or rewrite of recovered marks.
 }
 namespace mt::modules {
 // The worker method and wire encoder below are included verbatim from the

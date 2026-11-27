@@ -161,7 +161,7 @@ static void schedules(Counts &counts) {
             mt::USChannelSelection selection{};
             assert(f->s.config.resolveRadio(radio, selection));
             const auto interval = stockInterval(role, seconds, 60, radio.spreadingFactor, radio.bandwidthHz / 1000.f, 1);
-            const uint32_t first = environment ? 55000 : 30000;
+            const uint32_t first = environment ? 55000 : (role==meshtastic_Config_DeviceConfig_Role_TRACKER||role==meshtastic_Config_DeviceConfig_Role_TAK_TRACKER?75000:90000);
             poll(0, false);
             poll(first, true);
             if (interval > 3600000) poll(first + 3600000, false);

@@ -3788,11 +3788,13 @@ public:
     positionSentToPhone_=true;lastPositionToPhoneMs_=now;
     return true;
   }
-  bool modulePacket(const uint8_t*data,size_t size,uint32_t id,unsigned channel,WorkspaceProof proof,bool idleOnly=false){
+  bool modulePacket(const uint8_t*data,size_t size,uint32_t id,unsigned channel,WorkspaceProof proof,bool idleOnly=false,bool background=false){
     auto lease=workspace_.acquire(proof);if(!lease)return false;
-    if(!connected_||(owner_==0&&(recoveryOnly_||!host_.consoleAllowed()))||!data||!size||size>239||channel>=8)return false;
+    if(!connected_||(idleOnly&&!configComplete_)||(owner_==0&&(recoveryOnly_||!host_.consoleAllowed()))||
+       !data||!size||size>239||channel>=8)return false;
     fresh(meshtastic_FromRadio_packet_tag);auto&packet=output_.packet;
     packet.from=service_.route.identity();packet.to=0xffffffffu;packet.id=id;packet.channel=channel;
+    if(background)packet.priority=meshtastic_MeshPacket_Priority_BACKGROUND;
     packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;auto input=pb_istream_from_buffer(data,size);
     if(!pb_decode(&input,meshtastic_Data_fields,&packet.decoded)||input.bytes_left)return false;
     timestamp(packet,host_.wallTime());return emit(!idleOnly,idleOnly);

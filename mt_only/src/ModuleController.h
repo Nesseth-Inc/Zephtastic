@@ -7,6 +7,7 @@
 #include "NeighborIntervals.h"
 #include "OnlineObservations.h"
 #include "stock/modules/NeighborInfoModule.h"
+#include "stock/modules/PeriodicStart.h"
 #include "StatusMessagePayload.h"
 #include "TelemetryAnnouncement.h"
 #include "EnvironmentAnnouncement.h"
@@ -17,7 +18,7 @@ namespace mt {
 // client owner slot, wall-clock adoption or invented sensor reading.
 class ModuleController {
   ModuleSettings settings_;bool configured_=false,router_=false;
-  ModuleSchedule devicePhone_,statsPhone_,deviceRf_,status_,neighbor_,range_;
+  ModuleSchedule devicePoll_,statsPhone_,status_,neighbor_,range_;
   ModuleSchedule environmentPoll_,environmentPhone_,powerPoll_,powerPhone_;
   NeighborObservations neighbors_;OnlineObservations online_;uint64_t deviceEligibleAt_=0;
   stock::RangeTestModule rangeTest_;
@@ -30,20 +31,20 @@ class ModuleController {
   uint64_t powerEligibleAt_=0;bool powerHistory_=false;
   uint32_t localSequence_=0,roleSleepSeconds_=0;
   static uint32_t interval(const uint8_t*p,uint32_t fallback){const auto value=Config::get32(p);return (value?value:fallback)*1000;}
-  void configure(const ModuleSettings&settings,uint64_t uptime,bool router){
+  void configure(const ModuleSettings&settings,uint64_t uptime,bool router,unsigned role){
     const uint32_t now=uint32_t(uptime);
-    if(!configured_){devicePhone_.configure(now,60000,60000);statsPhone_.configure(now,900000,60000);}
-    if(!configured_||memcmp(settings_.bytes+4,settings.bytes+4,5)){
-      // The single ZT telemetry registration uses stock index0: first30s,
-      // then minute checks. Interval edits do not erase branch history.
-      deviceRf_.disable();if(settings.bytes[4])deviceRf_.configure(now,60000,30000);
+    if(!configured_){
+      // NodeInfo, MeshBeacon, ordinary Position and KeyVerification precede
+      // this module in the embedded profile. Trackers skip Position's slot.
+      const uint32_t first=stock::periodicStartMs(stock::trackerSkipsPositionStagger(role)?3:4);
+      devicePoll_.configure(now,60000,first);
+      statsPhone_.configure(now,900000,first);
     }
     if(!configured_||settings_.environmentEnabled()!=settings.environmentEnabled()||
        settings_.environmentInterval()!=settings.environmentInterval()){
       environmentPoll_.disable();environmentPhone_.disable();
       if(settings.environmentEnabled()){
-        // Existing device telemetry is registration0. Environment starts its
-        // first10s init phase plus the next30+15s stagger; no catch-up burst.
+        // The native environment producer keeps its separate startup delay.
         environmentPoll_.configure(now,1000,55000);environmentPhone_.configure(now,60000,55000);
       }
     }
@@ -149,7 +150,7 @@ public:
     pollTimed(service,settings,ready,uptime,random,0,
       [&](const uint8_t *p,size_t n,uint32_t id,bool){sink(p,n,id);});
   }
-  enum class PhoneDelivery {Normal,Idle,FollowUp};
+  enum class PhoneDelivery {Normal,Idle,DeviceIdle,FollowUp};
   static constexpr uint8_t AllPhones=0x0f;
   template<class Sink>void pollTimed(Service&service,const ModuleSettings&settings,bool ready,uint64_t uptime,uint32_t random,uint32_t utc,Sink sink){
     pollReports(service,settings,ready,uptime,random,utc,
@@ -164,16 +165,14 @@ public:
     };
     if(!ready||!settings.valid()||uptime==UINT64_MAX||uptime/1000>UINT32_MAX||!online_.advance(uptime))return;
     const bool router=service.config.role()==2;
-    if(!configured_||router_!=router||!settings_.same(settings))configure(settings,uptime,router);
+    if(!configured_||router_!=router||!settings_.same(settings))configure(settings,uptime,router,service.config.role());
     const uint32_t now=uint32_t(uptime),seconds=uint32_t(uptime/1000);
     uint8_t bytes[239]{};size_t size=0;
-    const bool phone=devicePhone_.due(now),rf=deviceRf_.due(now);
-    if(phone||rf){
-      if(phone)devicePhone_.consumed(now);
-      if(rf)deviceRf_.consumed(now); // Check cadence, not mesh history.
+    if(devicePoll_.due(now)){
+      devicePoll_.consumed(now);
       const auto air=service.airUtilTx(),channel=service.channelUtilization();
       uint32_t meshInterval=0;
-      const bool eligible=rf&&deviceInterval(service,uptime,meshInterval)&&
+      const bool eligible=settings_.bytes[4]&&deviceInterval(service,uptime,meshInterval)&&
         (!deviceHistory_||uptime-deviceEligibleAt_>=meshInterval)&&
         service.broadcastDue(history::Kind::Device,meshInterval)&&
         service.channelMeter().diagnosticSupported()&&channel&&
@@ -185,8 +184,8 @@ public:
         uint32_t id=0;
         if(eligible)(void)service.submitModuleAnnouncement(bytes,size,service.config.hopLimit(),now,random,id);
         if(id)sink(bytes,size,id,false);
-        else if(phone&&!eligible){
-          const uint8_t recipients=sink(bytes,size,localId(),true);
+        else if(!eligible){
+          const uint8_t recipients=send(bytes,size,localId(),PhoneDelivery::DeviceIdle,AllPhones);
           // Stock admits DeviceMetrics and LocalStats together on an idle phone.
           // Append stats only to sessions that accepted the preceding device report.
           if(recipients&&statsPhone_.due(now)&&LocalStatsQuery::announcement(seconds,air,channel,

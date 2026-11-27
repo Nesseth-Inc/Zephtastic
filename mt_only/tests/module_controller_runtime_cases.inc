@@ -57,40 +57,40 @@ static void controllerRuntimeCases(){
  }
  {
   auto f=std::make_unique<Fixture>();controllerStart(*f);mt::ModuleController m;const auto settings=controllerSettings(true);
-  controllerPoll(m,*f,settings,0);controllerPoll(m,*f,settings,29999);assert(f->service.endpointControls()==0);
-  controllerPoll(m,*f,settings,30000);assert(f->service.endpointControls()==1&&!f->radio.sends);controllerClear(*f);
-  controllerPoll(m,*f,settings,89999);assert(!f->service.endpointControls());controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==1);
-  group("device index0 first check30s then minute cadence uses real Service module queue without RF-delivery claims");
+  controllerPoll(m,*f,settings,0);controllerPoll(m,*f,settings,89999);assert(f->service.endpointControls()==0);
+  controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==1&&!f->radio.sends);controllerClear(*f);
+  controllerPoll(m,*f,settings,149999);assert(!f->service.endpointControls());controllerPoll(m,*f,settings,150000);assert(f->service.endpointControls()==1);
+  group("device embedded first check90s then minute cadence uses real Service module queue without RF-delivery claims");
  }
  {
   for(unsigned role:{0u,1u,2u}){auto f=std::make_unique<Fixture>();controllerStart(*f,role);mt::ModuleController m;const auto settings=controllerSettings(true);
-   controllerPoll(m,*f,settings,0);assert(f->knownChannelClock.set(30000));f->service.channelMeter().observeRx(18000,true);
-   controllerPoll(m,*f,settings,30000);assert(f->service.endpointControls()==unsigned(role==2));
-   if(role!=2){controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==1);}assert(!f->radio.sends);}
+   controllerPoll(m,*f,settings,0);assert(f->knownChannelClock.set(90000));f->service.channelMeter().observeRx(18000,true);
+   controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==unsigned(role==2));
+   if(role!=2){controllerPoll(m,*f,settings,150000);assert(f->service.endpointControls()==1);}assert(!f->radio.sends);}
   auto f=std::make_unique<Fixture>();controllerStart(*f);mt::ModuleController m;const auto settings=controllerSettings(true);
-  controllerPoll(m,*f,settings,0);f->service.channelMeter().supported(false);controllerPoll(m,*f,settings,30000);assert(!f->service.endpointControls());
-  f->service.channelMeter().supported(true);controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==1);
+  controllerPoll(m,*f,settings,0);f->service.channelMeter().supported(false);controllerPoll(m,*f,settings,90000);assert(!f->service.endpointControls());
+  f->service.channelMeter().supported(true);controllerPoll(m,*f,settings,150000);assert(f->service.endpointControls()==1);
   group("client and mute25/router40 channel thresholds and unsupported samples do not consume eligible history");
  }
  {
   auto f=std::make_unique<Fixture>();controllerStart(*f);mt::ModuleController m;auto settings=controllerSettings(true);
   meshtastic_ModuleConfig c{};c.which_payload_variant=meshtastic_ModuleConfig_telemetry_tag;c.payload_variant.telemetry.device_telemetry_enabled=true;c.payload_variant.telemetry.device_update_interval=120;assert(settings.set(c));
-  controllerPoll(m,*f,settings,0);controllerPoll(m,*f,settings,30000);assert(f->service.endpointControls()==1);
-  controllerPoll(m,*f,settings,150000);assert(f->service.endpointControls()==1); // Pending queue rejects second attempt; branch still recorded.
-  controllerClear(*f);controllerPoll(m,*f,settings,210000);assert(!f->service.endpointControls());
-  controllerPoll(m,*f,settings,270000);assert(f->service.endpointControls()==1);controllerClear(*f);
-  controllerPoll(m,*f,settings,UINT64_MAX);controllerPoll(m,*f,settings,269999);assert(!f->service.endpointControls());
-  controllerPoll(m,*f,settings,330000);assert(!f->service.endpointControls());controllerPoll(m,*f,settings,390000);assert(f->service.endpointControls()==1&&!f->radio.sends);
+  controllerPoll(m,*f,settings,0);controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==1);
+  controllerPoll(m,*f,settings,210000);assert(f->service.endpointControls()==1); // Pending queue rejects second attempt; branch still recorded.
+  controllerClear(*f);controllerPoll(m,*f,settings,270000);assert(!f->service.endpointControls());
+  controllerPoll(m,*f,settings,330000);assert(f->service.endpointControls()==1);controllerClear(*f);
+  controllerPoll(m,*f,settings,UINT64_MAX);controllerPoll(m,*f,settings,329999);assert(!f->service.endpointControls());
+  controllerPoll(m,*f,settings,390000);assert(!f->service.endpointControls());controllerPoll(m,*f,settings,450000);assert(f->service.endpointControls()==1&&!f->radio.sends);
   group("stock eligible branch consumes history even when queue busy; unknown or rolled-back clocks do not reset it");
  }
  {
   auto f=std::make_unique<Fixture>();controllerStart(*f);mt::ModuleController m;auto off=controllerSettings(false),on=controllerSettings(true);
   controllerPoll(m,*f,off,0);for(uint32_t id=100;id<164;++id){m.observe(id,Node,1,1,true,-2);m.observe(id,Node,1,1,true,-2);}
-  controllerPoll(m,*f,on,2);controllerPoll(m,*f,on,30002);assert(f->service.endpointControls()==1);controllerClear(*f);
-  controllerPoll(m,*f,on,90002);assert(!f->service.endpointControls());
-  auto changed=f->service.config;assert(changed.setLoRa(6,20));f->service.stop();assert(f->service.apply(changed));assert(f->service.start(false,100000));assert(f->service.armEndpoint(true));
+  controllerPoll(m,*f,on,2);controllerPoll(m,*f,on,90002);assert(f->service.endpointControls()==1);controllerClear(*f);
+  controllerPoll(m,*f,on,150002);assert(!f->service.endpointControls());
+  auto changed=f->service.config;assert(changed.setLoRa(6,20));f->service.stop();assert(f->service.apply(changed));assert(f->service.start(false,160000));assert(f->service.armEndpoint(true));
   assert(f->radio.configuredProfile.spreadingFactor==7&&f->radio.configuredProfile.bandwidthHz==250000);
-  controllerPoll(m,*f,on,150002);assert(f->service.endpointControls()==1&&!f->radio.sends&&f->backend.writes==0);
+  controllerPoll(m,*f,on,210002);assert(f->service.endpointControls()==1&&!f->radio.sends&&f->backend.writes==0);
   group("online observation continues with Neighbor disabled; duplicate relayed sources stay bounded and current modem recomputes interval");
  }
  {
@@ -124,13 +124,13 @@ static void controllerRuntimeCases(){
   meshtastic_ModuleConfig c{};c.which_payload_variant=meshtastic_ModuleConfig_neighbor_info_tag;c.payload_variant.neighbor_info.enabled=true;c.payload_variant.neighbor_info.update_interval=14400;assert(settings.set(c));
   c={};c.which_payload_variant=meshtastic_ModuleConfig_telemetry_tag;c.payload_variant.telemetry.device_telemetry_enabled=true;c.payload_variant.telemetry.device_update_interval=120;assert(settings.set(c));
   controllerPoll(m,*f,settings,0);m.observe(77,Node,0,1,true,-2);controllerStart(*f,2);controllerPoll(m,*f,settings,1000);
-  controllerPoll(m,*f,settings,30000);assert(f->service.endpointControls()==1);controllerClear(*f); // Device first check remains30s.
-  meshtastic_NeighborInfo info{};assert(m.localNeighbors(f->service,settings,true,30000,info)==0&&info.neighbors_count==1&&info.node_broadcast_interval_secs==14400);
-  controllerStart(*f,0);assert(!controllerPoll(m,*f,settings,62000));
-  controllerPoll(m,*f,settings,90000);assert(!f->service.endpointControls()); // Retain eligible mesh history at30s.
-  controllerPoll(m,*f,settings,150000);assert(f->service.endpointControls()==1&&!f->radio.sends&&f->backend.writes==0);
-  assert(!controllerPoll(m,*f,settings,14400000));assert(!controllerPoll(m,*f,settings,14461999));
-  assert(controllerPoll(m,*f,settings,14462000,&info)==1&&info.neighbors_count==1&&info.node_broadcast_interval_secs==14400);
+  controllerPoll(m,*f,settings,90000);assert(f->service.endpointControls()==1);controllerClear(*f); // Device first check remains90s.
+  meshtastic_NeighborInfo info{};assert(m.localNeighbors(f->service,settings,true,90000,info)==0&&info.neighbors_count==1&&info.node_broadcast_interval_secs==14400);
+  controllerStart(*f,0);assert(!controllerPoll(m,*f,settings,122000));
+  controllerPoll(m,*f,settings,150000);assert(!f->service.endpointControls()); // Retain eligible mesh history at90s.
+  controllerPoll(m,*f,settings,210000);assert(f->service.endpointControls()==1&&!f->radio.sends&&f->backend.writes==0);
+  assert(!controllerPoll(m,*f,settings,14400000));assert(!controllerPoll(m,*f,settings,14521999));
+  assert(controllerPoll(m,*f,settings,14522000,&info)==1&&info.neighbors_count==1&&info.node_broadcast_interval_secs==14400);
   group("configured Neighbor interval overrides both roles while role changes preserve DeviceMetrics cadence and eligible history");
  }
  {

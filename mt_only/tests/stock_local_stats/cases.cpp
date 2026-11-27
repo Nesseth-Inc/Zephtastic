@@ -83,7 +83,7 @@ template<unsigned Limit,unsigned Rows> struct Census {
         assert(owner.visibleCount(f.s.nodes,0,&online)==Limit&&!online);
         f.s.bindLocalStats(observe);
         donor::RadioLibInterface::instance=&donor::radio;
-        auto expected=module.getLocalStatsTelemetry();
+        donor::elapsed=60;auto expected=module.getLocalStatsTelemetry();
         for(unsigned transport=0;transport<2;transport++){
             auto &phone=transport?f.bc:f.c;auto &host=transport?f.bh:f.h;
             host.uptime=60;host.uptimeValid=true;
@@ -97,6 +97,7 @@ template<unsigned Limit,unsigned Rows> struct Census {
             std::vector<uint8_t> payload;assert(telemetries(host,77,&payload)==1);
             expected.time=host.wallTime();assert(payload==encodeTelemetry(expected));
         }
+        donor::elapsed=90;expected=module.getLocalStatsTelemetry();
         mt::ModuleController controller;mt::ModuleSettings config;unsigned reports=0;
         auto sink=[&](const uint8_t *p,size_t n,uint32_t id,bool idle){
             meshtastic_Data d{};auto in=pb_istream_from_buffer(p,n);assert(id&&pb_decode(&in,meshtastic_Data_fields,&d));
@@ -105,8 +106,8 @@ template<unsigned Limit,unsigned Rows> struct Census {
             if(t.which_variant!=meshtastic_Telemetry_local_stats_tag)return;
             assert(idle&&!d.request_id);expected.time=captured;assert(encodeTelemetry(t)==encodeTelemetry(expected));++reports;
         };
-        controller.pollTimed(f.s,config,true,0,1,captured-60,sink);
-        controller.pollTimed(f.s,config,true,60000,2,captured,sink);
+        controller.pollTimed(f.s,config,true,0,1,captured-90,sink);
+        controller.pollTimed(f.s,config,true,90000,2,captured,sink);
         assert(reports==1&&storage.reads==reads);
         owner.invalidate(1002);
         assert(owner.visibleCount(f.s.nodes,captured,&online)==Limit-1&&online==module.numOnlineNodes-1);

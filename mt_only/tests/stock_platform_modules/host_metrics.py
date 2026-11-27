@@ -30,15 +30,17 @@ class SerialCapture:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stock', type=Path, required=True)
-    stock = parser.parse_args().stock
-    src = subprocess.check_output(['git', '-C', stock, 'show', PIN + ':src/modules/Telemetry/HostMetrics.cpp'], text=True)
+    parser.add_argument('--stock-revision', choices=(PIN, 'd5f16191ca28b01b5024f590f04a67f25d66f1b1'), default=PIN)
+    args = parser.parse_args()
+    stock = args.stock
+    src = subprocess.check_output(['git', '-C', stock, 'show', args.stock_revision + ':src/modules/Telemetry/HostMetrics.cpp'], text=True)
     start = src.index('meshtastic_Telemetry HostMetricsModule::getHostMetrics()')
     method = src[start:src.index('\n}', start)+2]
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         for name in ('uptime', 'meminfo', 'loadavg'):
             method = method.replace('"/proc/' + name + '"', json.dumps(str(root/name)))
-        method = method.replace('std::filesystem::space("/")', 'std::filesystem::space(' + json.dumps(tmp) + ')')
+        method = method.replace('std::filesystem::space("/")', 'std::filesystem::space_info{1048576,131072,65536}')
         (root/'donor.cpp').write_text(
             '#include <unistd.h>\n#include <cstring>\n#include <fstream>\n#include <filesystem>\n#include <iostream>\n'
             'struct Host { unsigned uptime_seconds,load1,load5,load15; unsigned long long diskfree1_bytes,freemem_bytes; '
@@ -49,7 +51,7 @@ def main():
             'std::string exec(const char *s){return s;}\n'
             'struct HostMetricsModule {static meshtastic_Telemetry getHostMetrics();};\n' + method +
             '\nint main(){portduino_config.hostMetrics_user_command="fixture"; auto h=HostMetricsModule::getHostMetrics().variant.host_metrics;'
-            'std::cout<<h.uptime_seconds<<" "<<h.freemem_bytes<<" "<<h.load1<<" "<<h.load5<<" "<<h.load15<<" "<<h.user_string;}\n')
+            'std::cout<<h.uptime_seconds<<" "<<h.freemem_bytes<<" "<<h.load1<<" "<<h.load5<<" "<<h.load15<<" "<<h.diskfree1_bytes<<" "<<h.user_string;}\n')
         sys.path.insert(0, str(APP.parent))
         import host_test_toolchain as host
         subprocess.run([*host.cxx(), '-std=c++17', str(root/'donor.cpp'), '-o', str(root/'donor')], check=True)
@@ -59,9 +61,9 @@ def main():
             (root/'loadavg').write_text(loads + ' 1/23 42')
             expected = subprocess.check_output([root/'donor'], text=True).split()
             values = metrics.snapshot(root, 65536, 'fixture')
-            fields = ['uptime_seconds', 'freemem_bytes', 'load1', 'load5', 'load15']
-            assert [values[k] for k in fields] == [int(v) for v in expected[:5]]
-            assert values['user_string'] == expected[5] and values['diskfree1_bytes'] == 65536
+            fields = ['uptime_seconds', 'freemem_bytes', 'load1', 'load5', 'load15', 'diskfree1_bytes']
+            assert [values[k] for k in fields] == [int(v) for v in expected[:6]]
+            assert values['user_string'] == expected[6]
             capture = SerialCapture()
             metrics.publish(capture, values, 3)
             packet = capture.packet

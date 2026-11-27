@@ -2,11 +2,27 @@
 // Meshtastic d5f16191, src/modules/PositionModule.cpp and src/mesh/Default.h.
 #pragma once
 #include <stdint.h>
-#include "meshtastic/config.pb.h"
+#include "PeriodicStart.h"
 
 namespace mt::stock::position {
 constexpr uint32_t DefaultDedupSeconds = 6 * 60 * 60;
 constexpr uint32_t StationaryBroadcastSeconds = DefaultDedupSeconds + 6 * 60;
+// The native companion registers NodeInfo and MeshBeacon before Position.
+// Both consume a start-delay slot. Tracker constructors skip that stagger.
+class PhonePositionPoll {
+  uint32_t next_=0;
+  bool initialized_=false;
+public:
+  bool due(uint32_t now,unsigned role){
+    if(!initialized_){
+      next_=now+(trackerSkipsPositionStagger(role)?0u:periodicStartMs(2));
+      initialized_=true;
+    }
+    if(int32_t(now-next_)<0)return false;
+    next_=now+5000;
+    return true;
+  }
+};
 // PositionModule::allocReply. Presence is separate from the timestamp so an
 // admission at tick zero and an immediate retry cannot bypass the window.
 inline bool replyAllowed(uint32_t role,bool haveLast,uint32_t now,uint32_t last)
