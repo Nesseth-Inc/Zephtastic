@@ -7,12 +7,13 @@ import shlex
 import subprocess
 import tempfile
 
-PIN = "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
 HERE = pathlib.Path(__file__).resolve().parent
 APP = HERE.parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--stock", required=True, type=pathlib.Path)
+parser.add_argument("--release", choices=("2.8.1", "2.8.2"), default="2.8.1")
 args = parser.parse_args()
+PIN = "d5f16191ca28b01b5024f590f04a67f25d66f1b1" if args.release == "2.8.2" else "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
 
 
 def source(name):

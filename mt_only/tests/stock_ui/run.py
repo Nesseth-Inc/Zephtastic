@@ -12,8 +12,9 @@ import tempfile
 
 parser = argparse.ArgumentParser()
 parser.add_argument("donor", type=Path)
+parser.add_argument("--release", choices=("2.8.1", "2.8.2"), default="2.8.1")
 args = parser.parse_args()
-pin = "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
+pin = "d5f16191ca28b01b5024f590f04a67f25d66f1b1" if args.release == "2.8.2" else "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
 app = Path(__file__).resolve().parents[2]
 games = app / "src/stock/ui/games"
 cxx = shlex.split(os.environ.get("CXX", "c++"))
@@ -90,7 +91,7 @@ with tempfile.TemporaryDirectory() as tmp:
             reference = donor(f"src/modules/games/{mode}.{ext}").split(marker)[0].rstrip()
             # The C++ header serves only Breakout's excluded Arduino joystick adapter.
             if mode=="Breakout" and ext=="cpp":
-                reference=reference.replace("#include <cstring> // strcmp, for the joystick-source test in handleInput()", "")
+                reference=re.sub(r"^#include <cstring> // strcmp, for the (joystick-source test in handleInput|stick-source test in isPolledStickRepeat)\(\)$", "", reference, flags=re.M)
             actual = (games / f"{mode}.{ext}").read_text().split("\n", 2)[2].rstrip()
             assert reference == actual, f"core drift in {mode}.{ext}"
     for mode, test in [("Snake","snake"),("Breakout","breakout"),("ChirpyRunner","chirpy")]:

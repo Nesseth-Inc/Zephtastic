@@ -8,7 +8,6 @@ import os
 import shlex
 import subprocess
 
-PIN = "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
 BLOBS = {"AudioModule": "0dc9832f352263b8934a97e5f0b89aa1ad93b7d3",
          "PaxcounterModule": "d9135c3a2f7b343bbfad6c078aa1ce5e28521cf4"}
 
@@ -28,7 +27,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stock", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--release", choices=("2.8.1", "2.8.2"), default="2.8.1")
     args = parser.parse_args()
+    revision = "d5f16191ca28b01b5024f590f04a67f25d66f1b1" if args.release == "2.8.2" else "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
     here = Path(__file__).resolve().parent
     app = here.parents[1]
     output = args.output.resolve()
@@ -37,7 +38,7 @@ def main():
     output.mkdir(parents=True)
     src = {}
     for module, blob in BLOBS.items():
-        ref = f"{PIN}:src/modules/esp32/{module}.cpp"
+        ref = f"{revision}:src/modules/esp32/{module}.cpp"
         git = ["git", "-C", args.stock]
         assert subprocess.check_output([*git, "rev-parse", ref], text=True).strip() == blob
         src[module] = subprocess.check_output([*git, "show", ref], text=True)
@@ -70,7 +71,7 @@ def main():
         result.check_returncode()
         print(name, result.stdout.strip())
         tests.append({"abi":name,"cases":result.stdout.strip(),"command":cmd})
-    report = {"status":"PASS","stock":PIN,"stock_blobs":BLOBS,"runs":tests,"inputs":"synthetic PCM, test codec and I2S, passive observation fixture","hardware":False,"rf":False}
+    report = {"status":"PASS","stock":revision,"stock_blobs":BLOBS,"runs":tests,"inputs":"synthetic PCM, test codec and I2S, passive observation fixture","hardware":False,"rf":False}
     for p in (here/"cases.cpp", app/"src/modules/audio/AudioModule.cpp", app/"src/modules/audio/AudioWire.h", app/"src/modules/peripherals/PaxcounterCore.h",
               app/"src/stock/peripherals/AudioModule.h", app/"src/stock/peripherals/PaxcounterModule.h"):
         report.setdefault("source_sha256", {})[p.relative_to(app).as_posix()] = hashlib.sha256(p.read_bytes()).hexdigest()
