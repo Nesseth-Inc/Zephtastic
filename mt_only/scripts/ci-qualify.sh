@@ -58,6 +58,7 @@ if [[ $tool_group == native ]]; then
     python "mt_only/tests/$suite/run.py" --stock "$work/stock" --output "$work/$suite.json"
   done
   python mt_only/scripts/test-persistence.py --output "$work/settings-journal"
+  python mt_only/tests/stock_identity_import/run.py
   python mt_only/tests/run-canned-message-journal.py --output "$work/canned-journal.json"
   python mt_only/tests/stock_transmit_history/run.py --stock "$work/stock" --output "$work/transmit-history"
   python mt_only/scripts/test-role-channel.py --router --output "$work/router-policy"
