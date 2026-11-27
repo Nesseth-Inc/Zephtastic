@@ -222,11 +222,9 @@ void BeaconTargetRuntime::contend(const BeaconExcursion::Action &action,uint32_t
 
 void BeaconTargetRuntime::finishTransmit(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch)
 {
-  completionAwaitingRestore_=true;
-  if(service_.radio_.busy())return;
   const int restored=service_.radio_.restore();
   if(restored||service_.radio_.health()!=1){
-    lastError_=restored?restored:-EIO;service_.fault_=true;return;
+    completionAwaitingRestore_=true;lastError_=restored?restored:-EIO;service_.fault_=true;return;
   }
   completionAwaitingRestore_=false;
   const uint32_t id=activeId_;
@@ -322,19 +320,20 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     const auto action=pendingAction_;pendingAction_={};pendingActionReady_=false;
     apply(action,now,settingsEpoch,identityEpoch);return;
   }
-  if(txActive_) {
-    int result=0;
-    if(!service_.radio_.completion(result)) {
-      if(bench::due(now,deadline_)){service_.noteTxUncertain();lastError_=-ETIMEDOUT;service_.fault_=true;return;}
-      return;
-    }
-    txActive_=false;
-    pendingTxSuccess_=result==0;
-    if(result){service_.noteTxUncertain();lastError_=result;}
-    else service_.creditTxPending();
-    completionAwaitingRestore_=true;
-  }
-  if(completionAwaitingRestore_) {
+  if(txActive_||completionAwaitingRestore_) {
+    if(txActive_) {
+      int result=0;
+      if(!service_.radio_.completion(result)) {
+        if(bench::due(now,deadline_)){service_.noteTxUncertain();lastError_=-ETIMEDOUT;service_.fault_=true;}
+        return;
+      }
+      txActive_=false;
+      pendingTxSuccess_=result==0;
+      if(result){service_.noteTxUncertain();lastError_=result;}
+      else service_.creditTxPending();
+    } else if(service_.radio_.busy())return;
+    // A terminal completion releases the driver buffer. Its first RX restore
+    // is idempotent even if the modem already reports an active receive.
     finishTransmit(now,settingsEpoch,identityEpoch);return;
   }
   if(excursion_.holdsRadio()||retuned_) {

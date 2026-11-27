@@ -226,8 +226,11 @@ static void homeRestoreRetry(){
     Fixture f;const auto target=f.resolve(Medium);draw=1;
     assert(f.enqueue(50,target,0));f.poll(10);
     auto now=10+f.delay(draw);f.poll(now);f.frame(0,50,"MediumFast");
-    f.radio.homeFailures=1;f.finish(++now);
-    assert(f.runtime.radioHeld()&&f.radio.isolated&&!f.service.receiving());
+    f.radio.homeFailures=3;f.finish(++now);
+    for(unsigned retry=0;retry<2;++retry){
+        assert(f.runtime.radioHeld()&&f.radio.isolated&&!f.service.receiving());
+        f.poll(++now);
+    }
     f.poll(++now);assert(!f.runtime.busy()&&!f.radio.isolated&&f.service.receiving());
     // A later request gets its own admission timeout after the restore retry.
     now+=6000;assert(f.enqueue(51,target,now));f.poll(now);now+=f.delay(draw);
@@ -241,7 +244,7 @@ static void delayedSplit(){
     f.poll(10);auto now=10+f.delay(draw);f.poll(now);f.frame(0,60,"MediumFast");
     f.radio.rxBusy=true;f.finish(++now);
     assert(f.runtime.radioHeld()&&f.radio.frames.size()==1&&f.radio.isolated);
-    f.radio.rxBusy=false;f.poll(++now);f.frame(1,61,"MediumFast",true);
+    f.radio.rxBusy=false;now+=f.delay(draw);f.poll(now);f.frame(1,61,"MediumFast",true);
     assert(f.radio.isolated);f.finish(++now);
     assert(!f.radio.isolated&&!f.runtime.busy());refill(f,++now);
 }
@@ -272,6 +275,21 @@ static void faultRecovery(){
     g.runtime.poll(11,1,Self,false);
     assert(!g.runtime.busy()&&!g.radio.isolated&&g.radio.health()==1&&g.service.receiving());
     assert(g.service.faulted()&&g.radio.frames.empty()&&g.radio.applied.radioRequest().overrideMHz==915);
+}
+static void terminalSignal(){
+    Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
+    assert(f.enqueue(210,home,0));f.poll(10);f.frame(0,210,"LongFast");
+    f.radio.rxBusy=true;f.finish(11);
+    assert(f.radio.busy()&&!f.runtime.radioHeld()&&f.service.receiving()&&!f.service.faulted());
+
+    Fixture g;const auto target=g.resolve(Medium);draw=1;
+    assert(g.enqueue(211,target,0));g.poll(10);auto at=10+g.delay(draw);g.poll(at);
+    mt::RadioTiming::Deadline timing{};assert(mt::RadioTiming::resolve(g.radio.airtime(1),timing));
+    at+=timing.hostMs;g.poll(at);
+    assert(g.service.faulted()&&g.runtime.lastError()==-ETIMEDOUT&&g.runtime.radioHeld());
+    g.runtime.cancelAll(1,Self);g.poll(++at);
+    assert(g.radio.borrowed&&!memcmp(g.radio.borrowed,g.radio.frames[0].data(),g.radio.borrowedSize));
+    g.finish(++at);assert(!g.runtime.radioHeld()&&!g.radio.isolated&&g.service.faulted()&&!g.radio.borrowed);
 }
 static void normalSender(){
     Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
@@ -324,6 +342,6 @@ static void boundedAdmission(bool recover,bool unsupported=false){
 }
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
-    normalSender();preservedHomeRx();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
-    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":13,\"refilled_slots\":24}");
+    terminalSignal();normalSender();preservedHomeRx();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
+    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":15,\"refilled_slots\":24}");
 }
