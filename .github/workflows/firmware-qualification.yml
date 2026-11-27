@@ -1,7 +1,7 @@
 name: Firmware qualification
 on:
   push:
-    branches: [main, codex/upstream-private-ci, codex/upstream-five-modules, codex/upstream-remaining-modules]
+    branches: [main, codex/upstream-private-ci, codex/upstream-five-modules, codex/upstream-remaining-modules, codex/upstream-next-five]
   workflow_dispatch:
 permissions:
   contents: read
