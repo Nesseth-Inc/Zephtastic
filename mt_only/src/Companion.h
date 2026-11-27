@@ -376,9 +376,9 @@ private:
   meshtastic_ToRadio &input_;meshtastic_FromRadio &output_;
   meshtastic_AdminMessage &admin_,&reply_;
   struct RecoveryReplyScope {
-    bool &flag;bool previous;
-    explicit RecoveryReplyScope(bool &value):flag(value),previous(value){flag=true;}
-    ~RecoveryReplyScope(){flag=previous;}
+    bool &flag;bool previous,enabled;
+    explicit RecoveryReplyScope(bool &value,bool enable=true):flag(value),previous(value),enabled(enable){if(enabled)flag=true;}
+    ~RecoveryReplyScope(){if(enabled)flag=previous;}
   };
 #if defined(CONFIG_MT_RF_ADMIN_GET)
   admin::LegacyAdminSession legacyAdminSession_{};
@@ -3018,6 +3018,18 @@ private:
     bench::wipeKeyBuffer(&output_,sizeof(output_));
 #endif
   }
+  [[gnu::noinline]] bool canonicalUsbRecoveryCommand(const meshtastic_MeshPacket &p)const {
+    return owner_==0&&connected_&&canonicalInput()&&p.id&&p.to==service_.route.identity()&&
+      !p.from&&!p.want_ack&&!p.hop_limit&&!p.hop_start&&!p.channel&&!p.pki_encrypted&&!p.public_key.size&&
+      !p.decoded.xeddsa_signature.size&&!p.decoded.want_response&&!p.decoded.request_id&&!p.decoded.reply_id&&
+      !p.decoded.emoji&&!p.decoded.dest&&!p.decoded.source&&!p.decoded.bitfield&&
+      detail::enumNumber(p.ack_proof_status)==meshtastic_MeshPacket_AckProofStatus_ACK_PROOF_ABSENT;
+  }
+  void recoveryCommandReply(uint32_t request,meshtastic_Routing_Error error,const char *reason) {
+    RecoveryReplyScope scope(recoveryReply_,recoveryOnly_);
+    if(error==meshtastic_Routing_Error_NONE)ack(request,error);
+    else reject(request,error,reason);
+  }
   // Keep the large decoded packet dispatch out of handle's frame/code body.
   // The caller still holds the shared workspace lease and ClearInput guard.
   [[gnu::noinline]] void handlePacket(uint32_t now) {
@@ -3031,21 +3043,12 @@ private:
       p.decoded.payload.size==sizeof(preferencesResume)-1&&
       !memcmp(p.decoded.payload.bytes,preferencesResume,sizeof(preferencesResume)-1);
     if(preferencesAttempt) {
-      const bool local=owner_==0&&connected_&&canonicalInput()&&p.id&&p.to==service_.route.identity()&&
-        !p.from&&!p.want_ack&&!p.hop_limit&&!p.hop_start&&!p.channel&&!p.pki_encrypted&&!p.public_key.size&&
-        !p.decoded.xeddsa_signature.size&&!p.decoded.want_response&&!p.decoded.request_id&&!p.decoded.reply_id&&
-        !p.decoded.emoji&&!p.decoded.dest&&!p.decoded.source&&!p.decoded.bitfield&&
-        detail::enumNumber(p.ack_proof_status)==meshtastic_MeshPacket_AckProofStatus_ACK_PROOF_ABSENT;
+      const bool local=canonicalUsbRecoveryCommand(p);
       const int result=local?host_.resumePreferences(now):-EACCES;
-      if(recoveryOnly_){RecoveryReplyScope scope(recoveryReply_);
-        if(result)reject(p.id,result==-EINVAL||result==-ENOENT||result==-ENOTSUP?
-          meshtastic_Routing_Error_BAD_REQUEST:meshtastic_Routing_Error_NO_INTERFACE,
-          MT_NOTICE("Preference restore resume refused; radio remains held"));
-        else ack(p.id,meshtastic_Routing_Error_NONE);
-      } else if(result)reject(p.id,result==-EINVAL||result==-ENOENT||result==-ENOTSUP?
-          meshtastic_Routing_Error_BAD_REQUEST:meshtastic_Routing_Error_NO_INTERFACE,
-          MT_NOTICE("Preference restore resume refused; radio remains held"));
-      else ack(p.id,meshtastic_Routing_Error_NONE);
+      const auto error=!result?meshtastic_Routing_Error_NONE:
+        result==-EINVAL||result==-ENOENT||result==-ENOTSUP?meshtastic_Routing_Error_BAD_REQUEST:
+        meshtastic_Routing_Error_NO_INTERFACE;
+      recoveryCommandReply(p.id,error,MT_NOTICE("Preference restore resume refused; radio remains held"));
       return;
     }
     static constexpr char freshPrefix[]="zt_pki_fresh_v1 ";
@@ -3071,23 +3074,19 @@ private:
 #if defined(CONFIG_MT_STOCK_IDENTITY_IMPORT)
         (!importCommand||acceptedUsbFrame_)&&
 #endif
-        owner_==0&&connected_&&canonicalInput()&&request&&p.to==service_.route.identity()&&
-        !p.from&&!p.want_ack&&!p.hop_limit&&!p.hop_start&&!p.channel&&!p.pki_encrypted&&!p.public_key.size&&
-        !p.decoded.xeddsa_signature.size&&!p.decoded.want_response&&!p.decoded.request_id&&!p.decoded.reply_id&&
-        !p.decoded.emoji&&!p.decoded.dest&&!p.decoded.source&&!p.decoded.bitfield&&
-        detail::enumNumber(p.ack_proof_status)==meshtastic_MeshPacket_AckProofStatus_ACK_PROOF_ABSENT;
+        canonicalUsbRecoveryCommand(p);
       char response[233]{};detail::VolatileWipe wipeResponse{response,sizeof(response)};
       const int size=local?host_.freshProvision(p.decoded.payload.bytes,p.decoded.payload.size,frameEpoch_,response,sizeof(response)):-EACCES;
       bench::wipeKeyBuffer(&p,sizeof(p));bench::wipeKeyBuffer(frame_,sizeof(frame_));
       if(size<=0||size>=int(sizeof(response))){
-        if(recoveryOnly_){RecoveryReplyScope scope(recoveryReply_);reject(request,meshtastic_Routing_Error_BAD_REQUEST,MT_NOTICE("Local USB fresh setup refused"));}
-        else reject(request,meshtastic_Routing_Error_BAD_REQUEST,MT_NOTICE("Local USB fresh setup refused"));return;}
+        recoveryCommandReply(request,meshtastic_Routing_Error_BAD_REQUEST,MT_NOTICE("Local USB fresh setup refused"));return;
+      }
       fresh(meshtastic_FromRadio_packet_tag);auto &out=output_.packet;
       out.from=out.to=service_.route.identity();out.id=sequence_;
       out.which_payload_variant=meshtastic_MeshPacket_decoded_tag;out.decoded.portnum=meshtastic_PortNum_TEXT_MESSAGE_APP;
       out.decoded.request_id=request;out.decoded.has_bitfield=true;out.decoded.payload.size=pb_size_t(size);
       memcpy(out.decoded.payload.bytes,response,size_t(size));timestamp(out);
-      if(recoveryOnly_){RecoveryReplyScope scope(recoveryReply_);emit();}else emit();return;
+      RecoveryReplyScope scope(recoveryReply_,recoveryOnly_);emit();return;
     }
     static constexpr char restorePrefix[]="zt_pki_restore_v1 ";
     const size_t restorePrefixLength=sizeof(restorePrefix)-1;
@@ -3101,29 +3100,16 @@ private:
       !memcmp(p.decoded.payload.bytes,restorePrefix,restorePrefixLength);
     if(restoreAttempt) {
       const uint32_t requestId=p.id;
-      const bool localShape=owner_==0&&connected_&&canonicalInput()&&requestId&&p.to==service_.route.identity()&&
-        !p.from&&!p.want_ack&&!p.hop_limit&&!p.hop_start&&!p.channel&&!p.pki_encrypted&&!p.public_key.size&&
-        !p.decoded.xeddsa_signature.size&&!p.decoded.want_response&&!p.decoded.request_id&&!p.decoded.reply_id&&
-        !p.decoded.emoji&&!p.decoded.dest&&!p.decoded.source&&!p.decoded.bitfield&&
-        detail::enumNumber(p.ack_proof_status)==meshtastic_MeshPacket_AckProofStatus_ACK_PROOF_ABSENT;
+      const bool localShape=canonicalUsbRecoveryCommand(p);
       const int result=localShape?host_.restoreExistingIdentity(p.decoded.payload.bytes,
         p.decoded.payload.size,frameEpoch_):-EACCES;
       // Clear both Companion-owned decoded and serialized copies immediately.
       // Preserve only the request ID needed for its numeric ACK.
       bench::wipeKeyBuffer(&p,sizeof(p));bench::wipeKeyBuffer(frame_,sizeof(frame_));
-      if(recoveryOnly_){RecoveryReplyScope scope(recoveryReply_);
-        if(result)reject(requestId,result==-EINVAL||result==-ENOTSUP?
-            meshtastic_Routing_Error_BAD_REQUEST:
-            result==-EACCES||result==-EBUSY?meshtastic_Routing_Error_NO_INTERFACE:
-            meshtastic_Routing_Error_PKI_FAILED,
-            MT_NOTICE("Local USB identity restore refused; no private input was returned"));
-        else ack(requestId,meshtastic_Routing_Error_NONE);
-      } else if(result)reject(requestId,result==-EINVAL||result==-ENOTSUP?
-            meshtastic_Routing_Error_BAD_REQUEST:
-            result==-EACCES||result==-EBUSY?meshtastic_Routing_Error_NO_INTERFACE:
-            meshtastic_Routing_Error_PKI_FAILED,
-            MT_NOTICE("Local USB identity restore refused; no private input was returned"));
-      else ack(requestId,meshtastic_Routing_Error_NONE);
+      const auto error=!result?meshtastic_Routing_Error_NONE:
+        result==-EINVAL||result==-ENOTSUP?meshtastic_Routing_Error_BAD_REQUEST:
+        result==-EACCES||result==-EBUSY?meshtastic_Routing_Error_NO_INTERFACE:meshtastic_Routing_Error_PKI_FAILED;
+      recoveryCommandReply(requestId,error,MT_NOTICE("Local USB identity restore refused; no private input was returned"));
       return;
     }
     if(recoveryOnly_) {
