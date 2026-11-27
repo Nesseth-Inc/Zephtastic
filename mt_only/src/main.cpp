@@ -5662,6 +5662,7 @@ int main() {
     k_mutex_lock(&serviceLock,K_FOREVER);
     syncConsoleSecurityPolicy();
     syncApiLogPolicy();observeApiOwnerState();
+    const bool beaconTick=beacons.takeScheduledTick(extendedEdit,hardwareNow);
     if(pollRemoteConfigTransition(k_uptime_get_32(),sys_rand32_get())) {
       k_mutex_unlock(&serviceLock);
       if(channel>=0)(void)wdt_feed(watchdog,channel);
@@ -5912,7 +5913,7 @@ int main() {
     completionRuntime.ownerPoll(service,modules,moduleNow,wallClock.at(moduleNow),sys_rand32_get(),[](const uint8_t*data,size_t size,uint32_t id,bool idleOnly=false){
       publishModuleData(data,size,id,0,idleOnly);
     });
-    beacons.pollTargets(service,extendedEdit,storageReady&&!settingsEdit.open()&&!rebootSchedule.pending(),
+    if(beaconTick)beacons.pollScheduledTargets(service,extendedEdit,storageReady&&!settingsEdit.open()&&!rebootSchedule.pending(),
       hardwareNow,wallClock.at(hardwareNow),sys_rand32_get(),[](const uint8_t*data,size_t size,uint32_t id,unsigned channel){
         publishModuleData(data,size,id,channel);
       },beaconTargets,beaconSettingsEpoch());

@@ -11,8 +11,11 @@ class BeaconCadence {
   }
   // The stock periodic thread sleeps for its interval even when airtime or
   // transmit history suppresses a wave. Owner polls may run much more often.
+  bool scheduled(uint64_t uptimeMs) const {
+    return uptimeMs != UINT64_MAX && uptimeMs >= nextPollMs_;
+  }
   bool takeScheduledTick(uint64_t uptimeMs, uint32_t rawSeconds) {
-    if (uptimeMs == UINT64_MAX || uptimeMs < nextPollMs_) return false;
+    if (!scheduled(uptimeMs)) return false;
     const uint64_t interval = intervalMs(rawSeconds);
     nextPollMs_ = interval > UINT64_MAX - uptimeMs ? UINT64_MAX : uptimeMs + interval;
     return true;

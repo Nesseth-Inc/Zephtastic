@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "zt-fixture.inc"
+#include "TelemetryAnnouncement.h"
 #include <cstdio>
 
 // Pinned production methods own all selection, serialization and scheduling.
@@ -161,6 +162,17 @@ static unsigned schedule()
         donor::MeshBeaconBroadcastModule stock;
         donor::history.last = 0;
         donor::air.allowed = false;
+        // On one scheduled wakeup another module also owns the queue. Once
+        // that reservation clears, the denied tick must still be spent.
+        const bool busyAtWake = seconds == 17;
+        if (busyAtWake) {
+            uint8_t telemetry[128]{};
+            size_t size = 0;
+            uint32_t id = 0;
+            assert(mt::TelemetryAnnouncement::encode(123, {}, {}, telemetry, sizeof(telemetry), size));
+            assert(!f.service.submitModuleAnnouncement(telemetry, size, 3, 59000, 15001, id));
+            assert(f.service.moduleAnnouncementPending());
+        }
         uint32_t next = 60000; // same initial wakeup; board startup staggering is independent
         const uint32_t period = donor::beaconIntervalMs();
         assert(period == mt::beacon::BeaconCadence::intervalMs(seconds));
@@ -169,6 +181,10 @@ static unsigned schedule()
                 const auto read = [](void *p) { return static_cast<Fixture *>(p)->clock.now(); };
                 assert(f.service.airtimeMeter().bind({read, &f}));
                 donor::air.allowed = true;
+                if (busyAtWake) {
+                    assert(f.service.armEndpoint(false) && f.service.armEndpoint(true));
+                    assert(!f.service.moduleAnnouncementPending());
+                }
             }
             assert(f.service.moduleAirtimeAllowed() == donor::air.allowed);
             donor::Time::ms = now;
@@ -194,6 +210,44 @@ static unsigned schedule()
     return comparisons;
 }
 
+static unsigned restoredHistory()
+{
+    constexpr uint32_t epoch = 1700000000, savedAt = 50000, period = 3600000;
+    Fixture old;
+    old.config();
+    assert(!old.edit.markBeaconSent(epoch + savedAt / 1000, savedAt));
+    Fixture f;
+    f.memory.files = old.memory.files;
+    assert(!f.journal.load(f.memory) && f.edit.load());
+    assert(f.edit.config().sentBefore() && f.edit.config().lastSentUtc() == epoch + savedAt / 1000);
+
+    donor::MeshBeaconBroadcastModule stock;
+    assert(f.edit.config().beacon(donor::moduleConfig.mesh_beacon));
+    donor::config.device.role = static_cast<meshtastic_Config_DeviceConfig_Role>(f.service.config.role());
+    donor::config.lora.region = static_cast<donor::Region>(f.service.config.regionCode());
+    donor::config.lora.channel_num = f.service.config.radioRequest().channel;
+    donor::history.last = savedAt;
+    donor::air.allowed = true;
+    const unsigned writesBefore = f.memory.writes;
+    uint32_t next = 60000;
+    unsigned comparisons = 0;
+    for (uint32_t now : {60000u, savedAt + period - 1, savedAt + period, savedAt + period + 1,
+                         60000u + period - 1, 60000u + period}) {
+        assert(f.clock.set(now) && f.service.moduleAirtimeAllowed());
+        donor::Time::ms = now;
+        if (now >= next) next = now + static_cast<uint32_t>(stock.runOnce());
+        f.controller.poll(f.service, f.edit, true, now, epoch + now / 1000, 5001,
+            [&](const uint8_t *p, size_t n, uint32_t) { f.local.emplace_back(p, p+n); });
+        assert(stock.sent.size() == f.local.size());
+        assert(f.local.size() == unsigned(now == 60000u + period));
+        assert(f.memory.writes == writesBefore + f.local.size());
+        ++comparisons;
+    }
+    assert(donor::history.last == 60000u + period);
+    assert(f.edit.config().lastSentUtc() == epoch + donor::history.last / 1000);
+    return comparisons;
+}
+
 int main()
 {
     donor::config.lora.region = meshtastic_Config_LoRaConfig_RegionCode_US;
@@ -201,5 +255,7 @@ int main()
     donor::config.lora.channel_num = 20;
     const unsigned packets = payloads();
     const unsigned ticks = schedule();
-    printf("%u\n", packets + ticks);
+    const unsigned history = restoredHistory();
+    printf("{\"comparisons\":%u,\"payload_cases\":%u,\"airtime_checks\":%u,\"restored_history_checks\":%u}\n",
+           packets + ticks + history, packets, ticks, history);
 }

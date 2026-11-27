@@ -70,9 +70,18 @@ public:
 #endif
     return edit.markBeaconSent(utc,now);
   }
+  // Observe periodic wakeups even while a storage transaction or an existing
+  // radio excursion owns the loop. Only committed settings set the next wakeup.
+  bool takeScheduledTick(const ExtendedModuleEdit &edit,uint64_t uptime){
+    if(!cadence_.scheduled(uptime))return false;
+    meshtastic_ModuleConfig_MeshBeaconConfig cfg{};
+    const bool decoded=edit.ready()&&edit.committedConfig().beacon(cfg);
+    cadence_.takeScheduledTick(uptime,decoded?cfg.broadcast_interval_secs:0);
+    return decoded&&edit.trusted();
+  }
   bool due(Service &service,ExtendedModuleEdit &edit,const meshtastic_ModuleConfig_MeshBeaconConfig &cfg,
            uint64_t uptime,uint32_t utc){
-    return idle(service)&&cadence_.takeScheduledTick(uptime,cfg.broadcast_interval_secs)&&
+    return idle(service)&&
       stock::MeshBeaconBroadcastModule::broadcastDue(cfg,service.config.role(),service.moduleAirtimeAllowed(),[&]{
 #if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
             if(service.broadcastHistory&&service.broadcastHistory->has(history::Kind::Beacon))
@@ -83,7 +92,12 @@ public:
   }
   template<class Sink>void pollTargets(Service &service,ExtendedModuleEdit &edit,bool ready,
       uint64_t uptime,uint32_t utc,uint32_t random,Sink sink,BeaconTargetRuntime &targets,uint32_t settingsEpoch){
-    if(!ready||!edit.trusted()||uptime==UINT64_MAX||targets.busy())return;
+    if(takeScheduledTick(edit,uptime))
+      pollScheduledTargets(service,edit,ready,uptime,utc,random,sink,targets,settingsEpoch);
+  }
+  template<class Sink>void pollScheduledTargets(Service &service,ExtendedModuleEdit &edit,bool ready,
+      uint64_t uptime,uint32_t utc,uint32_t random,Sink sink,BeaconTargetRuntime &targets,uint32_t settingsEpoch){
+    if(!ready||!edit.trusted()||targets.busy())return;
     meshtastic_ModuleConfig_MeshBeaconConfig cfg{};
     if(!edit.config().beacon(cfg)||!due(service,edit,cfg,uptime,utc))return;
     BeaconExcursion::ResolvedTarget resolved[4]{};size_t count=0;
@@ -123,11 +137,12 @@ public:
         [&](const uint8_t *data,size_t size,uint32_t id,unsigned){sink(data,size,id);},*targets,settingsEpoch);
       return;
     }
+    const bool scheduled=takeScheduledTick(edit,uptime);
     if(!ready||!edit.trusted()||uptime==UINT64_MAX){clear();return;}
     meshtastic_ModuleConfig_MeshBeaconConfig cfg{};
     if(!edit.config().beacon(cfg)){clear();return;}
     if(!pendingSize_){
-      if(!due(service,edit,cfg,uptime,utc))return;
+      if(!scheduled||!due(service,edit,cfg,uptime,utc))return;
     }else if(!stock::MeshBeaconBroadcastModule::enabled(cfg,service.config.role())){clear();return;}
     if(pendingSize_){
       // A non-batch core settings save can change the primary between halves.

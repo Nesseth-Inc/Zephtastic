@@ -21,6 +21,8 @@ PINS = {
     'modules/HopScalingModule.h': '3e27aa82ca4cd7305b738a56809e65fdf9785d72dbc7393b7fb6f58c543e9b91',
     'modules/MeshBeaconModule.cpp': 'c7e825667b18792af2ff8a7a58e33f399fc41834c0412d5b6d45fcfe35b7b470',
     'modules/MeshBeaconModule.h': '8f32ade6824e5754ef245fbafa49baf2f8b8061776cd9f402487a1d18701a4fd',
+    'mesh/NodeDB.cpp': '006921660b5b4b7e8ee32fecc4dcb84cde3e31d0c0853c335e0c43b02f31d3e1',
+    'mesh/MeshTypes.h': '0d0e585f3c717250153d1109d7798999af393a2a017f21fe3c6b200d10f62675',
     'mesh/Router.cpp': '40a14acf1e34abe5b8ab2c37269c7600f505488d01c73c2e5b9c23e5d0c3346c',
     'mesh/Default.cpp': 'a0a46f1b5a6173fc0365f4cb50353fb52ae6748ee2e036ddec4a7900918f9443',
     'mesh/Default.h': '0a468de454cb7da41536b90715cde20d506b2430d3577310a32347b67fed0116',
@@ -50,6 +52,11 @@ def prepare(build, sources):
     (build / 'concurrency/OSThread.h').write_text(
         '#pragma once\nnamespace concurrency { struct OSThread { OSThread(const char*){} '
         'inline static unsigned startup=0; void setIntervalFromNow(unsigned x){startup=x;} virtual int32_t runOnce()=0; }; }\n')
+    types = sources['mesh/MeshTypes.h']
+    constants = types[types.index('#define NODENUM_BROADCAST '):types.index('#define ERRNO_OK')]
+    (build / 'node-address.inc').write_text(constants +
+        method(sources['mesh/NodeDB.cpp'], 'bool isFromUs(') + '\n' +
+        method(sources['mesh/NodeDB.cpp'], 'bool isBroadcast('))
     router = sources['mesh/Router.cpp']
     start = router.index('    if (isFromUs(p) && isBroadcast(p->to) && hopScalingModule')
     (build / 'router.inc').write_text(router[start:router.index('\n#endif', start)])
@@ -100,24 +107,24 @@ def main():
                                              mono, vendor, proto/'nanopb')]
             cxx = [*host.cxx(), '-std=c++17', *flags, *inc]
             env = {**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0:halt_on_error=1', 'UBSAN_OPTIONS': 'halt_on_error=1'}
-            subprocess.run([*cxx, '-DHAS_VARIABLE_HOPS=1', '-DPIO_UNIT_TESTING', HERE/'hops.cpp',
-                            build/'HopScalingModule.cpp', '-o', build/'hops'], check=True)
             objects = []
             for unit in [mono/'monocypher.c', mono/'monocypher-ed25519.c',
                          *[proto/'nanopb'/f'pb_{n}.c' for n in ('common', 'encode', 'decode')]]:
                 obj = build/(unit.stem + '.o')
                 subprocess.run([*host.cc(), '-std=c11', *flags, *inc, '-c', unit, '-o', obj], check=True)
                 objects.append(obj)
-            subprocess.run([*cxx, *host.crypto_compile_flags(), HERE/'beacon.cpp', app/'src/Protobuf.cpp',
-                            app/'src/modules/BeaconTargetRuntime.cpp', app/'src/modules/BeaconExcursion.cpp',
-                            vendor/'MtCodec.cpp', vendor/'MtSignature.cpp', *objects, *host.crypto_link_flags(),
-                            '-o', build/'beacon'], check=True)
+            for exe, extra in [('hops', ['-DHAS_VARIABLE_HOPS=1', '-DPIO_UNIT_TESTING', build/'HopScalingModule.cpp']),
+                               ('beacon', [app/'src/modules/BeaconTargetRuntime.cpp', app/'src/modules/BeaconExcursion.cpp'])]:
+                subprocess.run([*cxx, *host.crypto_compile_flags(), HERE/(exe+'.cpp'), *extra, app/'src/Protobuf.cpp',
+                                vendor/'MtCodec.cpp', vendor/'MtSignature.cpp', *objects, *host.crypto_link_flags(),
+                                '-o', build/exe], check=True)
             for module, exe in [('hop_scaling', 'hops'), ('mesh_beacon', 'beacon')]:
-                count = int(subprocess.check_output([build/exe], env=env, text=True))
+                row = json.loads(subprocess.check_output([build/exe], env=env, text=True))
+                count = row['comparisons']
                 if count <= 0:
                     raise ValueError(f'Empty {module} run')
                 totals[module] += count
-                runs.append({'module': module, 'enum': label, 'comparisons': count})
+                runs.append({'module': module, 'enum': label, **row})
     result = dict(status='PASS', stock_revision=STOCK, comparisons=totals, runs=runs,
                   input_sha256=PINS, asan_ubsan=True, hardware=False)
     args.output.parent.mkdir(exist_ok=True, parents=True)

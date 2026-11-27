@@ -36,6 +36,7 @@ public:
   bool dirty()const{return dirty_;}
   bool trusted()const{return ready()&&!dirty_&&journal_.state()!=ExtendedModuleJournal::State::Recovered;}
   const ExtendedModuleSettings &config()const{return current_;}
+  const ExtendedModuleSettings &committedConfig()const{return journal_.config();}
   bool load(){dirty_=false;if(!ready()){service_.meshBeaconListening(false);return false;}current_=journal_.config();updateBeaconListener();return true;}
   int save(const meshtastic_ModuleConfig &config,uint32_t now,bool editing){
     if(!ready())return -EACCES;
