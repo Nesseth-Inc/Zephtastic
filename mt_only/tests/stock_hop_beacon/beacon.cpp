@@ -6,6 +6,17 @@
 // Pinned production methods own all selection, serialization and scheduling.
 // Inject LongFast slot geometry for the two test regions, a clock and a packet pool.
 namespace donor {
+struct MeshModule {
+    unsigned numPeriodicModules = 0;
+    int32_t setStartDelay();
+};
+#include "periodic-start.inc"
+static uint32_t firstBeaconWake() {
+    MeshModule schedule;
+    schedule.setStartDelay(); // NodeInfo reserves the first periodic slot.
+    return schedule.setStartDelay();
+}
+
 using Region = meshtastic_Config_LoRaConfig_RegionCode;
 using Preset = meshtastic_Config_LoRaConfig_ModemPreset;
 using BeaconConfig = meshtastic_ModuleConfig_MeshBeaconConfig;
@@ -164,20 +175,21 @@ static unsigned schedule()
         donor::air.allowed = false;
         // On one scheduled wakeup another module also owns the queue. Once
         // that reservation clears, the denied tick must still be spent.
+        const uint32_t first = donor::firstBeaconWake();
         const bool busyAtWake = seconds == 17;
         if (busyAtWake) {
             uint8_t telemetry[128]{};
             size_t size = 0;
             uint32_t id = 0;
             assert(mt::TelemetryAnnouncement::encode(123, {}, {}, telemetry, sizeof(telemetry), size));
-            assert(!f.service.submitModuleAnnouncement(telemetry, size, 3, 59000, 15001, id));
+            assert(!f.service.submitModuleAnnouncement(telemetry, size, 3, first - 1000, 15001, id));
             assert(f.service.moduleAnnouncementPending());
         }
-        uint32_t next = 60000; // same initial wakeup; board startup staggering is independent
+        uint32_t next = first;
         const uint32_t period = donor::beaconIntervalMs();
         assert(period == mt::beacon::BeaconCadence::intervalMs(seconds));
-        for (uint32_t now : {59999u, 60000u, 60001u, 60002u, 60000u + period - 1u, 60000u + period}) {
-            if (now == 60001) {
+        for (uint32_t now : {first - 1, first, first + 1, first + 2, first + period - 1, first + period}) {
+            if (now == first + 1) {
                 const auto read = [](void *p) { return static_cast<Fixture *>(p)->clock.now(); };
                 assert(f.service.airtimeMeter().bind({read, &f}));
                 donor::air.allowed = true;
@@ -212,7 +224,7 @@ static unsigned schedule()
 
 static unsigned restoredHistory()
 {
-    constexpr uint32_t epoch = 1700000000, savedAt = 50000, period = 3600000;
+    constexpr uint32_t epoch = 1700000000, savedAt = 35000, period = 3600000;
     Fixture old;
     old.config();
     assert(!old.edit.markBeaconSent(epoch + savedAt / 1000, savedAt));
@@ -229,21 +241,22 @@ static unsigned restoredHistory()
     donor::history.last = savedAt;
     donor::air.allowed = true;
     const unsigned writesBefore = f.memory.writes;
-    uint32_t next = 60000;
+    const uint32_t first = donor::firstBeaconWake();
+    uint32_t next = first;
     unsigned comparisons = 0;
-    for (uint32_t now : {60000u, savedAt + period - 1, savedAt + period, savedAt + period + 1,
-                         60000u + period - 1, 60000u + period}) {
+    for (uint32_t now : {first, savedAt + period - 1, savedAt + period, savedAt + period + 1,
+                         first + period - 1, first + period}) {
         assert(f.clock.set(now) && f.service.moduleAirtimeAllowed());
         donor::Time::ms = now;
         if (now >= next) next = now + static_cast<uint32_t>(stock.runOnce());
         f.controller.poll(f.service, f.edit, true, now, epoch + now / 1000, 5001,
             [&](const uint8_t *p, size_t n, uint32_t) { f.local.emplace_back(p, p+n); });
         assert(stock.sent.size() == f.local.size());
-        assert(f.local.size() == unsigned(now == 60000u + period));
+        assert(f.local.size() == unsigned(now == first + period));
         assert(f.memory.writes == writesBefore + f.local.size());
         ++comparisons;
     }
-    assert(donor::history.last == 60000u + period);
+    assert(donor::history.last == first + period);
     assert(f.edit.config().lastSentUtc() == epoch + donor::history.last / 1000);
     return comparisons;
 }

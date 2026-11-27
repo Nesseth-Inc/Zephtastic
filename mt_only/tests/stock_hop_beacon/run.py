@@ -17,6 +17,8 @@ import host_test_toolchain as host
 
 STOCK = 'd5f16191ca28b01b5024f590f04a67f25d66f1b1'
 PINS = {
+    'mesh/MeshModule.cpp': 'ff8c9c4ba2bff5d122346451e898fe109a9b15e04189b642b366730b335398f7',
+    'mesh/MeshModule.h': '82c7362f256da67ccf84a9e0e30564ac223d5d1416b9476cd594e7fafd22a9b4',
     'modules/HopScalingModule.cpp': '1998c4c163862099894b6f6f73871ed9d843cd9ab8566baa436a1fcdf4fb8aaa',
     'modules/HopScalingModule.h': '3e27aa82ca4cd7305b738a56809e65fdf9785d72dbc7393b7fb6f58c543e9b91',
     'modules/MeshBeaconModule.cpp': 'c7e825667b18792af2ff8a7a58e33f399fc41834c0412d5b6d45fcfe35b7b470',
@@ -60,6 +62,11 @@ def prepare(build, sources):
     router = sources['mesh/Router.cpp']
     start = router.index('    if (isFromUs(p) && isBroadcast(p->to) && hopScalingModule')
     (build / 'router.inc').write_text(router[start:router.index('\n#endif', start)])
+    header = sources['mesh/MeshModule.h']
+    delays = [line for line in header.splitlines() if line.startswith('#define MESHMODULE_')
+              and ('MIN_BROADCAST_DELAY_MS' in line or 'BROADCAST_SPACING_MS' in line)]
+    (build / 'periodic-start.inc').write_text('\n'.join(delays) + '\n' +
+        method(sources['mesh/MeshModule.cpp'], 'int32_t MeshModule::setStartDelay('))
     beacon = sources['modules/MeshBeaconModule.cpp']
     segments = [method(sources['mesh/Default.cpp'], 'uint32_t Default::' + name + '(')
                 for name in ('getConfiguredOrDefault', 'getConfiguredOrMinimumValue')]

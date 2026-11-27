@@ -2,6 +2,7 @@
 #ifndef MT_BEACON_BEACON_CADENCE_H_
 #define MT_BEACON_BEACON_CADENCE_H_
 #include <stdint.h>
+#include "../stock/modules/PeriodicStart.h"
 namespace mt { namespace beacon {
 class BeaconCadence {
  public:
@@ -41,7 +42,7 @@ class BeaconCadence {
     attempted_ = true; lastAttemptMs_ = uptimeMs; return true;
   }
  private:
-  uint64_t nextPollMs_ = 60000;  // ZT module startup delay
+  uint64_t nextPollMs_ = stock::periodicStartMs(1);  // NodeInfo registers first.
   bool attempted_ = false;
   uint64_t lastAttemptMs_ = 0;
 };

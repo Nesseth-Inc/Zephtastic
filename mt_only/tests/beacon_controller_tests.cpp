@@ -65,7 +65,7 @@ static void frequencySlots(){
 int main(){
  frequencySlots();
  {
-  Fixture f;f.config();f.poll(59999);assert(!f.edit.config().sentBefore()&&f.local.empty());f.poll(60000);assert(f.edit.config().sentBefore()&&f.edit.config().lastSentUtc()==0&&f.local.size()==1&&f.memory.writes==2&&f.service.moduleAnnouncementPending()&&f.radio.frames.empty());
+  Fixture f;f.config();f.poll(44999);assert(!f.edit.config().sentBefore()&&f.local.empty());f.poll(60000);assert(f.edit.config().sentBefore()&&f.edit.config().lastSentUtc()==0&&f.local.size()==1&&f.memory.writes==2&&f.service.moduleAnnouncementPending()&&f.radio.frames.empty());
   f.send(61000);assert(f.radio.frames.size()==1);bench::RouteMetadata m;assert(f.service.codec.decode(f.radio.frames[0].data(),f.radio.frames[0].size(),m)&&m.portnum==1&&m.payloadLength==5&&!memcmp(m.payload,"hello",5)&&m.hasBitfield&&!m.bitfield&&!m.wantResponse&&!m.request_id&&!f.radio.frames[0][12]);
   f.radio.done=true;f.send(61001);f.poll(120000);assert(f.local.size()==1&&f.memory.writes==2);
   mt::modules::BeaconController rebooted;unsigned count=0;rebooted.poll(f.service,f.edit,true,120001,0,42,[&](const uint8_t*,size_t,uint32_t){++count;});assert(!count&&f.memory.writes==2);
