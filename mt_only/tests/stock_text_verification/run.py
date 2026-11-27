@@ -39,9 +39,13 @@ def main():
     compiled = "\n".join([alert,wake,method(text,"ProcessMessage TextMessageModule::handleReceived("),
                           method(text,"bool TextMessageModule::wantPacket("),
                           method(kv,"void KeyVerificationModule::generateVerificationCode(")])
-    openssl = Path(os.environ.get("MT_TEST_OPENSSL_PREFIX", "/opt/homebrew/opt/openssl@3" if platform.system()=="Darwin" else "/usr"))
-    if not (openssl/"include/openssl/sha.h").is_file():
-        parser.error("Set MT_TEST_OPENSSL_PREFIX to a host OpenSSL development install")
+    # Private Linux runners may extract OpenSSL packages into a job-local
+    # prefix already on CPLUS_INCLUDE_PATH/LIBRARY_PATH.
+    prefix = os.environ.get("MT_TEST_OPENSSL_PREFIX")
+    if prefix is None and platform.system() == "Darwin":
+        prefix = "/opt/homebrew/opt/openssl@3"
+    crypto_includes = [Path(prefix) / "include"] if prefix else []
+    crypto_libs = ["-L", Path(prefix) / "lib"] if prefix else []
     with tempfile.TemporaryDirectory(prefix="zt-text-verification-") as tmp:
         out = Path(tmp)
         (out/"meshtastic").mkdir()
@@ -58,12 +62,12 @@ def main():
                 obj = out/(n+".o")
                 subprocess.run([*shlex.split(os.environ.get("CC","cc")),*flags,"-c",NANOPB/(n+".c"),"-o",obj],check=True)
                 objects.append(obj)
-            inc = [v for path in (out,NANOPB,ROOT/"mt_only/src",openssl/"include") for v in ("-I",path)]
+            inc = [v for path in (out,NANOPB,ROOT/"mt_only/src",*crypto_includes) for v in ("-I",path)]
             binary=out/"run-comparison"
             subprocess.run([*shlex.split(os.environ.get("CXX","c++")),"-std=c++17",*flags,*inc,
                             *(["-DEKEYREJECTED=129"] if platform.system()=="Darwin" else []),
                             ROOT/"mt_only/src/Protobuf.cpp",ROOT/"mt_only/src/pki/verification/KeyVerification.cpp",
-                            HERE/"cases.cpp",*objects,"-L",openssl/"lib","-lcrypto","-o",binary],check=True)
+                            HERE/"cases.cpp",*objects,*crypto_libs,"-lcrypto","-o",binary],check=True)
             subprocess.run([binary],check=True,env={**os.environ,"ASAN_OPTIONS":"detect_leaks=0:halt_on_error=1",
                                                    "UBSAN_OPTIONS":"halt_on_error=1:print_stacktrace=1"})
 
