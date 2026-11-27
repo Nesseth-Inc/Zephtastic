@@ -162,7 +162,7 @@ def main():
     build_fixture = runpy.run_path(str(FIXTURE / "phone_config.py"))["build_fixture"]
     relay_out = out / "rebroadcast"
     relay_out.mkdir()
-    relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity], [obj])
+    relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity, "-DCONFIG_MT_PAXCOUNTER_WIFI_ESP32=1"], [obj])
     results["rebroadcast_zt"] = run_unity(relay, integration_cases, relay_out)
     results["rebroadcast_modes"] = ["ALL", "CORE_PORTNUMS_ONLY", "KNOWN_ONLY", "LOCAL_ONLY", "NONE"]
     results["excluded_rebroadcast_mode"] = "ALL_SKIP_DECODING (deprecated stock REPEATER only)"

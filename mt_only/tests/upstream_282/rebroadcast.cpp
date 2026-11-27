@@ -228,32 +228,64 @@ static void test_directed_opaque_between_known_parties(){
 
 static void test_zt_companion_stamps_local_module_reply()
 {
-    startRelay();
-    const uint32_t id=0x11229977;
+    auto f=std::make_unique<Fixture>(81,false);
+    auto cfg=f->service.config;
+    TEST_ASSERT_TRUE(cfg.setFixedPosition(410000000,-920000000,false,0));
+    TEST_ASSERT_TRUE(f->service.apply(cfg));
+    TEST_ASSERT_TRUE(f->service.bindPaxSnapshot([](void *,meshtastic_Paxcount &out){
+        out={};out.wifi=3;out.uptime=42;return true;},nullptr));
+    struct ObservedHost : Host {
+        using Host::Host;
+        bool uptimeSeconds(uint32_t &seconds)const override {seconds=42;return true;}
+        int localNeighbors(meshtastic_NeighborInfo &result)override {result={};result.node_id=Node;return 0;}
+    } host(f->edit,f->journal);
+    mt::Companion reader(f->service,host,81,f->workspace,1);
+    auto input=[&](const meshtastic_ToRadio &request){
+        uint8_t wire[512];
+        auto out=pb_ostream_from_buffer(wire,sizeof(wire));
+        TEST_ASSERT_TRUE(pb_encode(&out,meshtastic_ToRadio_fields,&request));
+        reader.packet(wire,out.bytes_written,10,mt::Companion::WorkspaceProof{true});
+    };
     meshtastic_ToRadio query{};
-    query.which_payload_variant=meshtastic_ToRadio_packet_tag;
-    query.packet.id=id;
-    query.packet.to=Node;
-    query.packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
-    query.packet.decoded.portnum=meshtastic_PortNum_NODEINFO_APP;
-    query.packet.decoded.want_response=true;
-    relay->input(query);
-    unsigned replies=0;
-    for(const auto &message:relay->usb.out) {
-        if(message.which_payload_variant!=meshtastic_FromRadio_packet_tag ||
-           message.packet.decoded.portnum!=meshtastic_PortNum_NODEINFO_APP) continue;
-        const auto &packet=message.packet;
-        TEST_ASSERT_EQUAL_UINT32(Node,packet.from);
-        TEST_ASSERT_EQUAL_UINT32(Node,packet.to);
-        TEST_ASSERT_EQUAL_UINT32(id,packet.decoded.request_id);
-        TEST_ASSERT_EQUAL_UINT8(0,packet.channel);
-        TEST_ASSERT_EQUAL_UINT8(relay->service.config.hopLimit(),packet.hop_limit);
-        TEST_ASSERT_FALSE(packet.want_ack);
-        TEST_ASSERT_EQUAL(meshtastic_MeshPacket_Priority_RELIABLE,packet.priority);
-        ++replies;
+    query.which_payload_variant=meshtastic_ToRadio_want_config_id_tag;
+    query.want_config_id=71;
+    input(query);
+    uint32_t id=0x11229977;
+    for(auto port:{meshtastic_PortNum_NODEINFO_APP,meshtastic_PortNum_POSITION_APP,
+                   meshtastic_PortNum_TELEMETRY_APP,meshtastic_PortNum_PAXCOUNTER_APP,
+                   meshtastic_PortNum_NEIGHBORINFO_APP}){
+        query={}; query.which_payload_variant=meshtastic_ToRadio_packet_tag;
+        query.packet.to=Node;query.packet.id=++id;
+        query.packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
+        auto &data=query.packet.decoded;
+        data.portnum=port;data.want_response=true;
+        if(port==meshtastic_PortNum_TELEMETRY_APP){
+            meshtastic_Telemetry selector{};
+            selector.which_variant=meshtastic_Telemetry_device_metrics_tag;
+            auto out=pb_ostream_from_buffer(data.payload.bytes,sizeof(data.payload.bytes));
+            TEST_ASSERT_TRUE(pb_encode(&out,meshtastic_Telemetry_fields,&selector));
+            data.payload.size=out.bytes_written;
+        }
+        host.out.clear();
+        input(query);
+        unsigned replies=0;
+        for(const auto &message:host.out) {
+            if(message.which_payload_variant!=meshtastic_FromRadio_packet_tag ||
+               message.packet.decoded.portnum!=port) continue;
+            const auto &packet=message.packet;
+            TEST_ASSERT_EQUAL_UINT32(Node,packet.from);
+            TEST_ASSERT_EQUAL_UINT32(Node,packet.to);
+            TEST_ASSERT_EQUAL_UINT32(id,packet.decoded.request_id);
+            TEST_ASSERT_EQUAL_UINT8(0,packet.channel);
+            TEST_ASSERT_EQUAL_UINT8(f->service.config.hopLimit(),packet.hop_limit);
+            TEST_ASSERT_FALSE(packet.want_ack);
+            TEST_ASSERT_EQUAL(meshtastic_MeshPacket_Priority_RELIABLE,packet.priority);
+            TEST_ASSERT_TRUE(packet.decoded.payload.size>0);
+            ++replies;
+        }
+        TEST_ASSERT_EQUAL_UINT_MESSAGE(1,replies,"expected a single correlated module reply");
     }
-    TEST_ASSERT_EQUAL_UINT(1,replies);
-    TEST_ASSERT_EQUAL_UINT(0,capture.sendCalls);
+    TEST_ASSERT_EQUAL_UINT(0,f->radio.sends);
 }
 
 void setUp() {

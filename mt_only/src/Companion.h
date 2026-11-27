@@ -2691,7 +2691,7 @@ private:
 #endif
     meshtastic_NeighborInfo value{};const int result=host_.localNeighbors(value);
     if(result){reject(p.id,result==-ENOTSUP?meshtastic_Routing_Error_NO_INTERFACE:meshtastic_Routing_Error_NO_RESPONSE,MT_NOTICE("Local neighbor observations are unavailable or disabled"));return;}
-    responsePacket(p.id,meshtastic_PortNum_NEIGHBORINFO_APP);
+    moduleResponsePacket(p);
     auto &data=output_.packet.decoded;auto out=pb_ostream_from_buffer(data.payload.bytes,sizeof(data.payload.bytes));
     if(pb_encode(&out,meshtastic_NeighborInfo_fields,&value)){data.payload.size=out.bytes_written;emit();}
     else ack(p.id,meshtastic_Routing_Error_TOO_LARGE);
@@ -2735,11 +2735,13 @@ private:
         ack(p.id,meshtastic_Routing_Error_TOO_LARGE);return;
       }
     }
-    moduleResponsePacket(p);
+    responsePacket(p.id,p.decoded.portnum);
     auto stream=pb_istream_from_buffer(encoded,size);
     if(!pb_decode(&stream,meshtastic_Data_fields,&output_.packet.decoded)) {
       ack(p.id,meshtastic_Routing_Error_TOO_LARGE);return;
     }
+    // Decoding initializes Data; stamp correlation only after the provider's bytes have landed.
+    stock::routing::setReplyTo(output_.packet,p,service_.route.identity(),service_.config.hopLimit());
     emit();
   }
   void sendTelemetryQuery(const meshtastic_MeshPacket &p,uint32_t now) {
