@@ -8,8 +8,9 @@ sys.path.insert(0,str(ROOT))
 import host_test_toolchain as host
 P=argparse.ArgumentParser(description=__doc__)
 P.add_argument("--stock",required=True,type=Path)
+P.add_argument("--release", choices=("2.8.1","2.8.2"), default="2.8.1")
 args=P.parse_args()
-pin="8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
+pin="d5f16191ca28b01b5024f590f04a67f25d66f1b1" if args.release=="2.8.2" else "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
 def source(path):
     return subprocess.check_output(["git","-C",args.stock,"show",f"{pin}:{path}"],text=True)
 def method(unit,signature):

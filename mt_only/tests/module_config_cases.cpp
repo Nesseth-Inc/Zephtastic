@@ -185,11 +185,11 @@ int main(){
     });
   };
   poll(0);
-  f->service.channelMeter().supported(false);
-  poll(5000);assert(!count);
-  f->service.channelMeter().supported(true);
   f->service.channelMeter().observeRx(15000,true);
+  poll(5000);assert(!count);
+  f->service.channelMeter().supported(false);
   poll(6000);assert(!count);
+  f->service.channelMeter().supported(true);
   poll(70000);assert(count==1);
   group("range sender skips unknown or 25-percent occupied channel and resumes at sequence one");
  }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Pinned stock handlers execute with capture-only adapters alongside the production port.
 #include "stock/modules/StatusMessageModule.h"
+#include "PublicApplication.h"
+#include "TxAdmission.h"
 #include "stock/modules/RangeTestModule.h"
 #include "stock/modules/NeighborInfoModule.h"
 #include "stock/modules/MeshBeaconModule.h"
@@ -75,6 +77,7 @@ bool pb_decode_from_bytes(const uint8_t *bytes, size_t length, const pb_msgdesc_
     return pb_decode(&stream, type, value);
 }
 
+struct AtakPluginModule { ProcessMessage handleReceived(const meshtastic_MeshPacket &); };
 struct StatusMessageModule {
     meshtastic_MeshPacket *allocDataPacket() { return capture.allocDataPacket(); }
     int32_t runOnce();
@@ -85,8 +88,16 @@ struct RangeTestModuleRadio {
     unsigned writes = 0;
     meshtastic_MeshPacket *allocDataPacket() { return capture.allocDataPacket(); }
     bool appendFile(const meshtastic_MeshPacket &) { ++writes; return true; }
-    void sendPayload(NodeNum dest, bool wantReplies);
+    bool removeFile() { return true; }
+    void sendPayload(NodeNum dest=NODENUM_BROADCAST, bool wantReplies=false);
     ProcessMessage handleReceived(const meshtastic_MeshPacket &mp);
+};
+RangeTestModuleRadio *rangeTestModuleRadio;
+struct RangeTestModule {
+    bool firstTime=true;
+    uint32_t started=0;
+    int32_t runOnce();
+    int32_t disable() { return -1; }
 };
 struct NeighborInfoModule {
     uint32_t observed = 0;
@@ -106,7 +117,15 @@ namespace Throttle {
 uint32_t clockMs;
 bool isWithinTimespanMs(uint32_t last,uint32_t interval){return clockMs-last<interval;}
 }
-struct BeaconAirtime {bool allowed; bool isTxAllowedAirUtil(){return allowed;}} beaconAir, *airTime=&beaconAir;
+uint32_t millis() { return Throttle::clockMs; }
+struct AirTime {
+#include "stock_channel_limits.inc"
+    struct Held { explicit Held(AirTime *) {} };
+    struct { float percent; float channelUtilizationPercent(const Held &) { return percent; } } w;
+    bool allowed;
+    bool isTxAllowedAirUtil(){return allowed;}
+    bool isTxAllowedChannelUtil(bool polite);
+} beaconAir, *airTime=&beaconAir;
 struct BeaconHistory {
     uint32_t last=0, marked=0;
     uint32_t getLastSentToMeshMillis(unsigned){return last;}
@@ -150,6 +169,29 @@ struct TrafficManagementModule {
 };
 #include "stock_handlers.inc"
 } // namespace donor
+
+static void compareAtak() {
+    donor::AtakPluginModule stock;
+    for (unsigned length : {0u, 1u, 5u, 127u, 128u, 224u}) {
+        meshtastic_MeshPacket packet{};
+        packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
+        auto &data=packet.decoded;
+        data.portnum=meshtastic_PortNum_ATAK_PLUGIN_V2;
+        data.payload.size=length;
+        for (unsigned i=0; i<length; ++i) data.payload.bytes[i]=uint8_t(i*71);
+        // The receiver leaves binary data to the application.
+        assert(stock.handleReceived(packet)==donor::ProcessMessage::CONTINUE);
+        uint8_t bytes[239];
+        size_t size=0;
+        assert(mt::PublicApplication::encode(data.portnum,data.payload.bytes,length,0,0,bytes,sizeof(bytes),size));
+        meshtastic_Data ported{};
+        auto in=pb_istream_from_buffer(bytes,size);
+        assert(pb_decode(&in,meshtastic_Data_fields,&ported) && !in.bytes_left);
+        assert(ported.portnum==data.portnum && ported.payload.size==length &&
+               !memcmp(ported.payload.bytes,data.payload.bytes,length));
+    }
+    puts("PASS ATAK opaque application payloads including embedded NULs");
+}
 
 static void compareStatus() {
     donor::StatusMessageModule stock;
@@ -205,6 +247,34 @@ static void compareRange() {
         mt::stock::RangeTestModuleRadio::handleReceived(enabled,save,fromUs,[&] { ++writes; });
         assert(writes == stock.writes - before);
     }
+    donor::moduleConfig.range_test={};
+    donor::moduleConfig.range_test.enabled=true;
+    donor::moduleConfig.range_test.sender=1;
+    donor::packetSequence=0;
+    donor::Throttle::clockMs=0;
+    donor::RangeTestModule scheduled;
+    mt::stock::RangeTestModule actual;
+    actual.start(0);
+    assert(scheduled.runOnce()==int32_t(actual.FirstDelayMs));
+    donor::Throttle::clockMs=actual.FirstDelayMs;
+    for (float percent : {0.f,24.99f,25.f,39.f,100.f,0.f}) {
+        donor::beaconAir.w.percent=percent;
+        donor::capture.sent.clear();
+        assert(scheduled.runOnce()==1000);
+        const bool channelAllowed=mt::TxAdmission::channel(true,percent,true)==mt::TxAdmission::Decision::Allow;
+        bool sent=false;
+        assert(actual.runOnce(donor::millis(),channelAllowed,[&](const uint8_t *p,size_t n) {
+            const auto &reference=donor::capture.sent.at(0).decoded.payload;
+            assert(n==reference.size && !memcmp(p,reference.bytes,n));
+            sent=true;
+            return true;
+        }));
+        assert(donor::capture.sent.size()==unsigned(sent));
+        donor::Throttle::clockMs+=1000;
+    }
+    delete donor::rangeTestModuleRadio;
+    donor::rangeTestModuleRadio=nullptr;
+    puts("PASS range scheduler waits for a polite channel and preserves sequence across skipped heartbeats");
     puts("PASS range heartbeat bytes, zero hops and RX log eligibility");
 }
 
@@ -314,5 +384,5 @@ static void compareTraffic() {
 }
 
 int main() {
-    compareStatus(); compareRange(); compareNeighbors(); compareBeacons(); compareTraffic();
+    compareAtak(); compareStatus(); compareRange(); compareNeighbors(); compareBeacons(); compareTraffic();
 }

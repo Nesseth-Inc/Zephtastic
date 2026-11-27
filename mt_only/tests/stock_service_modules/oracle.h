@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <map>
 #include <cmath>
+#include <cstdlib>
 
 namespace donor {
 #define ARCH_PORTDUINO 1
@@ -28,6 +29,14 @@ struct Channels {
 } channels;
 bool isMqttServerAddressPrivate, isConfiguredForDefaultServer;
 bool isFromUs(const meshtastic_MeshPacket *mp) {return mp->from == 42;}
+// These admission vectors use text, range and sensor ports; any NodeInfo
+// normalization would mean the donor applied its branch to a different port.
+struct {
+    meshtastic_MeshPacket *allocCopy(const meshtastic_MeshPacket &, unsigned) {
+        std::abort();
+    }
+} packetPool;
+bool coerceNodeInfoUserId(meshtastic_MeshPacket &) { std::abort(); }
 const meshtastic_MeshPacket *published;
 struct MQTT {void onSend(const meshtastic_MeshPacket &, const meshtastic_MeshPacket &, ChannelIndex);};
 

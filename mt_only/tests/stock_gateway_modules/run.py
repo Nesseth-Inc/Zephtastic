@@ -31,7 +31,7 @@ def main():
         return subprocess.check_output(["git", "-C", args.stock, "show", f"{release_pin}:src/{path}"], text=True)
     identity = function(release("mesh/NodeDB.cpp"), "bool coerceNodeInfoUserId(")
     opaque = function(release("mesh/Router.cpp"), "void Router::perhapsUplinkOpaquePki(")
-    mqtt = donor("mqtt/MQTT.cpp")
+    mqtt = release("mqtt/MQTT.cpp")
     report = function(mqtt, "void MQTT::perhapsReportToMap(")
     map_precision = report[report.index("    if (map_position_precision <"):report.index("    if (Throttle::")]
     fields = report[report.index("    // Fill MapReport message"):report.index("    // Encode MapReport message")]

@@ -22,10 +22,12 @@ def method(source, start):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stock', required=True, type=Path)
+    parser.add_argument('--release', choices=('2.8.1', '2.8.2'), default='2.8.1')
     args = parser.parse_args()
+    pin = 'd5f16191ca28b01b5024f590f04a67f25d66f1b1' if args.release == '2.8.2' else PIN
 
     def donor(path):
-        return subprocess.check_output(['git', '-C', args.stock, 'show', f'{PIN}:src/{path}'], text=True)
+        return subprocess.check_output(['git', '-C', args.stock, 'show', f'{pin}:src/{path}'], text=True)
 
     with tempfile.TemporaryDirectory(prefix='zt-stock-service-') as tmp:
         build = Path(tmp)
