@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "../device_config_fixture.h"
+#include "../relay_fixture_provider.h"
 #include <algorithm>
 #include <cstring>
 #include "donor.h"
@@ -31,13 +32,20 @@ struct Relay {
     Recorder radio;
     mt::test::KnownChannelFixtureClock clock;
     mt::modules::TrafficManagementWindow window;
-    mt::Service service{radio,true,Node,127,true,false};
+    RelayFixtureProvider provider{Node};
+    mt::Service service;
     donor::TrafficManagementModule stock;
     uint32_t id=100, arrival=1000;
 
-    Relay(const mt::Config &cfg, const meshtastic_ModuleConfig_TrafficManagementConfig &options) {
+    Relay(const mt::Config &cfg, const meshtastic_ModuleConfig_TrafficManagementConfig &options,
+          bool hasIndexedKey=false) : service(radio,true,Node,127,true,false,hasIndexedKey?&provider:nullptr) {
+        std::cerr<<"relay setup: indexed="<<hasIndexedKey<<" precision="<<cfg.primaryPositionPrecision()
+                 <<" rate="<<options.rate_limit_max_packets<<" dedup="<<options.position_min_interval_secs<<'\n';
         clock.bind(service);
-        assert(service.apply(cfg) && service.start(false,0) && service.armEndpoint(true) && service.relaying());
+        assert(service.apply(cfg));
+        assert(service.start(false,0));
+        assert(service.armEndpoint(true));
+        assert(service.relaying());
         mt::modules::TrafficManagementSettings settings;
         settings.set(options);
         window.configure(settings);
@@ -75,6 +83,8 @@ struct Relay {
         frame[12]=(3u<<5)|3u;
         bool accepted=false;
         service.trafficManagement(&window,uptime);
+        std::cerr<<"ingress: port="<<int(data.portnum)<<" slot="<<slot<<" id="<<id
+                 <<" uptime="<<uptime<<" expect="<<allowed<<'\n';
         service.rx(frame,size,-5,now,0,true,&accepted);
         assert(accepted==allowed && service.trafficSuppressed()==!allowed);
         assert(service.route.pending()==unsigned(allowed));
@@ -193,7 +203,7 @@ void relayCases() {
     const uint8_t alias=2;
     assert(secondary.set(2,"MediumFast",&alias,1,12) && cfg.setSecondaryChannel(2,secondary));
     {
-        Relay r(cfg,options);
+        Relay r(cfg,options,true);
         auto precise=position(123456789,-23456789,32);
         auto compliant=position(precise.latitude_i,precise.longitude_i,15);
         r.position(0,precise,true,15,false,0,false);
@@ -203,7 +213,7 @@ void relayCases() {
         r.position(0,next,true,15,true,0,true);
     }
     {
-        Relay r(cfg,options);
+        Relay r(cfg,options,true);
         auto p=position(123456789,-23456789,32);
         r.position(1,p,false,12,true,0,true);
         r.position(1,p,false,12,true,0,true); // Named channel using the default key.
