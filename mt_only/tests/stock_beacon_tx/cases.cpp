@@ -113,12 +113,13 @@ struct Fixture {
     mt::Service service{radio,true,Self,127,true,false};
     Runtime runtime{service,nextDraw};
     mt::Config home;Bytes plain;
-    Fixture(){
+    explicit Fixture(bool relay=false){
         meterOwner::service.source=&service;meterOwner::beaconOffProfileRx=0;meterOwner::nativeSupport=true;
         const auto clockNow=[](void *ctx){return static_cast<mt::test::KnownChannelFixtureClock *>(ctx)->now();};
         assert(service.channelMeter().bind({clockNow,&clock},meterOwner::drainChannelObservations));
         auto request=home.radioRequest();request.regionCode=1;request.usePreset=true;request.preset=0;
         request.channel=60;request.overrideMHz=915;request.powerSpecified=true;request.power=30;
+        if(relay)assert(home.setDeviceRole(mt::DeviceRolePolicy::Role::CLIENT,mt::DeviceRolePolicy::RebroadcastMode::ALL));
         home.setTxEnabled(true);assert(home.setRadio(request)&&home.primaryName()[0]==0);
         assert(service.apply(home)&&service.start(false,0)&&service.armEndpoint(true));
         meshtastic_ModuleConfig_MeshBeaconConfig cfg{};cfg.has_broadcast_offer_preset=true;
@@ -288,7 +289,7 @@ static void normalSender(){
     f.poll(++at);f.frame(1,300,"LongFast");f.finish(++at);
 }
 static void preservedHomeRx(){
-    Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
+    Fixture f(true);Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
     assert(f.enqueue(400,home,0));f.radio.blockScan=true;draw=1;f.poll(10);
     assert(f.runtime.radioHeld()&&f.radio.frames.empty());
     f.radio.blockScan=false;f.radio.rxPending=true;
