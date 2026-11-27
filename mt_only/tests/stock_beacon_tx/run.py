@@ -76,7 +76,7 @@ def main():
                             *host.crypto_link_flags(),'-o',exe],check=True)
             env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0:halt_on_error=1','UBSAN_OPTIONS':'halt_on_error=1'}
             row=json.loads(subprocess.check_output([exe],env=env,text=True))
-            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':15,'refilled_slots':24}:
+            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':17,'refilled_slots':24}:
                 raise ValueError(f'Incomplete beacon runtime run: {row}')
             results.append({'enum':label,**row})
     report={'status':'PASS','hardware':False,'stock_revision':STOCK,'source_sha256':PINS,'runs':results}

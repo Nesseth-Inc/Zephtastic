@@ -26,7 +26,7 @@ public:
   void cancelAll(uint32_t settingsEpoch,uint32_t identityEpoch);
   bool busy()const{return radioHeld()||excursion_.queued()!=0;}
   bool homeRxPending()const;
-  bool radioHeld()const{return excursion_.holdsRadio()||txActive_||retuned_;}
+  bool radioHeld()const{return excursion_.holdsRadio()||txActive_||phase_!=RadioPhase::Home;}
   size_t queued()const{return excursion_.queued();}
   int lastError()const{return lastError_;}
 
@@ -44,7 +44,9 @@ private:
   Draw draw_;
   BeaconExcursion excursion_{};
   Row rows_[Rows]{};
-  bool txActive_=false,retuned_=false,homeArmed_=false,homeRelaying_=false;
+  enum class RadioPhase:uint8_t {Home,Parked,TargetRx,NeedsAbort};
+  RadioPhase phase_=RadioPhase::Home;
+  bool txActive_=false,homeArmed_=false,homeRelaying_=false;
   bool completionAwaitingRestore_=false,pendingTxSuccess_=false;
   bool waitingForAdmission_=false;
   uint32_t deadline_=0,activeId_=0;

@@ -76,23 +76,40 @@ static int sx126x_airtime_observer_take(unsigned,sx126x_airtime_observation *){r
 }
 struct TestRadio final : mt::Radio {
     mt::Config applied;
-    bool isolated=false,blockScan=false,complete=false,rxBusy=false,rxPending=false;
+    bool isolated=false,blockScan=false,complete=false,rxBusy=false,rxPending=false,rxCallback=false;
     int state=0;
     unsigned scans=0,configures=0,homeFailures=0,startFailures=0,restoreFailures=0;
+    unsigned aborts=0,invalidPauses=0,abortFailures=0,homeStartFailures=0,targetConfigureFailures=0;
     const uint8_t *borrowed=nullptr;size_t borrowedSize=0;
     std::vector<Bytes> frames;
     bool ready()override{return true;}
     bool busy()override{return rxBusy;}
     bool receiveEventPending()const override{return rxPending;}
-    int start()override{if(startFailures){--startFailures;return -EIO;}state=1;return 0;}
-    int stop()override{state=0;return 0;}
-    int restore()override{if(restoreFailures){--restoreFailures;return -EIO;}state=1;return 0;}
-    int health()override{return state;}
+    int start()override{
+        // Native start applies RF parameters and arms the callback. An error
+        // can leave an unverified partial configuration, also reporting health zero.
+        auto &fail=applied.radioRequest().overrideMHz!=0?homeStartFailures:startFailures;
+        if(fail){--fail;state=3;rxCallback=false;return -EIO;}
+        state=1;rxCallback=true;return 0;
+    }
+    int stop()override{
+        assert(!borrowed);++aborts;
+        if(abortFailures){--abortFailures;return -EIO;}
+        state=0;rxCallback=false;return 0;
+    }
+    int stopForStorage()override{
+        if(rxPending)return -EAGAIN;
+        if(state!=1||!rxCallback){++invalidPauses;return -EIO;}
+        state=0;rxCallback=false;return 0;
+    }
+    int restore()override{if(restoreFailures){--restoreFailures;return -EIO;}state=1;rxCallback=true;return 0;}
+    int health()override{return state==1?1:0;}
     bool beaconIsolationSupported()const override{return true;}
     void beaconRxIsolation(bool b)override{isolated=b;meterOwner::beaconOffProfileRx=b;}
     int configure(const mt::Config &c)override{
         assert(state==0);++configures;
-        if(c.radioRequest().overrideMHz!=0&&homeFailures){--homeFailures;return -EIO;}
+        auto &fail=c.radioRequest().overrideMHz!=0?homeFailures:targetConfigureFailures;
+        if(fail){--fail;return -EIO;}
         applied=c;return 0;
     }
     uint32_t airtime(size_t)override{return 100;}
@@ -226,12 +243,17 @@ static void homeRestoreRetry(){
     Fixture f;const auto target=f.resolve(Medium);draw=1;
     assert(f.enqueue(50,target,0));f.poll(10);
     auto now=10+f.delay(draw);f.poll(now);f.frame(0,50,"MediumFast");
-    f.radio.homeFailures=3;f.finish(++now);
+    f.radio.homeFailures=3;f.radio.homeStartFailures=1;f.finish(++now);
     for(unsigned retry=0;retry<2;++retry){
         assert(f.runtime.radioHeld()&&f.radio.isolated&&!f.service.receiving());
         f.poll(++now);
     }
+    f.poll(++now);
+    assert(f.runtime.radioHeld()&&f.radio.isolated&&f.radio.state==3&&f.radio.health()==0);
+    f.radio.abortFailures=1;f.poll(++now);
+    assert(f.runtime.radioHeld()&&f.radio.isolated&&f.radio.state==3);
     f.poll(++now);assert(!f.runtime.busy()&&!f.radio.isolated&&f.service.receiving());
+    assert(f.radio.aborts==2&&!f.radio.invalidPauses);
     // A later request gets its own admission timeout after the restore retry.
     now+=6000;assert(f.enqueue(51,target,now));f.poll(now);now+=f.delay(draw);
     f.radio.blockScan=true;f.poll(now);f.radio.blockScan=false;
@@ -275,6 +297,11 @@ static void faultRecovery(){
     g.runtime.poll(11,1,Self,false);
     assert(!g.runtime.busy()&&!g.radio.isolated&&g.radio.health()==1&&g.service.receiving());
     assert(g.service.faulted()&&g.radio.frames.empty()&&g.radio.applied.radioRequest().overrideMHz==915);
+    assert(g.radio.aborts==1&&!g.radio.invalidPauses);
+
+    Fixture h;assert(h.enqueue(91,target,0));h.radio.targetConfigureFailures=1;
+    h.poll(10);assert(!h.runtime.busy()&&!h.radio.isolated&&h.radio.frames.empty());
+    assert(!h.service.faulted()&&!h.radio.aborts&&!h.radio.invalidPauses&&h.service.receiving());
 }
 static void terminalSignal(){
     Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
@@ -325,6 +352,28 @@ static void preservedHomeRx(){
     assert(f.service.received==1&&accepted);f.runtime.receiveAccepted();f.poll(++at);
     assert(f.radio.frames.empty()&&!f.runtime.busy());
 }
+static void pendingHomeAck(){
+    Fixture f;Excursion::ResolvedTarget home{};home.profile=Runtime::runningProfile(f.home);
+    assert(f.enqueue(450,home,0));f.radio.blockScan=true;draw=3;f.poll(10);
+    f.radio.blockScan=false;f.radio.rxPending=true;assert(f.runtime.homeRxPending());
+    meshtastic_Data d{};d.portnum=meshtastic_PortNum_TEXT_MESSAGE_APP;d.has_bitfield=true;
+    d.payload.size=2;memcpy(d.payload.bytes,"hi",2);
+    uint8_t data[32];auto stream=pb_ostream_from_buffer(data,sizeof(data));
+    assert(pb_encode(&stream,meshtastic_Data_fields,&d));
+    bench::Frame incoming;size_t n=0;const uint32_t peer=0xabcdf002;
+    assert(f.service.codec.encodeZeroHopData(peer,Self,451,data,stream.bytes_written,
+                                             incoming.bytes,sizeof(incoming.bytes),n));
+    incoming.bytes[12]=8;bool routed=true;
+    f.radio.rxPending=false;f.service.rx(incoming.bytes,n,2,20,700,true,&routed);
+    assert(!routed&&f.service.endpointControls()==1);
+    f.poll(21);assert(!f.runtime.radioHeld()&&!f.runtime.busy()&&f.radio.frames.empty());
+    assert(f.clock.set(400));f.service.poll(400,65);
+    assert(f.radio.frames.size()==1);
+    const auto &frame=f.radio.frames.front();bench::RouteMetadata meta{};
+    assert(bench::le32(frame.data())==peer&&f.service.codec.decode(frame.data(),frame.size(),meta));
+    assert(meta.portnum==meshtastic_PortNum_ROUTING_APP&&meta.request_id==451);
+    f.radio.complete=true;f.service.poll(401,65);
+}
 static void boundedAdmission(bool recover,bool unsupported=false){
     Fixture f;draw=255;auto target=f.resolve(meshtastic_Config_LoRaConfig_ModemPreset_LONG_SLOW);
     f.service.channelMeter().observeRx(60000,true);meterOwner::nativeSupport=!unsupported;
@@ -342,6 +391,6 @@ static void boundedAdmission(bool recover,bool unsupported=false){
 }
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
-    terminalSignal();normalSender();preservedHomeRx();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
-    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":15,\"refilled_slots\":24}");
+    terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
+    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":17,\"refilled_slots\":24}");
 }

@@ -104,7 +104,7 @@ bool BeaconTargetRuntime::ownerIdle()const
 
 bool BeaconTargetRuntime::homeRxPending()const
 {
-  return !retuned_&&!txActive_&&!completionAwaitingRestore_&&service_.radio_.receiveEventPending();
+  return phase_==RadioPhase::Home&&!txActive_&&!completionAwaitingRestore_&&service_.radio_.receiveEventPending();
 }
 
 bool BeaconTargetRuntime::enqueue(const BeaconExcursion::Request &input,const uint8_t *data,
@@ -165,28 +165,39 @@ bool BeaconTargetRuntime::retune(const BeaconExcursion::RadioProfile &profile)
   Config target{};if(!configureProfile(profile,target,&slotMs_))return false;
   homeArmed_=service_.endpointArmed_;homeRelaying_=service_.relaying_;
   const int stopped=service_.pauseForStorage();if(stopped)return false;
-  retuned_=true;
-  service_.receiving_=false;service_.relaying_=false;service_.endpointArmed_=false;
+  phase_=RadioPhase::Parked;
   service_.radio_.beaconRxIsolation(true);
   const int configured=service_.radio_.configure(target);
   if(configured){lastError_=configured;(void)restoreHome();return false;}
-  const int started=service_.radio_.start();if(started){lastError_=started;(void)restoreHome();return false;}
-  if(service_.radio_.health()!=1){lastError_=-EIO;(void)restoreHome();return false;}
-  return true;
+  phase_=RadioPhase::NeedsAbort;
+  const int started=service_.radio_.start();
+  if(started||service_.radio_.health()!=1){lastError_=started?started:-EIO;(void)restoreHome();return false;}
+  phase_=RadioPhase::TargetRx;return true;
 }
 
 bool BeaconTargetRuntime::restoreHome()
 {
-  if(!retuned_)return true;
-  if(service_.radio_.busy())return false;
-  int result=service_.radio_.stopForStorage();if(result)return false;
-  if(service_.radio_.health()!=0)return false;
-  result=service_.radio_.configure(service_.config);if(result)return false;
+  if(phase_==RadioPhase::Home)return true;
+  if(phase_==RadioPhase::TargetRx) {
+    if(service_.radio_.busy())return false;
+    const int stopped=service_.radio_.stopForStorage();
+    if(stopped) {
+      if(stopped!=-EAGAIN&&stopped!=-EBUSY){phase_=RadioPhase::NeedsAbort;service_.fault_=true;}
+      return false;
+    }
+    phase_=RadioPhase::Parked;
+  }
+  // configure() stages the native config. start() may fail after touching
+  // the chip. A successful joined abort re-establishes standby in that case.
+  if(phase_==RadioPhase::NeedsAbort&&service_.radio_.stop())return false;
+  phase_=RadioPhase::Parked;
+  if(service_.radio_.health()!=0){phase_=RadioPhase::NeedsAbort;return false;}
+  if(service_.radio_.configure(service_.config))return false;
+  phase_=RadioPhase::NeedsAbort;
+  if(service_.radio_.start()||service_.radio_.health()!=1)return false;
   service_.radio_.beaconRxIsolation(false);
-  result=service_.radio_.start();if(result)return false;
-  if(service_.radio_.health()!=1)return false;
   service_.receiving_=true;service_.relaying_=homeRelaying_;service_.endpointArmed_=homeArmed_;
-  retuned_=false;return true;
+  phase_=RadioPhase::Home;return true;
 }
 
 void BeaconTargetRuntime::release(uint32_t id)
@@ -247,7 +258,7 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
     if(!activeId_){activeSince_=now;activeId_=action.packetId;}
     auto gate=excursion_.beginConfigure(action.packetId,settingsEpoch,identityEpoch);
     const bool ok=gate.kind==BeaconExcursion::ActionKind::ConfigureTarget&&retune(gate.profile);
-    if(!ok){lastError_=lastError_?lastError_:-EIO;if(retuned_&&!restoreHome())service_.fault_=true;}
+    if(!ok){lastError_=lastError_?lastError_:-EIO;if(phase_!=RadioPhase::Home&&!restoreHome())service_.fault_=true;}
     const auto next=excursion_.targetConfigured(action.packetId,ok,settingsEpoch,identityEpoch);
     if(next.kind==BeaconExcursion::ActionKind::StartTransmission)contend(next,now);
     else apply(next,now,settingsEpoch,identityEpoch);
@@ -306,10 +317,15 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     if(!radioHeld())return;
   }
   expireQueued(now,settingsEpoch,identityEpoch);
-  if(pendingActionReady_&&pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission&&
-     bench::due(now,activeSince_+5000u)) {
-    const auto *r=row(activeId_);
-    if(waitingForAdmission_||!r||!admission(r->target.region)) {
+  if(pendingActionReady_&&pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission) {
+    // The home RX drain can queue an ACK/private reply without forwarding
+    // the incoming packet. Yield the modem to that existing Service work.
+    bool cancel=phase_==RadioPhase::Home&&!service_.storageStopSafe();
+    if(!cancel&&bench::due(now,activeSince_+5000u)) {
+      const auto *r=row(activeId_);
+      cancel=waitingForAdmission_||!r||!admission(r->target.region);
+    }
+    if(cancel) {
       waitingForAdmission_=false;pendingActionReady_=false;
       apply(excursion_.cancel(activeId_,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
       return;
@@ -336,7 +352,7 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     // is idempotent even if the modem already reports an active receive.
     finishTransmit(now,settingsEpoch,identityEpoch);return;
   }
-  if(excursion_.holdsRadio()||retuned_) {
+  if(radioHeld()) {
     apply({BeaconExcursion::ActionKind::RestoreHome,activeId_},now,settingsEpoch,identityEpoch);
     return;
   }
