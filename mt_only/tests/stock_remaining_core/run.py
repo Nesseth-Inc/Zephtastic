@@ -104,6 +104,10 @@ def main():
             if results != [256, 3]:
                 raise ValueError(f"Incomplete listener or hook scenarios {results}")
             counts = [a+b for a, b in zip(counts, results)]
+        runtime_report = work / "beacon-target.json"
+        subprocess.run([sys.executable, APP / "tests/stock_beacon_tx/run.py", "--stock", args.stock,
+                        "--output", runtime_report], check=True)
+        target_runtime = json.loads(runtime_report.read_text())
         regression = work / "received"
         try:
             subprocess.run([sys.executable, APP / "scripts/test-extended-modules.py", "--output", regression,
@@ -122,8 +126,9 @@ def main():
     rows = {
         "MeshBeaconListenerModule": {"kind": "differential", "comparisons": counts[0],
             "evidence": "Stock listen admission and retained offer fields compared across ports and offer combinations. ZT receive-service and advisory-cache regressions also ran."},
-        "MeshBeaconTxHook": {"kind": "partial", "comparisons": counts[1],
-            "evidence": "Stock send/defer and release compared with the ZT excursion state machine on home, off-channel and ordinary packets. Physical retune and carrier sensing require a radio."},
+        "MeshBeaconTxHook": {"kind": "differential", "comparisons": counts[1]+sum(r["runtime_scenarios"] for r in target_runtime["runs"]),
+            "runtime": target_runtime,
+            "evidence": "The production target owner deferred after retune, repeated contention on busy CAD, and preserved target hashes, complete frames, FIFO order and live home settings against pinned hook/timing functions and stock regression cases. CAD and TX completion used a synthetic radio."},
         "DMShellModule": {"kind": "profile", "evidence": "Stock registers this owner only in Portduino builds with the shell enabled. Shipping ZT boards use Zephyr."},
         "DMShellTestModule": {"kind": "profile", "evidence": "Stock registers this owner only in a designated test-peer build."},
     }
