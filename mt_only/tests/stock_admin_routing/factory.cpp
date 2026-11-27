@@ -2,13 +2,17 @@
 #include "stock/admin/FactoryConfigReset.h"
 #include <cassert>
 #include <cstdio>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 namespace reset=mt::stock::admin::factory;
 using Bytes=std::vector<uint8_t>;
+// This fixture is built with normal and short enums against the system C++
+// library. The ordered tree shares a color enum across that ABI boundary.
+// The settings backend needs only key lookup, erase, copy and equality.
+using Rows=std::unordered_map<std::string,Bytes>;
 struct Store {
-  std::map<std::string,Bytes> rows;
+  Rows rows;
   int failAt=-1,calls=0;
   int read(const char *name,uint8_t *bytes,size_t size){
     auto i=rows.find(name);if(i==rows.end())return -ENOENT;
@@ -24,7 +28,7 @@ struct Store {
 int main(){
   const uint32_t node=42;uint8_t key[32]={9};
   Store seed;reset::Phase phase;assert(!reset::inspect(seed,node,key,phase)&&phase==reset::Phase::Idle);
-  std::map<std::string,Bytes> retained;
+  Rows retained;
   for(const char *name:{"mtidentity/state0","mtpki/fresh0","mtpki/contacts0","mtpki/nonces1","mtpki/ledger0",
                         "bt/keys/x","mtble/gatt/x","mtba/m0","mtba/a00","mtba/b15","mtba/ri","unrelated/value"})retained[name]={99};
   seed.rows=retained;unsigned eligible=0;
