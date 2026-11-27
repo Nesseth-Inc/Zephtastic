@@ -78,7 +78,7 @@ static void configure(Fixture &f, unsigned role, unsigned region) {
     request.regionCode = region;
     request.usePreset = true;
     request.preset = region == 29 ? 10 : 0;
-    request.channel = 0;
+    request.channel = region == 1 ? 20 : 0;
     assert(cfg.setRadio(request) && cfg.setDeviceRole(role, 0) && f.s.apply(cfg));
 }
 
