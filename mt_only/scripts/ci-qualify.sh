@@ -39,6 +39,7 @@ if [[ $tool_group == native ]]; then
       fetch_commit "$work/maxim" https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library.git 72d5308df500ae1a64cc9d63e950c68c96dc78d5
       args+=(--maxim "$work/maxim")
       python mt_only/scripts/prepare-deps.py "$work/deps" --project zephyr
+      python mt_only/scripts/test-native-activity.py --zephyr "$work/deps/zephyr" --output "$work/radio-activity"
       python mt_only/tests/stock_hop_restart/run.py --stock "$work/stock" --zephyr "$work/deps/zephyr" --output "$work/hop-restart.json"
     fi
     python "mt_only/tests/stock_remaining_$suite/run.py" --stock "$work/stock" --output "$work/modules.json" "${args[@]}"

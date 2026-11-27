@@ -86,6 +86,23 @@ elif args.group.startswith("modules-"):
     verify_module_evidence(args.group.removeprefix("modules-"), evidence)
     report["module_evidence"] = evidence
     if args.group == "modules-core":
+        hook = evidence["modules"]["MeshBeaconTxHook"]["runtime"]
+        if {row["enum"] for row in hook["runs"]} != {"normal", "short"}:
+            raise ValueError("Missing beacon recovery enum mode")
+        for row in hook["runs"]:
+            faults = row["usb_recovery"]
+            if set(faults) != {"lost", "home"}:
+                raise ValueError("Missing USB session during a beacon fault")
+            for session in faults.values():
+                if (session["stock_handshakes"] < 2 or session["existing_session_read_cycles"] < 2 or
+                        session["fresh_session_read_cycles"] < 2 or session["metadata_status_replies"] < 2 or
+                        session["heartbeat_replies"] < 2 or session["denied_writes_and_sends"] < 2 or
+                        not session["epoch_split_rejected"] or not session["ordinary_read_after_release"]):
+                    raise ValueError("Incomplete USB recovery session")
+        activity = read("radio-activity/SUMMARY.json")
+        if activity["status"] != "PASS" or not activity["main_drain_observe_admin_order"]:
+            raise ValueError("Incomplete native radio and USB service-order checks")
+        report["native_radio_service_order"] = True
         restart = read("hop-restart.json")
         nvs = restart["nvs"]
         if (restart["stock_revision"] != evidence["stock_revision"] or
