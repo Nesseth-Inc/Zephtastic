@@ -355,7 +355,8 @@ private:
   uint32_t favoriteRequest_=0,favoriteNode_=0,favoriteRevision_=0,favoriteAt_=0;
 #endif
   uint32_t handshakeNonce_=0,handshakeNow_=0;
-  bool configComplete_=false;
+  bool configComplete_=false,positionSentToPhone_=false;
+  uint32_t lastPositionToPhoneMs_=0;
 #if defined(CONFIG_MT_STORE_FORWARD_PSRAM)
   uint32_t localHistorySession_=0;
   modules::StoreForwardLocalReplay localHistory_;
@@ -3752,6 +3753,41 @@ public:
     return emit(false,true);
   }
 #endif
+  // This path writes only FromRadio on the admitted owner session. Keep it
+  // separate from mesh announcements, their display fanout and MQTT.
+  bool sendLocalPosition(uint32_t now,WorkspaceProof proof){
+    if(owner_>1||!connected_||!configComplete_||handshakeNonce_==OnlyConfig||
+       !host_.ready()||host_.editing()||!service_.normalMode()||
+       (positionSentToPhone_&&uint32_t(now-lastPositionToPhoneMs_)<60000))return false;
+    if(owner_==0){
+      if(recoveryOnly_||!host_.consoleAllowed())return false;
+    }else{
+      const auto link=host_.bluetoothSecurity();
+      if(!link.connected||link.pending||link.error||link.level<2)return false;
+    }
+    auto lease=workspace_.acquire(proof);if(!lease)return false;
+    meshtastic_Position p{};
+    if(!service_.localPosition(p)||(!p.latitude_i&&!p.longitude_i))return false;
+    // Live fixes already have the configured field projection. Fixed Position
+    // stores a measured MSL altitude independently of its output field flags.
+    if(service_.config.fixedPosition()&&(service_.config.gnssSettings().positionFlags&3)!=3){
+      p.has_altitude=false;p.altitude=0;
+    }
+    p.precision_bits=32;
+    p.time=host_.wallTime();
+    fresh(meshtastic_FromRadio_packet_tag);
+    auto &packet=output_.packet;
+    packet.from=service_.route.identity();packet.to=UINT32_MAX;packet.id=sequence_;
+    packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
+    packet.priority=meshtastic_MeshPacket_Priority_BACKGROUND;
+    packet.decoded.portnum=meshtastic_PortNum_POSITION_APP;
+    auto payload=pb_ostream_from_buffer(packet.decoded.payload.bytes,sizeof(packet.decoded.payload.bytes));
+    if(!pb_encode(&payload,meshtastic_Position_fields,&p))return false;
+    packet.decoded.payload.size=payload.bytes_written;timestamp(packet,p.time);
+    if(!emit(false,true))return false;
+    positionSentToPhone_=true;lastPositionToPhoneMs_=now;
+    return true;
+  }
   bool modulePacket(const uint8_t*data,size_t size,uint32_t id,unsigned channel,WorkspaceProof proof,bool idleOnly=false){
     auto lease=workspace_.acquire(proof);if(!lease)return false;
     if(!connected_||(owner_==0&&(recoveryOnly_||!host_.consoleAllowed()))||!data||!size||size>239||channel>=8)return false;

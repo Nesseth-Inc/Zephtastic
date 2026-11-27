@@ -4355,7 +4355,7 @@ public:
 static BleHost bleHost;
 static mt::Companion bleCompanion MT_WIFI_PSRAM_BSS(ble_companion)(service,bleHost,mt::board::Model,companionWorkspace,1);
 static ClientHost clientHost;
-static void publishModuleData(const uint8_t *data,size_t size,uint32_t id,unsigned channel=0,bool idleOnly=false);
+static uint8_t publishModuleData(const uint8_t *data,size_t size,uint32_t id,unsigned channel=0,bool idleOnly=false,uint8_t recipients=mt::ModuleController::AllPhones);
 #if defined(CONFIG_MT_DISPLAY)||defined(CONFIG_MT_SERIAL_MODULE)
 static void publishLocalInput(unsigned port,const uint8_t *payload,size_t size,uint32_t id,unsigned channel);
 #endif
@@ -4718,7 +4718,7 @@ static void handleTcpPacket(const mt::tcp::Packet &packet,void*){
 }
 #endif
 #undef MT_WIFI_PSRAM_BSS
-static void publishModuleData(const uint8_t *data,size_t size,uint32_t id,unsigned channel,bool idleOnly){
+static uint8_t publishModuleData(const uint8_t *data,size_t size,uint32_t id,unsigned channel,bool idleOnly,uint8_t recipients){
 #if defined(CONFIG_MT_TELEMETRY_REPORT_FRAMES)
   bench::RouteMetadata metadata{};
   if(bench::MtCodec::decodeData(data,size,metadata)&&metadata.portnum==meshtastic_PortNum_TELEMETRY_APP&&
@@ -4728,14 +4728,20 @@ static void publishModuleData(const uint8_t *data,size_t size,uint32_t id,unsign
       observeDisplayReport(service.route.identity(),id,true,report);
   }
 #endif
-  (void)companion.modulePacket(data,size,id,channel,companionWorkspaceProof(),idleOnly);
-  (void)bleCompanion.modulePacket(data,size,id,channel,companionWorkspaceProof(),idleOnly);
+  uint8_t accepted=0;
+  auto deliver=[&](uint8_t bit,mt::Companion &client){
+    if((recipients & bit)&&client.modulePacket(data,size,id,channel,companionWorkspaceProof(),idleOnly))
+      accepted|=bit;
+  };
+  deliver(1,companion);
+  deliver(2,bleCompanion);
 #if defined(CONFIG_MT_SERIAL_MODULE)
-  (void)serialCompanion.modulePacket(data,size,id,channel,companionWorkspaceProof(),idleOnly);
+  deliver(4,serialCompanion);
 #endif
 #if defined(CONFIG_MT_TCP_COMPANION)
-  (void)tcpCompanion.modulePacket(data,size,id,channel,companionWorkspaceProof(),idleOnly);
+  deliver(8,tcpCompanion);
 #endif
+  return accepted;
 }
 #if defined(CONFIG_MT_RF_ADMIN_GET)
 static void clearRemoteAdminSessions() {
@@ -5622,6 +5628,7 @@ int main() {
     mt::update::signedOta::confirmHealthyBoot();
 #endif
   mt::PositionController positions;
+  uint32_t lastPhonePositionCheck=0;
 #if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
   if(service.broadcastHistory)positions.restoreLastSend(broadcastHistory.last(mt::history::Kind::Position));
 #endif
@@ -5906,9 +5913,9 @@ int main() {
       else (void)settingsEdit.poll(now,coherent);
     }
     const uint64_t moduleNow=ztUptimeMsProvider(nullptr);
-    modules.pollTimed(service,moduleEdit.config(),storageReady&&moduleEdit.ready()&&!settingsEdit.open()&&!rebootSchedule.pending(),
-      moduleNow,sys_rand32_get(),wallClock.at(moduleNow),[](const uint8_t*data,size_t size,uint32_t id,bool idleOnly){
-        publishModuleData(data,size,id,0,idleOnly);
+    modules.pollReports(service,moduleEdit.config(),storageReady&&moduleEdit.ready()&&!settingsEdit.open()&&!rebootSchedule.pending(),
+      moduleNow,sys_rand32_get(),wallClock.at(moduleNow),[](const uint8_t*data,size_t size,uint32_t id,mt::ModuleController::PhoneDelivery delivery,uint8_t recipients){
+        return publishModuleData(data,size,id,0,delivery==mt::ModuleController::PhoneDelivery::Idle,recipients);
       });
     completionRuntime.ownerPoll(service,modules,moduleNow,wallClock.at(moduleNow),sys_rand32_get(),[](const uint8_t*data,size_t size,uint32_t id,bool idleOnly=false){
       publishModuleData(data,size,id,0,idleOnly);
@@ -5985,6 +5992,12 @@ int main() {
 #endif
     pollMqttMapReport(k_uptime_get_32());
     companion.poll(companionWorkspaceProof());bleCompanion.poll(companionWorkspaceProof());
+    if(storageReady&&!settingsEdit.open()&&!rebootSchedule.pending()&&
+       uint32_t(hardwareNow-lastPhonePositionCheck)>=5000){
+      lastPhonePositionCheck=uint32_t(hardwareNow);
+      companion.sendLocalPosition(lastPhonePositionCheck,companionWorkspaceProof());
+      bleCompanion.sendLocalPosition(lastPhonePositionCheck,companionWorkspaceProof());
+    }
 #if defined(CONFIG_MT_SERIAL_MODULE)
     if(serialModule.ready())serialCompanion.poll(companionWorkspaceProof());
 #endif

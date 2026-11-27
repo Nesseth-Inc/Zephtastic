@@ -149,7 +149,19 @@ public:
     pollTimed(service,settings,ready,uptime,random,0,
       [&](const uint8_t *p,size_t n,uint32_t id,bool){sink(p,n,id);});
   }
+  enum class PhoneDelivery {Normal,Idle,FollowUp};
+  static constexpr uint8_t AllPhones=0x0f;
   template<class Sink>void pollTimed(Service&service,const ModuleSettings&settings,bool ready,uint64_t uptime,uint32_t random,uint32_t utc,Sink sink){
+    pollReports(service,settings,ready,uptime,random,utc,
+      [&](const uint8_t *p,size_t n,uint32_t id,PhoneDelivery delivery,uint8_t recipients){
+        sink(p,n,id,delivery!=PhoneDelivery::Normal);return recipients;
+      });
+  }
+  // The return mask identifies transports that actually accepted this packet.
+  template<class Send>void pollReports(Service&service,const ModuleSettings&settings,bool ready,uint64_t uptime,uint32_t random,uint32_t utc,Send send){
+    auto sink=[&](const uint8_t *p,size_t n,uint32_t id,bool idle){
+      return send(p,n,id,idle?PhoneDelivery::Idle:PhoneDelivery::Normal,AllPhones);
+    };
     if(!ready||!settings.valid()||uptime==UINT64_MAX||uptime/1000>UINT32_MAX||!online_.advance(uptime))return;
     const bool router=service.config.role()==2;
     if(!configured_||router_!=router||!settings_.same(settings))configure(settings,uptime,router);
@@ -172,12 +184,16 @@ public:
       if(TelemetryAnnouncement::encode(seconds,air,channel,bytes,sizeof(bytes),size,service.hardware(),utc)){
         uint32_t id=0;
         if(eligible)(void)service.submitModuleAnnouncement(bytes,size,service.config.hopLimit(),now,random,id);
-        if(phone||id)sink(bytes,size,id?id:localId(),!id);
+        if(id)sink(bytes,size,id,false);
+        else if(phone&&!eligible){
+          const uint8_t recipients=sink(bytes,size,localId(),true);
+          // Stock admits DeviceMetrics and LocalStats together on an idle phone.
+          // Append stats only to sessions that accepted the preceding device report.
+          if(recipients&&statsPhone_.due(now)&&LocalStatsQuery::announcement(seconds,air,channel,
+              bytes,sizeof(bytes),size,service.localStats(),utc)&&send(bytes,size,localId(),PhoneDelivery::FollowUp,recipients))
+            statsPhone_.consumed(now);
+        }
       }
-    }
-    if(statsPhone_.due(now)){
-      statsPhone_.consumed(now);const auto observed=service.localStats();
-      if(LocalStatsQuery::announcement(seconds,service.airUtilTx(),service.channelUtilization(),bytes,sizeof(bytes),size,observed,utc))sink(bytes,size,localId(),true);
     }
     bool strikeDue=false;
 #if defined(CONFIG_MT_LIGHTNING_EVENTS)
