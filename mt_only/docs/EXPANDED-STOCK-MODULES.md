@@ -14,7 +14,7 @@ The experiment extends nine stock modules beyond the initial 16-family compariso
 | Geofence | Enabled circles or boxes match accepted peer positions in the same scope. The first position establishes a baseline. Subsequent crossings can trigger a local alert, including a favorites-only subscription. |
 | StatusLED | An explicitly selected radio RX indication pulses the board LED for 100 ms. Retriggers extend the pulse and the established LED owner arbitrates heartbeat and TX. |
 
-The original waypoint experiment kept ten entries and tracked 16 peers until reboot. The current branch persists ten entries and tracks up to 256 node/waypoint crossing pairs. HopScaling rebuilds its 128-entry RF histogram after reboot.
+The original waypoint experiment kept ten entries and tracked 16 peers until reboot. The current branch persists ten entries and tracks up to 256 node/waypoint crossing pairs. XIAO and T096 normal endpoints with native settings can restore the 128-entry HopScaling histogram from their last successful hourly checkpoint. Other profiles rebuild from RF traffic. [Warm restart qualification](../tests/stock_hop_restart/README.md)
 
 ## Earlier board measurements
 

@@ -88,6 +88,7 @@ static unsigned interrupt(unsigned total,Hist &hist,mt::ZephyrSettings &settings
 static void exercise(unsigned sectors){
     model_reset(sectors);mt::ZephyrSettings settings;Rows rows;
     populate(settings,rows,sectors);verify(settings,rows);
+    const size_t owners=rows.size();
     Hist hist;hist.loadHistory(settings);hist.seed(123);hist.runOnce(30000,31,0);
     unsigned cuts=0,collections=0,workloadErases=0;
     for(unsigned hour=0;hour<120;++hour){
@@ -131,6 +132,6 @@ static void exercise(unsigned sectors){
     const int full=hist.saveHistory(settings);
     assert(full==-ENOSPC);
     model_remount();assert(value(settings,Key).empty());verify(settings,rows);
-    std::printf("HOP_NVS %u %zu %u %u %u\n",sectors,rows.size(),cuts,collections,workloadErases);
+    std::printf("HOP_NVS %u %zu %u %u %u\n",sectors,owners,cuts,collections,workloadErases);
 }
 int main(){exercise(4);exercise(8);}
