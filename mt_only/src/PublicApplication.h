@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #pragma once
 #include "MtCodec.h"
+#include "MtKeyCommand.h"
+#include "RelayCore.h"
 #include "meshtastic/mesh.pb.h"
 #include <pb_decode.h>
 #include <pb_encode.h>
