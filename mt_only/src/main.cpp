@@ -991,10 +991,9 @@ static void checkpointHistories(uint64_t now){
   if(!storageReady)return;
   const bool waypoint=waypointHistory.due(waypoints,journal.channelGeneration(),now);
 #if defined(CONFIG_MT_HOP_HISTORY)
-  // Consume each roll once, even when storage or RF is busy. The next roll
-  // offers a fresh checkpoint without retrying a failed flash write in a loop.
-  const bool hop=service.hopHistory().takeCheckpoint()&&!settingsEdit.open()&&
-                 !rebootSchedule.pending()&&!firmwareUpdate.pending()&&!service.faulted();
+  // The owner releases at most one pending roll when the background window
+  // opens. An unsuccessful RF pause or flash attempt waits for the next roll.
+  const bool hop=service.hopHistory().takeCheckpoint();
 #else
   constexpr bool hop=false;
 #endif
@@ -5567,6 +5566,18 @@ static void observeLocalStats(const mt::NodeCache &hot,mt::LocalStatsObservation
   }
 #endif
 }
+// Background checkpoints can stop RX and clear reply correlation. Pending
+// rolls coalesce while another owner is using the radio or ingress queues.
+static void pollBackgroundHistories(uint64_t now,bool clientIngressSaturated){
+  if(!storageReady||service.faulted()||persistentWorkPending()||rebootSchedule.pending()||
+     firmwareUpdate.pending()||clientIngressSaturated||administrationWorkPending()||
+     beaconTargets.radioHeld()||k_msgq_num_used_get(&rxQueue)||ring_buf_size_get(&usbRx)||
+     mt::ble::pendingInput())return;
+  checkpointHistories(now);
+#if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
+  (void)checkpointBroadcasts(false);
+#endif
+}
 int main() {
 #if defined(CONFIG_MT_SIGNED_WIFI_OTA)
   mt::update::signedOta::initializeBootVersion();
@@ -5985,13 +5996,7 @@ int main() {
 #endif
     }
     waypoints.purgeExpired(wallClock.at(hotNow));
-    checkpointHistories(hotNow);
-#if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
-    if(!settingsEdit.open()&&!persistentWorkPending()&&!rebootSchedule.pending()&&!firmwareUpdate.pending()&&
-       !clientIngressSaturated&&!administrationWorkPending()&&!beaconTargets.radioHeld()&&
-       !k_msgq_num_used_get(&rxQueue)&&!ring_buf_size_get(&usbRx)&&!mt::ble::pendingInput())
-      (void)checkpointBroadcasts(false);
-#endif
+    pollBackgroundHistories(hotNow,clientIngressSaturated);
 #if defined(CONFIG_MT_GENERIC_THREAD)
     static mt::stock::optional::GenericThreadModule genericThread;
     genericThread.poll(uint32_t(hotNow),[](const char *line){
