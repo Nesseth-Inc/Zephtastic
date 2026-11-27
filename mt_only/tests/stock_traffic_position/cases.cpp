@@ -212,6 +212,26 @@ void relayCases() {
         auto next=position(precise.latitude_i+(1<<17),precise.longitude_i,15);
         r.position(0,next,true,15,true,0,true);
     }
+    for (uint32_t budget : {1u,2u}) {
+        auto limited=options;
+        limited.rate_limit_window_secs=300;
+        limited.rate_limit_max_packets=budget;
+        Relay r(cfg,limited,true);
+        const auto precise=position(123456789,-23456789,32);
+        const auto compliant=position(precise.latitude_i,precise.longitude_i,15);
+        r.position(0,precise,true,15,false,0,false);
+        if (budget==1) {
+            // The privacy rejection consumed this sender's only token. Another
+            // sender passes immediately; the original cell passes at rate expiry.
+            r.text(Peer,0,false);
+            r.text(Peer+1,0,true);
+            r.position(0,compliant,true,15,true,300000,true);
+        } else {
+            // With a second token, the compliant same-cell report passes now.
+            r.position(0,compliant,true,15,true,0,true);
+            r.text(Peer,0,false);
+        }
+    }
     {
         Relay r(cfg,options,true);
         auto p=position(123456789,-23456789,32);
