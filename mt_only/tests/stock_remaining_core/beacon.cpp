@@ -4,6 +4,7 @@
 #include "modules/BeaconExcursion.h"
 #include <cassert>
 #include <cstdio>
+#include <initializer_list>
 
 namespace donor {
 using NodeNum = uint32_t;

@@ -105,8 +105,14 @@ def main():
                 raise ValueError(f"Incomplete listener or hook scenarios {results}")
             counts = [a+b for a, b in zip(counts, results)]
         regression = work / "received"
-        subprocess.run([sys.executable, APP / "scripts/test-extended-modules.py", "--output", regression,
-                        "--only", "mesh_beacon_received_cache_tests", "beacon_controller_tests"], check=True)
+        try:
+            subprocess.run([sys.executable, APP / "scripts/test-extended-modules.py", "--output", regression,
+                            "--only", "mesh_beacon_received_cache_tests", "beacon_controller_tests"], check=True)
+        except subprocess.CalledProcessError:
+            logs = sorted(regression.rglob("*.log"), key=lambda path: path.stat().st_mtime)
+            for path in logs[-2:]:
+                print("\n".join(path.read_text(errors="replace").splitlines()[-12:]), file=sys.stderr)
+            raise
         native = json.loads((regression / "RESULT.json").read_text())
         if native["status"] != "PASS" or len(native["executions"]) != 4:
             raise ValueError("Incomplete receive-cache and controller regressions")
