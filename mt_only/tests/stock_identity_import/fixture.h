@@ -6,14 +6,14 @@
 #include <array>
 #include <cassert>
 #include <cstdio>
-#include <map>
-#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 using namespace mt::pki;
 using Blob=std::vector<uint8_t>;
 struct Memory:mt::SettingsBackend {
-  std::map<std::string,Blob> rows;
+  // The Linux system tree library uses a different enum ABI in short-enum builds.
+  std::unordered_map<std::string,Blob> rows;
   unsigned writes=0,failAt=0;bool failAfter=false;
   int read(const char*k,uint8_t*out,size_t n)override{
     const auto it=rows.find(k);if(it==rows.end())return -ENOENT;

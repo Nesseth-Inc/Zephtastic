@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "fixture.h"
+#include <unordered_set>
 static bool live(Memory &memory,bool imported){
   Volume boot(memory);Clock c;Random rng(47);PkiStorage s(boot,memory,c,rng);
   if(s.prepare())return false;return s.importedIdentity()==imported;
 }
-static void reserve(Memory &m,const Pair &p,unsigned n,std::set<uint32_t>&out){
+static void reserve(Memory &m,const Pair &p,unsigned n,std::unordered_set<uint32_t>&out){
   Volume boot(m);Clock c;Random rng(94);PkiStorage s(boot,m,c,rng);assert(s.prepare()==0&&s.importedIdentity());
   IdentityBinding b;KeyRef r;assert(s.preparedBinding(b)&&!memcmp(b.publicKey,p.pub.data(),32));
   PkiPeerSet pins;assert(s.preparedPeers(pins)&&pins.count()==0);
@@ -134,7 +135,7 @@ int main(){
     assert(!PkiFreshIntent::decode(pending.data(),pending.size(),b,scratch,d));
     auto before=complete.rows;Provision again(complete,13);again.arm();assert(again.stage(p)<0&&again.stage(other)<0&&complete.rows==before);
   }
-  std::set<uint32_t> issued;reserve(complete,p,80,issued);reserve(complete,p,320,issued);assert(issued.size()==400);
+  std::unordered_set<uint32_t> issued;reserve(complete,p,80,issued);reserve(complete,p,320,issued);assert(issued.size()==400);
   Memory independent;Provision next(independent,371);next.arm();assert(next.stage(p)==0&&next.confirm(p)>0&&live(independent,true));
   assert(complete.rows.at("mtpki/fresh0")!=independent.rows.at("mtpki/fresh0"));
   {
@@ -148,7 +149,7 @@ int main(){
       PkiFreshRoot::put(record.data()+52,through);PkiFreshRoot::put(record.data()+56,through/256+1);
       PkiFreshRoot::put(record.data()+60,PkiFreshRoot::checksum(record.data(),60));
     }
-    std::set<uint32_t> values;
+    std::unordered_set<uint32_t> values;
     reserve(closeToZero,p,zeroPreimage-through,values);assert(values.count(0)==1);
   }
   for(const char*key:{"mtpki/fresh0","mtpki/fresh-pending","mtpki/nonces0","mtpki/nonces1","mtpki/contacts0","mtpki/contacts1"}){
