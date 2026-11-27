@@ -23,32 +23,66 @@ struct HeaderNodeDB {
 } headerDB;
 static auto *nodeDB = &headerDB;
 
-// This upstream test varies only clear relay headers. Preserve the foreign
-// sender, recipient, channel and hops and supply an opaque synthetic body.
-// The bench relay has neither party's key and never inspects the plaintext.
-struct RelayIdentity { uint32_t num; };
-static RelayIdentity makeIdentity(uint32_t node) { return {node}; }
+using NodeNum = uint32_t;
+#include "relay-vectors.inc"
+struct RelayIdentity { uint32_t num; const uint8_t *pub; };
+static RelayIdentity makeIdentity(uint32_t node) {
+    assert(node==ADMIN_NODE || node==TARGET_NODE);
+    return {node, node==ADMIN_NODE ? senderPublic : recipientPublic};
+}
 static meshtastic_MeshPacket makePkiUnicastBetween(RelayIdentity from, RelayIdentity to,
-                                                   meshtastic_PortNum, PacketId id) {
+                                                   meshtastic_PortNum port, PacketId id, bool ack=false) {
     meshtastic_MeshPacket p{};
-    p.from = from.num;
-    p.to = to.num;
-    p.id = id;
-    p.hop_limit = 2;
-    p.hop_start = 3;
-    p.which_payload_variant = meshtastic_MeshPacket_encrypted_tag;
-    p.encrypted.size = 32;
-    memset(p.encrypted.bytes, 0x5a, p.encrypted.size);
-    return p;
+    p.from=from.num; p.to=to.num; p.id=id; p.want_ack=ack;
+    p.hop_limit=2; p.hop_start=3;
+    p.which_payload_variant=meshtastic_MeshPacket_encrypted_tag;
+    for(const auto &v : vectors) if(v.id==id && v.port==uint32_t(port)) {
+        memcpy(p.encrypted.bytes,v.body,v.size); p.encrypted.size=v.size;
+        return p;
+    }
+    std::abort();
 }
 
 static std::unique_ptr<Fixture> relay;
 static unsigned observations;
+static uint32_t tick;
+struct { bool is_licensed; } owner;
+static auto signaturePolicy=meshtastic_Config_SecurityConfig_PacketSignaturePolicy_PACKET_SIGNATURE_POLICY_COMPATIBLE;
+static void setPolicy(meshtastic_Config_SecurityConfig_PacketSignaturePolicy value){signaturePolicy=value;}
+struct Nodes {
+    using Entry=mt::NodeCache::Entry;
+    std::map<NodeNum,Entry> rows;
+    void addNode(NodeNum id) { rows[id].identity(id,81,0); }
+    void markHasUser(NodeNum id) {
+        auto &e=rows.at(id);
+        assert(Entry::text(e.bytes+Entry::Name,40,"Fixture peer",13));
+    }
+    void setPublicKey(NodeNum id,const uint8_t *key) {
+        auto &e=rows.at(id);
+        e.bytes[Entry::KeyLength]=32;
+        memcpy(e.bytes+Entry::Key,key,32);
+    }
+    void markLicenseStatus(NodeNum id,bool licensed) {
+        markHasUser(id);
+        if(licensed) rows.at(id).bytes[Entry::Flags]|=Entry::LicensedUser;
+    }
+} nodesForTest;
+static auto *mockNodeDB=&nodesForTest;
 struct RadioCapture {
-    unsigned sendCalls = 0;
-    void reset() { sendCalls = 0; }
+    unsigned sendCalls=0;
+    std::vector<std::vector<uint8_t>> frames;
+    void reset(){sendCalls=0; frames.clear(); relay.reset();}
+    unsigned sentCountFor(uint32_t from,uint32_t id)const{
+        unsigned count=0;
+        for(const auto &w:frames) if(w.size()>=16 && bench::le32(w.data()+4)==from && bench::le32(w.data()+8)==id) ++count;
+        return count;
+    }
 } capture;
-static auto *pipelineRadio = &capture;
+static auto *pipelineRadio=&capture;
+struct ReplyQueue {
+    void reset() { /* Recreated with each fixture. */ }
+} replyQueue;
+static auto *pipelineRouting=&replyQueue;
 struct RouterHistory {
     bool historyContains(const meshtastic_MeshPacket *packet) const {
         return relay->service.route.hasHistory(packet->from, packet->id);
@@ -74,57 +108,136 @@ static void putLE32(uint8_t *wire, uint32_t value) {
     for (unsigned i = 0; i < 4; ++i) wire[i] = uint8_t(value >> (8 * i));
 }
 
-static void runPipelineIngress(const meshtastic_MeshPacket &packet)
+static void startRelay()
 {
-    relay = std::make_unique<Fixture>(81, false);
-    auto cfg = relay->service.config;
-    cfg.bytes[4] = 1;  // provision the bench's test region
-    TEST_ASSERT_TRUE(cfg.setDeviceRole(config.device.role, config.device.rebroadcast_mode));
+    relay=std::make_unique<Fixture>(81,false);
+    auto cfg=relay->service.config;
+    cfg.bytes[4]=1;
     cfg.seal();
+    if(owner.is_licensed) TEST_ASSERT_TRUE(cfg.enableLicensedOperation());
+    TEST_ASSERT_TRUE(cfg.setDeviceRole(config.device.role,config.device.rebroadcast_mode));
+    TEST_ASSERT_TRUE(cfg.setPacketSignaturePolicy(signaturePolicy));
     TEST_ASSERT_TRUE(relay->service.apply(cfg));
-    TEST_ASSERT_TRUE(relay->service.start(false, 0));
+    TEST_ASSERT_TRUE(relay->service.start(false,0));
     TEST_ASSERT_TRUE(relay->service.armEndpoint(true));
-
+    for(const auto &row:nodesForTest.rows)
+        TEST_ASSERT_TRUE(relay->service.nodes.accept(row.second,Node,-20,1)>=0);
     meshtastic_ToRadio handshake{};
-    handshake.which_payload_variant = meshtastic_ToRadio_want_config_id_tag;
-    handshake.want_config_id = 71;
+    handshake.which_payload_variant=meshtastic_ToRadio_want_config_id_tag;
+    handshake.want_config_id=71;
     relay->input(handshake);
     relay->usb.out.clear();
-    phone.cursor = 0;
+    phone.cursor=0;
+    tick=1000;
+    relay->radio.onSend=[](const uint8_t *p,size_t n){capture.frames.emplace_back(p,p+n);++capture.sendCalls;};
+}
 
+static void runPipelineIngress(const meshtastic_MeshPacket &packet)
+{
+    if(!relay) startRelay();
     uint8_t wire[255]{};
-    const size_t size = 16 + packet.encrypted.size;
-    TEST_ASSERT_EQUAL(meshtastic_MeshPacket_encrypted_tag, packet.which_payload_variant);
-    TEST_ASSERT_TRUE(size <= sizeof(wire));
-    putLE32(wire, packet.to);
-    putLE32(wire + 4, packet.from);
-    putLE32(wire + 8, packet.id);
-    wire[12] = uint8_t((packet.hop_start << 5) | packet.hop_limit);
-    wire[13] = packet.channel;
-    wire[14] = packet.next_hop;
-    wire[15] = packet.relay_node;
-    memcpy(wire + 16, packet.encrypted.bytes, packet.encrypted.size);
-    relay->service.rx(wire, size, 3, 1000, 0);
-    const auto queued = relay->service.route.pending();
-    relay->c.receive(wire,size,-90,3,1000,mt::Companion::WorkspaceProof{true});
-    relay->service.poll(10000,0);
-    capture.sendCalls = relay->radio.sends;
-    TEST_ASSERT_EQUAL_UINT(queued, capture.sendCalls);
+    size_t size=0;
+    if(packet.which_payload_variant==meshtastic_MeshPacket_decoded_tag){
+        // Channel frames pass the same codec as ZT-originated text.
+        uint8_t bytes[128];
+        auto out=pb_ostream_from_buffer(bytes,sizeof(bytes));
+        TEST_ASSERT_TRUE(pb_encode(&out,meshtastic_Data_fields,&packet.decoded));
+        TEST_ASSERT_TRUE(relay->service.codec.encodeZeroHopData(packet.from,packet.to,packet.id,
+            bytes,out.bytes_written,wire,sizeof(wire),size));
+    } else {
+        TEST_ASSERT_EQUAL(meshtastic_MeshPacket_encrypted_tag,packet.which_payload_variant);
+        size=16+packet.encrypted.size;
+        TEST_ASSERT_TRUE(size<=sizeof(wire));
+        putLE32(wire,packet.to);putLE32(wire+4,packet.from);putLE32(wire+8,packet.id);
+        wire[13]=packet.channel;
+        memcpy(wire+16,packet.encrypted.bytes,packet.encrypted.size);
+    }
+    wire[12]=uint8_t((packet.hop_start<<5)|packet.hop_limit|(packet.want_ack ? 8u : 0u));
+    wire[14]=packet.next_hop; wire[15]=packet.relay_node;
+    TEST_ASSERT_TRUE(relay->knownChannelClock.set(tick));
+    relay->service.rx(wire,size,3,tick,0);
+    const auto queued=relay->service.route.pending();
+    const size_t before=capture.frames.size();
+    relay->c.receive(wire,size,-90,3,tick,mt::Companion::WorkspaceProof{true});
+    relay->service.poll(tick+9000,0);
+    TEST_ASSERT_EQUAL_UINT(queued,capture.frames.size()-before);
+    for(size_t i=before;i<capture.frames.size();++i){
+        const auto &sent=capture.frames[i];
+        TEST_ASSERT_EQUAL_UINT(size,sent.size());
+        TEST_ASSERT_EQUAL_MEMORY(wire,sent.data(),12); // destination, sender and packet ID
+        TEST_ASSERT_EQUAL_MEMORY(wire+16,sent.data()+16,size-16);
+        TEST_ASSERT_EQUAL_UINT((wire[12]&7u)-1,sent[12]&7u);
+    }
+    if(capture.frames.size()>before) {
+        relay->radio.done=true;
+        relay->service.poll(tick+9050,0);
+    }
+    tick+=10000;
     ++observations;
+}
+
+static void assertOpaqueRelay(const meshtastic_MeshPacket &packet,Mode mode,bool expect,const char *why)
+{
+    capture.reset();
+    config.device.rebroadcast_mode=mode;
+    auto copy=packet;
+    // This adapter starts a fresh relay per mode. Use the original packet ID
+    // and, when the donor case changes it between policies, its matching body.
+    for(const auto &v:vectors) if(v.id==copy.id) {
+        copy.encrypted.size=v.size; memcpy(copy.encrypted.bytes,v.body,v.size);
+        break;
+    }
+    runPipelineIngress(copy);
+    TEST_ASSERT_EQUAL_UINT_MESSAGE(expect?1:0,capture.sendCalls,why);
+    TEST_ASSERT_FALSE(history.historyContains(&copy));
+    TEST_ASSERT_NULL(phone.getForPhone());
+    TEST_ASSERT_EQUAL_UINT(0,relay->service.endpointControls());
+    TEST_ASSERT_EQUAL_UINT(nodesForTest.rows.size(),relay->service.nodes.count());
+    for(const auto &row:nodesForTest.rows) {
+        const int slot=relay->service.nodes.find(row.first);
+        TEST_ASSERT_TRUE(slot>=0);
+        TEST_ASSERT_EQUAL_UINT(0,relay->service.nodes.get(slot)->lastHeard());
+    }
+}
+static meshtastic_MeshPacket makeChannelBroadcastFrom(NodeNum from,NodeNum to,PacketId id){
+    meshtastic_MeshPacket p{};
+    p.from=from;p.to=to;p.id=id;p.hop_limit=1;p.hop_start=2;
+    p.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
+    p.decoded.portnum=meshtastic_PortNum_TEXT_MESSAGE_APP;
+    p.decoded.payload.size=4;memcpy(p.decoded.payload.bytes,"test",4);
+    p.decoded.has_bitfield=true;
+    return p;
 }
 
 #include "stock-rebroadcast.inc"
 #include "rebroadcast_oracle.h"
 
-void setUp() { config.device.role = mt::DeviceRolePolicy::Role::CLIENT; }
+// The donor's remote-admin case first asks its CryptoEngine to classify the
+// ciphertext. ZT has a different ingress and no public verdict of that type.
+// Use a recipient-checked ciphertext and observe the real router, radio and phone.
+static void test_directed_opaque_between_known_parties(){
+    setPolicy(meshtastic_Config_SecurityConfig_PacketSignaturePolicy_PACKET_SIGNATURE_POLICY_STRICT);
+    for(NodeNum id:{ADMIN_NODE,TARGET_NODE}){
+        mockNodeDB->addNode(id);mockNodeDB->setPublicKey(id,makeIdentity(id).pub);mockNodeDB->markHasUser(id);
+    }
+    auto packet=makePkiUnicastBetween(makeIdentity(ADMIN_NODE),makeIdentity(TARGET_NODE),
+        meshtastic_PortNum_ADMIN_APP,0xADA10001,true);
+    for(auto mode:ALL_MODES) assertOpaqueRelay(packet,mode,mode!=meshtastic_Config_DeviceConfig_RebroadcastMode_NONE,
+                                                "known-party directed opaque transit");
+}
+
+void setUp() {
+    capture.reset();nodesForTest.rows.clear();owner.is_licensed=false;
+    signaturePolicy=meshtastic_Config_SecurityConfig_PacketSignaturePolicy_PACKET_SIGNATURE_POLICY_COMPATIBLE;
+    config.device.role=mt::DeviceRolePolicy::Role::CLIENT;
+    config.device.rebroadcast_mode=meshtastic_Config_DeviceConfig_RebroadcastMode_ALL;
+}
 void tearDown() { relay.reset(); }
 int main()
 {
-    if (mt::DeviceRolePolicy::supportedRebroadcast(meshtastic_Config_DeviceConfig_RebroadcastMode_ALL_SKIP_DECODING))
-        return 1;  // This explicit exclusion must be revisited if the firmware gains this mode.
+    if(mt::DeviceRolePolicy::supportedRebroadcast(meshtastic_Config_DeviceConfig_RebroadcastMode_ALL_SKIP_DECODING))
+        return 1;
     UNITY_BEGIN();
-    RUN_TEST(test_unknown_channel_broadcast_relays_in_core_portnums_only);
-    RUN_TEST(test_opaque_relay_header_gates_hold);
-    RUN_TEST(test_zt_forwarding_and_duplicate_queue_against_stock);
-    return UNITY_END() || observations != 5 + sizeof(ALL_MODES)/sizeof(ALL_MODES[0]);
+#include "rebroadcast-run-tests.inc"
+    return UNITY_END();
 }

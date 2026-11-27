@@ -6,6 +6,7 @@
 #include "companion/NoticeText.h"
 #include "PeerSnr.h"
 #include "Service.h"
+#include "stock/routing/MeshModule.h"
 #include "BoardIdentity.h"
 #include "UsbSessionEpoch.h"
 #include "Version.h"
@@ -686,6 +687,10 @@ private:
     p.from=service_.route.identity();p.to=p.from;p.id=++sequence_;
     p.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
     p.decoded.portnum=port;p.decoded.request_id=request;timestamp(p);
+  }
+  void moduleResponsePacket(const meshtastic_MeshPacket &request) {
+    responsePacket(request.id,request.decoded.portnum);
+    stock::routing::setReplyTo(output_.packet,request,service_.route.identity(),service_.config.hopLimit());
   }
   static void timestamp(meshtastic_MeshPacket &p,uint32_t captured) {
     p.rx_time=captured;p.has_rx_time=captured!=0;
@@ -2654,7 +2659,7 @@ private:
     if(isPosition&&!service_.config.fixedPosition()) {
       reject(p.id,meshtastic_Routing_Error_NO_RESPONSE,MT_NOTICE("No local fixed position is configured"));return;
     }
-    responsePacket(p.id,p.decoded.portnum);auto &data=output_.packet.decoded;
+    moduleResponsePacket(p);auto &data=output_.packet.decoded;
     auto stream=pb_ostream_from_buffer(data.payload.bytes,sizeof(data.payload.bytes));bool encoded;
     if(isPosition) {
       // Same local readback as the configuration handshake, not a Public RF
@@ -2678,7 +2683,7 @@ private:
     if(p.decoded.portnum==meshtastic_PortNum_PAXCOUNTER_APP){
       meshtastic_Paxcount count{};
       if(!service_.localPaxSnapshot(count)){ack(p.id,meshtastic_Routing_Error_NO_RESPONSE);return;}
-      responsePacket(p.id,p.decoded.portnum);auto &data=output_.packet.decoded;
+      moduleResponsePacket(p);auto &data=output_.packet.decoded;
       auto out=pb_ostream_from_buffer(data.payload.bytes,sizeof(data.payload.bytes));
       if(!pb_encode(&out,meshtastic_Paxcount_fields,&count)){ack(p.id,meshtastic_Routing_Error_TOO_LARGE);return;}
       data.payload.size=out.bytes_written;emit();return;
@@ -2730,7 +2735,7 @@ private:
         ack(p.id,meshtastic_Routing_Error_TOO_LARGE);return;
       }
     }
-    responsePacket(p.id,meshtastic_PortNum_TELEMETRY_APP);
+    moduleResponsePacket(p);
     auto stream=pb_istream_from_buffer(encoded,size);
     if(!pb_decode(&stream,meshtastic_Data_fields,&output_.packet.decoded)) {
       ack(p.id,meshtastic_Routing_Error_TOO_LARGE);return;

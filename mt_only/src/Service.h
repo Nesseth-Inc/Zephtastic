@@ -1055,6 +1055,8 @@ private:
        m.backendFailed||m.channelAmbiguous||m.signatureRejected)return false;
     const auto mode=config.rebroadcastMode();
     const bool opaque=!m.channelDecoded||m.decodeRejected||(m.signatureLength&&!m.signatureVerified);
+    // NextHopRouter refuses unreadable traffic on licensed nodes in every relay mode.
+    if(opaque&&config.licensedOperation())return false;
     if(!routingPacketAllowed(opaque,p[13],from,to))return false;
     if(opaque)return mode==0||mode==2||mode==3||mode==5;
     if(mode==3&&!knownUser(from))return false;

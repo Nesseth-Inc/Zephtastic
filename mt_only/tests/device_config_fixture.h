@@ -25,7 +25,8 @@ struct Radio:mt::Radio {
  uint16_t busyDiagnostic()const override{++busyDetailReads;return busyDetail;}
  int stopForStorage()override{return pauseResult?pauseResult:stop();}
  bool busy()override{return busyFlag;}uint32_t airtime(size_t)override{return air;}
- int send(uint8_t *,size_t)override{++sends;done=false;return 0;}bool completion(int &result)override{result=0;return done;}
+ void (*onSend)(const uint8_t *,size_t)=nullptr;
+ int send(uint8_t *frame,size_t size)override{++sends;done=false;if(onSend)onSend(frame,size);return 0;}bool completion(int &result)override{result=0;return done;}
 };
 struct Backend:mt::SettingsBackend {
  std::map<std::string,std::vector<uint8_t>> entries;unsigned writes=0;bool fail=false,uncertain=false;
