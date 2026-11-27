@@ -2,6 +2,7 @@
 #pragma once
 #include "Model.h"
 #include "stock/optional/UnitConversions.h"
+#include <math.h>
 #include <stdarg.h>
 
 namespace mt::ui {
