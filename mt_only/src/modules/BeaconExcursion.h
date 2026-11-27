@@ -66,6 +66,8 @@ public:
   Action receiveAccepted();
   bool holdsRadio() const;
   size_t queued() const;
+  uint32_t frontId() const;
+  void deferTransmit(uint32_t packetId);
   uint32_t rxAcceptedEpoch() const;
 
 private:

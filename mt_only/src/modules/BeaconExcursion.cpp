@@ -320,6 +320,22 @@ bool BeaconExcursion::holdsRadio() const
   return result;
 }
 
+uint32_t BeaconExcursion::frontId() const
+{
+  k_spinlock_key_t key=k_spin_lock(&lock_);
+  const uint32_t id=count_ ? queue_[0].packetId : 0;
+  k_spin_unlock(&lock_,key);
+  return id;
+}
+
+void BeaconExcursion::deferTransmit(uint32_t id)
+{
+  k_spinlock_key_t key=k_spin_lock(&lock_);
+  if(haveActive_&&active_.packetId==id&&state_==State::InFlight)
+    state_=State::ReadyToTransmit;
+  k_spin_unlock(&lock_,key);
+}
+
 size_t BeaconExcursion::queued() const
 {
   k_spinlock_key_t key = k_spin_lock(&lock_);

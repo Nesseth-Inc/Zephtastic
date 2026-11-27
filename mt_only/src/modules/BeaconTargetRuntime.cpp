@@ -7,6 +7,9 @@
 #include "../RegionRuntimePolicy.h"
 #include "../PublicApplication.h"
 #include <math.h>
+#ifdef __ZEPHYR__
+#include <zephyr/random/random.h>
+#endif
 #include <string.h>
 
 namespace mt::modules {
@@ -25,9 +28,6 @@ BeaconExcursion::RadioProfile BeaconTargetRuntime::runningProfile(const Config &
 
 BeaconTargetRuntime::Row *BeaconTargetRuntime::row(uint32_t id)
 {for(auto &r:rows_)if(r.used&&r.id==id)return &r;return nullptr;}
-const BeaconTargetRuntime::Row *BeaconTargetRuntime::row(uint32_t id)const
-{for(const auto &r:rows_)if(r.used&&r.id==id)return &r;return nullptr;}
-
 bool BeaconTargetRuntime::targetSupported(const BeaconExcursion::RadioProfile &profile)
 {
   Config candidate{};
@@ -43,18 +43,19 @@ bool BeaconTargetRuntime::targetSupported(const BeaconExcursion::RadioProfile &p
   return same||service_.radio_.beaconIsolationSupported();
 }
 
-bool BeaconTargetRuntime::configureProfile(const BeaconExcursion::RadioProfile &profile,Config &candidate)
+bool BeaconTargetRuntime::configureProfile(const BeaconExcursion::RadioProfile &profile,Config &candidate,uint32_t *slotMs)
 {
   if(!profile.region||profile.channelIndex>=8||radio::RegionPolicy::fixedReceiveOnly(profile.region))return false;
   candidate=service_.config;
-  if(profile.sameRadio(runningProfile(candidate)))return candidate.provisioned();
-  auto request=candidate.radioRequest();
-  request.regionCode=profile.region;request.preset=profile.preset;request.usePreset=profile.usePreset;
-  request.channel=profile.slot;request.overrideMHz=0;
-  if(!candidate.setRadio(request))return false;
+  if(!profile.sameRadio(runningProfile(candidate))) {
+    auto request=candidate.radioRequest();
+    request.regionCode=profile.region;request.preset=profile.preset;request.usePreset=profile.usePreset;
+    request.channel=profile.slot;request.overrideMHz=0;
+    if(!candidate.setRadio(request))return false;
+  } else if(!slotMs) return candidate.provisioned();
   LoRaPresets::Profile modem{};USChannelSelection channel{};
-  return candidate.valid()&&candidate.provisioned()&&candidate.resolveRadio(modem,channel)&&
-         channel.regionCode==profile.region;
+  return candidate.provisioned()&&candidate.resolveRadio(modem,channel)&&channel.regionCode==profile.region&&
+         (!slotMs||RadioSlot::resolve(modem.bandwidthHz,modem.spreadingFactor,*slotMs));
 }
 
 bool BeaconTargetRuntime::encode(const BeaconExcursion::Request &request,const uint8_t *data,
@@ -119,8 +120,7 @@ bool BeaconTargetRuntime::enqueue(const BeaconExcursion::Request &input,const ui
   }
   if(!excursion_.enqueue(request)){bench::wipeKeyBuffer(&frame,sizeof(frame));return false;}
   rows_[free].id=request.packetId;rows_[free].frame=frame;rows_[free].used=true;
-  rows_[free].enqueuedAt=now;rows_[free].sequence=nextSequence_++;
-  if(!nextSequence_)nextSequence_=1;
+  rows_[free].enqueuedAt=now;
   rows_[free].request=request;
   bench::wipeKeyBuffer(&frame,sizeof(frame));
   if(acceptedId)*acceptedId=request.packetId;
@@ -129,13 +129,8 @@ bool BeaconTargetRuntime::enqueue(const BeaconExcursion::Request &input,const ui
 
 void BeaconTargetRuntime::expireQueued(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch)
 {
-  // The core and payload table preserve FIFO order; use the oldest sequence,
-  // not the first physical row, because released slots are reused.
-  for(;;) {
-    Row *oldest=nullptr;
-    for(auto &candidate:rows_)if(candidate.used&&candidate.id!=activeId_&&
-       (!oldest||int32_t(candidate.sequence-oldest->sequence)<0))oldest=&candidate;
-    if(!oldest||!bench::due(now,oldest->enqueuedAt+60000u))return;
+  while(auto *oldest=row(excursion_.frontId())) {
+    if(!bench::due(now,oldest->enqueuedAt+60000u))return;
     (void)excursion_.cancel(oldest->id,settingsEpoch,identityEpoch);
     release(oldest->id);
   }
@@ -157,13 +152,13 @@ bool BeaconTargetRuntime::admission(const Config &target,bool polite)
 
 bool BeaconTargetRuntime::retune(const BeaconExcursion::RadioProfile &profile)
 {
-  Config target{};if(!configureProfile(profile,target))return false;
+  Config target{};if(!configureProfile(profile,target,&slotMs_))return false;
   if(service_.active_||service_.own_||service_.endpointQueued_||service_.endpointActive_||
      service_.normalActive_||service_.normalTransitActive_||!service_.endpoint_.idle()||
      service_.route.pending()||service_.route.retransmitting()||service_.radio_.busy())return false;
   homeArmed_=service_.endpointArmed_;homeRelaying_=service_.relaying_;
   const int stopped=service_.pauseForStorage();if(stopped)return false;
-  retuned_=true;activeTarget_=profile;
+  retuned_=true;
   service_.receiving_=false;service_.relaying_=false;service_.endpointArmed_=false;
   service_.radio_.beaconRxIsolation(true);
   const int configured=service_.radio_.configure(target);
@@ -191,10 +186,31 @@ void BeaconTargetRuntime::release(uint32_t id)
 {
   if(auto *r=row(id)){bench::wipeKeyBuffer(&r->frame,sizeof(r->frame));*r=Row{};}
   if(activeId_==id) {
-    bench::wipeKeyBuffer(&activeFrame_,sizeof(activeFrame_));activeFrame_={};activeId_=0;
+    activeId_=0;
     txActive_=false;deadline_=0;completionAwaitingRestore_=false;pendingTxSuccess_=false;
     waitingForAdmission_=false;activeSince_=0;activeSinceSet_=false;
   }
+}
+
+uint32_t BeaconTargetRuntime::defaultDraw()
+{
+#ifdef __ZEPHYR__
+  return sys_rand32_get();
+#else
+  return 0; // Native fixtures can inject a deterministic sequence.
+#endif
+}
+
+// RadioInterface::getTxDelayMsec draws a local (unweighted) contention
+// window. The hardware send performs a fresh CAD at the expiry on this modem.
+void BeaconTargetRuntime::contend(const BeaconExcursion::Action &action,uint32_t now)
+{
+  const auto utilization=service_.channel_.percent();
+  const unsigned percent=utilization&&*utilization>=0&&*utilization<=100 ? unsigned(*utilization) : 100u;
+  const unsigned cw=RebroadcastTiming::CWmin+percent*(RebroadcastTiming::CWmax-RebroadcastTiming::CWmin)/100u;
+  const uint32_t draw=draw_();
+  deadline_=now+(draw&((1u<<cw)-1u))*slotMs_;
+  pendingAction_=action;pendingActionReady_=true;
 }
 
 void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t now,
@@ -209,17 +225,20 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
     auto gate=excursion_.beginConfigure(action.packetId,settingsEpoch,identityEpoch);
     const bool ok=gate.kind==BeaconExcursion::ActionKind::ConfigureTarget&&retune(gate.profile);
     if(!ok){lastError_=lastError_?lastError_:-EIO;if(retuned_&&!restoreHome())service_.fault_=true;}
-    apply(excursion_.targetConfigured(action.packetId,ok,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
+    const auto next=excursion_.targetConfigured(action.packetId,ok,settingsEpoch,identityEpoch);
+    if(next.kind==BeaconExcursion::ActionKind::StartTransmission)contend(next,now);
+    else apply(next,now,settingsEpoch,identityEpoch);
     return;
   }
   case BeaconExcursion::ActionKind::StartTransmission: {
     if(!activeSinceSet_){activeSince_=now;activeSinceSet_=true;activeId_=action.packetId;}
-    const auto *r=row(action.packetId);Config txConfig{};
-    if(!r||!configureProfile(r->request.target,txConfig)||!admission(txConfig,false)){
+    auto *r=row(action.packetId);Config txConfig{};
+    if(!r||!configureProfile(r->request.target,txConfig,&slotMs_)||!admission(txConfig,false)){
       // Stay in ReadyToTransmit and re-evaluate on the next owner poll. This
       // retains the immutable frame while channel/duty measurements recover.
-      lastError_=-EAGAIN;waitingForAdmission_=true;pendingAction_=action;pendingActionReady_=true;return;
+      lastError_=-EAGAIN;waitingForAdmission_=true;deadline_=now;pendingAction_=action;pendingActionReady_=true;return;
     }
+    if(service_.radio_.busy()){waitingForAdmission_=true;contend(action,now);return;}
     waitingForAdmission_=false;
     const auto gate=excursion_.beginTransmit(action.packetId,settingsEpoch,identityEpoch);
     if(gate.kind!=BeaconExcursion::ActionKind::StartTransmission){apply(gate,now,settingsEpoch,identityEpoch);return;}
@@ -227,10 +246,15 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
       lastError_=-EACCES;
       apply(excursion_.transmitFailed(action.packetId,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);return;
     }
-    activeFrame_=r->frame;activeId_=action.packetId;
-    const uint32_t air=service_.radio_.airtime(activeFrame_.len);RadioTiming::Deadline timing{};
+    activeId_=action.packetId;
+    const uint32_t air=service_.radio_.airtime(r->frame.len);RadioTiming::Deadline timing{};
     if(!RadioTiming::resolve(air,timing)){lastError_=-EMSGSIZE;apply(excursion_.transmitFailed(activeId_,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);return;}
-    const int sent=service_.radio_.send(activeFrame_.bytes,activeFrame_.len);
+    const int sent=service_.radio_.send(r->frame.bytes,r->frame.len);
+    if(sent==-EBUSY&&service_.radio_.health()==1){
+      excursion_.deferTransmit(activeId_);
+      waitingForAdmission_=true;
+      contend(action,now);return;
+    }
     if(sent){
       lastError_=sent;pendingTxSuccess_=false;
       const int restored=service_.radio_.restore();
@@ -268,6 +292,7 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     return;
   }
   if(pendingActionReady_) {
+    if(pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission&&!bench::due(now,deadline_))return;
     const auto action=pendingAction_;pendingAction_={};pendingActionReady_=false;
     apply(action,now,settingsEpoch,identityEpoch);return;
   }
@@ -310,13 +335,13 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     }
     return;
   }
-  if(!excursion_.queued()||service_.radio_.busy()||!service_.receiving_||service_.fault_)return;
-  // Queued rows are offered in the same insertion order as the core queue.
-  for(const auto &r:rows_)if(r.used) {
-    const auto home=runningProfile(service_.config);
-    apply(excursion_.beforeTransmit(r.id,home,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
-    return;
-  }
+  const auto id=excursion_.frontId();
+  if(!id||service_.radio_.busy()||!service_.receiving_||service_.fault_)return;
+#if defined(CONFIG_MT_RF_ADMIN_GET)
+  if(service_.privateAdminWorkQueued()||service_.privateAdminQueriesPending()||service_.legacyAdminWorkQueued())return;
+#endif
+  apply(excursion_.beforeTransmit(id,runningProfile(service_.config),settingsEpoch,identityEpoch),
+        now,settingsEpoch,identityEpoch);
 }
 
 void BeaconTargetRuntime::receiveAccepted()
