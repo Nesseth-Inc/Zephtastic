@@ -4,14 +4,17 @@ import argparse
 import os
 from pathlib import Path
 import re
+import runpy
 import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+from urllib.request import urlopen
 
 parser = argparse.ArgumentParser()
 parser.add_argument("donor", type=Path)
+parser.add_argument("--unity", type=Path, help="Optional local copy of the pinned Unity sources for 2.8.2")
 parser.add_argument("--release", choices=("2.8.1", "2.8.2"), default="2.8.1")
 args = parser.parse_args()
 pin = "d5f16191ca28b01b5024f590f04a67f25d66f1b1" if args.release == "2.8.2" else "8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c"
@@ -32,7 +35,23 @@ with tempfile.TemporaryDirectory() as tmp:
     (work / "modules").mkdir()
     (work / "modules/games").symlink_to(games)
     (work / "TestUtil.h").write_text("#include <cstdlib>\nstatic void initializeTestEnvironment(){}\n")
-    (work / "unity.h").write_text("""#include <cassert>
+    unity_objects = []
+    if args.release == "2.8.2":
+        upstream = runpy.run_path(str(app / "scripts/test-upstream-282.py"))
+        for name, digest in upstream["UNITY_PINS"].items():
+            if args.unity:
+                data = (args.unity / name).read_bytes()
+            else:
+                url = f"https://raw.githubusercontent.com/ThrowTheSwitch/Unity/{upstream['UNITY']}/src/{name}"
+                with urlopen(url, timeout=30) as response:
+                    data = response.read()
+            (work / name).write_bytes(upstream["verified"](data, digest, name))
+        unity_object = work / "unity.o"
+        run([*shlex.split(os.environ.get("CC", "cc")), "-std=c11", "-fsanitize=address,undefined",
+             "-I", work, "-c", work / "unity.c", "-o", unity_object])
+        unity_objects.append(unity_object)
+    else:
+        (work / "unity.h").write_text("""#include <cassert>
 #define UNITY_BEGIN() ((void)0)
 #define UNITY_END() 0
 #define RUN_TEST(f) f()
@@ -112,9 +131,14 @@ with tempfile.TemporaryDirectory() as tmp:
         src = work / f"{test}.cpp"
         src.write_text(cases + "\nint main(){setup();}\n")
         binary = work / test
-        run([*flags, str(src), str(games / f"{mode}.cpp"), "-o", str(binary)])
-        run([str(binary)])
-        print(f"{mode}: {len(re.findall(r'RUN_TEST[(]', cases))} pinned stock tests passed")
+        run([*flags, str(src), str(games / f"{mode}.cpp"), *unity_objects, "-o", str(binary)])
+        if unity_objects:
+            names = upstream["tests_in"](cases, {"Snake": 10, "Breakout": 6, "ChirpyRunner": 5}[mode])
+            passed = len(upstream["run_unity"](binary, names, work))
+        else:
+            run([str(binary)])
+            passed = len(re.findall(r'RUN_TEST[(]', cases))
+        print(f"{mode}: {passed} pinned stock tests passed")
     body = (app / "src/ui/Display.cpp").read_text().split("namespace mt::ui {", 1)[1]
     fixture = (app / "tests/display_runtime_fixture.cpp").read_text().split("int main(){using namespace mt::ui;")[0]
     source = work / "ui.cpp"

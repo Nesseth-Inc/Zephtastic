@@ -134,7 +134,7 @@ def collect(stock, temp):
         match = re.search(rf"^{name}: (\d+) pinned stock tests passed$", ui, re.M)
         if not match or int(match[1]) <= 0:
             raise ValueError(f"Missing stock tests for {name}")
-        row(name, "differential", "The game core matches stock source and executes the donor's own Unity cases with host assertion and clock adapters.", cases=int(match[1]))
+        row(name, "differential", "The extracted core matches stock source. The unmodified game assertions run in the pinned Unity framework with its Arduino startup hook replaced on the host.", cases=int(match[1]))
     row("Tetris", "source", "The core matches the pinned source and the production display fixture exercises input, drop and scoring. The donor supplies no Tetris Unity suite.")
     require(edges, "SystemCommandsModule 65536 ", 2)
     require(edges, "InputBroker 5 ", 2)
@@ -154,6 +154,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="zt-282-peripherals-") as tmp:
         rows = collect(args.stock.resolve(), Path(tmp))
     args.output.write_text(json.dumps({"stock_revision": PIN, "modules": rows, "hardware": False,
+        "framework": {"Unity": {"revision": "cbcd08fa7de711053a3deec6339ee89cad5d2697", "suites": ["Snake", "Breakout", "ChirpyRunner"]},
+                      "other_modules": "Production ZT code and extracted upstream handlers, exercised by project-owned host fixtures."},
         "scope": "Host software with synthetic clocks, framebuffers, codecs, radio sinks and GPIO. Physical peripherals and Linux desktop services are outside this run."}, indent=2) + "\n")
 
 if __name__ == "__main__":
