@@ -24,6 +24,11 @@ def read(name):
 
 if args.group == "native":
     upstream = read("upstream/results.json")
+    owners = upstream["results"]["next_five_owners"]
+    for name in ("FloodingRouter", "MeshModule"):
+        comparisons = owners[name]["comparisons"]
+        if type(comparisons) is not int or comparisons <= 0:
+            raise ValueError(f"Missing 2.8.2 comparison for {name}")
     report["upstream"] = upstream
     report["node_info_and_position"] = read("node-position.json")
     report["device_config"] = read("device-config.json")
@@ -68,7 +73,7 @@ elif args.group.startswith("modules-"):
         restart = read("hop-restart.json")
         nvs = restart["nvs"]
         if (restart["stock_revision"] != evidence["stock_revision"] or
-                restart["status"] != "PASS" or nvs["status"] != "PASS" or
+                restart["status"] != "PASS" or restart["outstanding_admin_query"] != "PASS" or nvs["status"] != "PASS" or
                 {run["enum"] for run in restart["runs"]} != {"normal", "short"} or
                 {row["sectors"] for row in nvs["runs"]} != {4, 8} or
                 any(row["interruption_cases"] <= 0 or row["checkpoints_with_collection"] <= 0
