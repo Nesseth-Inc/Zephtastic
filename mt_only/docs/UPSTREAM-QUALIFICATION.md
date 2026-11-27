@@ -13,7 +13,21 @@ Work through the modules in order of how many boards, peers and clients can obse
 
 ## What CI exercises
 
-The native job pins Meshtastic firmware, the source and assertions used from its Unity suites, and the stock Python client. It runs the BME680 air-quality suite against ZT, response-hop cases against stock and ZT, and one upstream opaque-broadcast case through five supported ZT rebroadcast policies. Two generic MeshModule reply cases and ten other stock rebroadcast cases are identified in the native evidence. The endpoint, timing, NodeInfo and Position suites exercise stock code side by side with the port. NodeInfo admission and Position reply, precision and field selection run under both enum ABIs. The real Python client exchanges serialized messages with a native ZT companion through modeled USB and BLE. Inventory checks cover both the 2.8.1 baseline and the 2.8.2 target. [Pinned upstream test suites](https://github.com/meshtastic/firmware/tree/d5f16191ca28b01b5024f590f04a67f25d66f1b1/test)
+The native job pins Meshtastic firmware, the source and assertions used from its Unity suites, and the stock Python client. It runs the BME680 air-quality suite against ZT, response-hop cases against stock and ZT, and two upstream opaque-traffic cases. The broadcast runs through five supported rebroadcast policies. The directed case checks ID, hop budget, named relay and muted role with an opaque test payload. The native evidence lists two generic MeshModule reply cases and nine further rebroadcast cases outside this selection. The endpoint, timing, NodeInfo and Position suites exercise stock code side by side with the port. NodeInfo admission and Position reply, precision and field selection run under both enum ABIs. The real Python client exchanges serialized messages with a native ZT companion through modeled USB and BLE. Inventory checks cover both the 2.8.1 baseline and the 2.8.2 target. [Pinned upstream test suites](https://github.com/meshtastic/firmware/tree/d5f16191ca28b01b5024f590f04a67f25d66f1b1/test)
+
+### Five module comparisons
+
+The native receipt records a separate comparison count for each family against the pinned 2.8.2 source.
+
+| Module | What the comparison observes |
+| --- | --- |
+| TrafficManagement | Simulated LoRa arrivals pass through the receive service and transmit queue. The test counts radio sends for repeated positions under different channel and traffic settings. |
+| Position | The received channel's name, key and precision govern forwarding even when the relay has no fix. ZT suppresses an over-precise broadcast, forwards compliant payload bytes unchanged, and keeps the first rejected report from suppressing a later compliant one. |
+| HopScaling | Random draws and channel utilization feed the stock algorithm and ZT. The packet-level checks compare how the router applies the resulting hop cap. |
+| MeshBeacon | The same settings feed the stock periodic task and ZT. The comparisons cover airtime and transmit-history deferral, the next scheduled opportunity, and beacon payload selection. |
+| Telemetry | The stock and ZT schedulers receive the same role, interval, congestion and regional settings. Synthetic readings exercise encoded Device and Environment announcements and replies. |
+
+These comparisons run without a radio. Physical sensor accuracy, RF timing and multi-radio operation require separate bench measurements. Telemetry phone-queue timing also has separate coverage from its radio schedule.
 
 The board jobs build the T096 680 and 728 KiB profiles, T114 V2, RAK4631 Mini, ordinary XIAO and three receive-only Heltec V4 variants. Each successful group uploads a JSON receipt containing its source commit. Board receipts give flash and static RAM usage and capacity. XIAO uses its unsigned application size against the usable update budget. The budget reserves 8,192 bytes for the swap trailer and 152 bytes for the longest supported P-256 signing metadata. RAM is measured in internal DRAM. These measurements leave peak stack, heap and physical radio behavior to the bench.
 
