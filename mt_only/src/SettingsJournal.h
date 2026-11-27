@@ -11,6 +11,19 @@ namespace mt {
 struct SettingsBackend {
   virtual int read(const char *key,uint8_t *out,size_t capacity)=0;
   virtual int write(const char *key,const uint8_t *data,size_t length)=0;
+
+  // A write error can follow a successful commit. Callers hold their prior
+  // in-memory state until this exact readback succeeds, and freeze on error.
+  int writeVerified(const char *key, const uint8_t *data, size_t length,
+                    uint8_t *readback, size_t capacity) {
+    if (length > capacity) return -EINVAL;
+    const int written = write(key, data, length);
+    if (written) return written;
+    const int count = read(key, readback, capacity);
+    if (count < 0) return count;
+    if (size_t(count) != length || memcmp(data, readback, length)) return -EIO;
+    return 0;
+  }
 };
 
 class SettingsJournal {
@@ -130,18 +143,10 @@ public:
     const uint32_t next=generation_+1;
     const uint32_t channel=channelGeneration_+!config_.sameChannelDomain(candidate);
     uint8_t record[RecordSize],readback[RecordSize];encode(candidate,next,channel,record);
-    const int ret=backend.write(key(slot),record,sizeof(record));
-    if(ret){
-      // A write error is not proof that nothing committed. In particular, do
-      // not later elide a save of the stale RAM config and acknowledge it as
-      // durable while the backend could contain the new generation.
-      state_=State::IoError;return ret;
-    }
-    const int n=backend.read(key(slot),readback,sizeof(readback));
-    if(n!=int(sizeof(record))||memcmp(record,readback,sizeof(record))){
-      // Commit outcome is uncertain. Retain the old RAM configuration, but
-      // require an explicit reload/reboot before any further settings writes.
-      state_=State::IoError;return n<0?n:-EIO;
+    const int result = backend.writeVerified(key(slot), record, sizeof(record), readback, sizeof(readback));
+    if (result) {
+      state_ = State::IoError;
+      return result;
     }
 #if defined(CONFIG_MT_LOCAL_CLOCK)
     if(active_>=0&&config_.bytes[2]==25&&candidate.bytes[2]==24){

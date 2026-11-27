@@ -148,12 +148,10 @@ public:
     const size_t length=encodeRecord(candidate,next,record);
     if(!length){state_=State::Invalid;return -EINVAL;}
     const unsigned slot=active_==0?1:0;
-    const int written=backend.write(key(slot),record,length);
-    if(written){state_=State::IoError;return written;}
-    const int count=backend.read(key(slot),readback,sizeof(readback));
-    if(count!=int(length)||memcmp(record,readback,length)) {
-      state_=State::IoError;
-      return count<0?count:-EIO;
+    const int result = backend.writeVerified(key(slot), record, length, readback, sizeof(readback));
+    if (result) {
+      state_ = State::IoError;
+      return result;
     }
     current_=candidate;
     generation_=next;

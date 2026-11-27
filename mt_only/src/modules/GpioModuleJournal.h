@@ -136,15 +136,10 @@ public:
     const uint32_t nextGeneration = generation_ + 1;
     uint8_t record[RecordSize], readback[RecordSize];
     if (!encode(candidate, nextGeneration, record)) return -EINVAL;
-    const int result = backend.write(key(slot), record, sizeof(record));
+    const int result = backend.writeVerified(key(slot), record, sizeof(record), readback, sizeof(readback));
     if (result) {
       state_ = State::IoError;
       return result;
-    }
-    const int length = backend.read(key(slot), readback, sizeof(readback));
-    if (length != int(sizeof(record)) || memcmp(record, readback, sizeof(record))) {
-      state_ = State::IoError;
-      return length < 0 ? length : -EIO;
     }
     config_ = candidate;
     generation_ = nextGeneration;

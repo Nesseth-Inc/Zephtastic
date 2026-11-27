@@ -96,16 +96,10 @@ class AdminKeyJournal {
     uint8_t record[RecordSize]{}, readback[RecordSize]{};
     encode(candidate, nextGeneration, record);
 
-    const int written = backend.write(key(slot), record, sizeof(record));
-    if (written) {
+    const int result = backend.writeVerified(key(slot), record, sizeof(record), readback, sizeof(readback));
+    if (result) {
       poison(State::IoError);
-      return written;
-    }
-    const int length = backend.read(key(slot), readback, sizeof(readback));
-    if (length != static_cast<int>(sizeof(record)) ||
-        memcmp(record, readback, sizeof(record))) {
-      poison(State::IoError);
-      return length < 0 ? length : -EIO;
+      return result;
     }
 
     settings_ = candidate;

@@ -119,11 +119,10 @@ public:
     if(active_>=0&&config_.same(candidate))return 0;
     const unsigned slot=active_==0?1:0;const uint32_t next=generation_+1;
     uint8_t record[RecordSize],readback[RecordSize];const size_t encoded=encodeV2(candidate,next,record);
-    const int ret=backend.write(key(slot),record,encoded);
-    if(ret){state_=State::IoError;return ret;}
-    const int n=backend.read(key(slot),readback,sizeof(readback));
-    if(n!=int(encoded)||memcmp(record,readback,encoded)){
-      state_=State::IoError;return n<0?n:-EIO;
+    const int result = backend.writeVerified(key(slot), record, encoded, readback, sizeof(readback));
+    if (result) {
+      state_ = State::IoError;
+      return result;
     }
     config_=candidate;generation_=next;active_=int8_t(slot);state_=State::Loaded;return 0;
   }

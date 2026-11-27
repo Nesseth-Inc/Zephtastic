@@ -76,18 +76,10 @@ public:
     const unsigned slot=active_==0?1:0;
     const uint32_t next=generation_+1;
     uint8_t record[RecordSize],readback[RecordSize];encode(candidate,next,record);
-    const int ret=backend.write(key(slot),record,sizeof(record));
-    if(ret){
-      // A write error is not proof that nothing committed. In particular, do
-      // not later elide a save of the stale RAM config and acknowledge it as
-      // durable while the backend could contain the new generation.
-      state_=State::IoError;return ret;
-    }
-    const int n=backend.read(key(slot),readback,sizeof(readback));
-    if(n!=int(sizeof(record))||memcmp(record,readback,sizeof(record))){
-      // Commit outcome is uncertain. Retain the old RAM configuration, but
-      // require an explicit reload/reboot before any further settings writes.
-      state_=State::IoError;return n<0?n:-EIO;
+    const int result = backend.writeVerified(key(slot), record, sizeof(record), readback, sizeof(readback));
+    if (result) {
+      state_ = State::IoError;
+      return result;
     }
     config_=candidate;generation_=next;active_=int8_t(slot);state_=State::Loaded;return 0;
   }

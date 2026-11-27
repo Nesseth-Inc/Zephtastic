@@ -54,10 +54,12 @@ public:
     raw[0]='Z';raw[1]='C';raw[2]='J';raw[3]=1;Config::put32(raw+4,generation_+1);
     raw[8]=uint8_t(payload);raw[9]=uint8_t(payload>>8);memcpy(raw+12,value.bytes,prefix);
     memcpy(raw+12+prefix,value.bytes+value.Size-2,2);Config::put32(raw+n-4,crc(raw,n-4));
-    const unsigned slot=active_==0?1:0;const int written=backend.write(key(slot),raw,n);
-    if(written){state_=State::IoError;return written;}
-    const int count=backend.read(key(slot),readback,sizeof(readback));
-    if(count!=int(n)||memcmp(raw,readback,n)){state_=State::IoError;return count<0?count:-EIO;}
+    const unsigned slot=active_==0?1:0;
+    const int result = backend.writeVerified(key(slot), raw, n, readback, sizeof(readback));
+    if (result) {
+      state_ = State::IoError;
+      return result;
+    }
     current_=value;++generation_;active_=int(slot);state_=State::Loaded;return 0;
   }
 };

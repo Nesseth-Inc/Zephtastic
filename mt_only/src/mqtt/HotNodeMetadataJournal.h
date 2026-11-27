@@ -152,11 +152,10 @@ public:
         const uint32_t next = generation_ + 1;
         uint8_t record[RecordSize], readback[RecordSize];
         encode(window, self, publicKey, next, record);
-        int result = backend.write(key(slot), record, sizeof(record));
-        if (result) { state_ = State::IoError; return result; }
-        const int n = backend.read(key(slot), readback, sizeof(readback));
-        if (n != int(sizeof(record)) || memcmp(record, readback, sizeof(record))) {
-            state_ = State::IoError; return n < 0 ? n : -EIO;
+        const int result = backend.writeVerified(key(slot), record, sizeof(record), readback, sizeof(readback));
+        if (result) {
+          state_ = State::IoError;
+          return result;
         }
         generation_ = next; active_ = int8_t(slot); state_ = State::Loaded;
         return 0;
