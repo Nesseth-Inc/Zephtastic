@@ -16,7 +16,7 @@ Work through the modules in order of how many boards, peers and clients can obse
 
 ## What CI exercises
 
-The native job pins Meshtastic firmware, the source and assertions used from its Unity suites, and the stock Python client. It runs the BME680 air-quality suite against ZT, response-hop cases against stock and ZT, and two upstream opaque-traffic cases. The broadcast runs through five supported rebroadcast policies. The directed case checks ID, hop budget, named relay and muted role with an opaque test payload. The native evidence lists two generic MeshModule reply cases and nine further rebroadcast cases outside this selection. The endpoint, timing, NodeInfo and Position suites exercise stock code side by side with the port. NodeInfo admission and Position reply, precision and field selection run under both enum ABIs. The real Python client exchanges serialized messages with a native ZT companion through modeled USB and BLE. Inventory checks cover both the 2.8.1 baseline and the 2.8.2 target. The persistent broadcast-history regression suite retains its 2.8.1 clock reference and runs in both enum modes. [Pinned upstream test suites](https://github.com/meshtastic/firmware/tree/d5f16191ca28b01b5024f590f04a67f25d66f1b1/test)
+The native job pins Meshtastic firmware, the source and assertions used from its Unity suites, and the stock Python client. It runs the BME680 air-quality suite, the 16 response-hop assertions and the ordinary rebroadcast cases. The receipt names each original assertion and the directed case exercised through ZT's packet path. The endpoint, timing, NodeInfo and Position suites exercise stock code side by side with the port. NodeInfo admission and Position reply, precision and field selection run under both enum ABIs. The real Python client exchanges serialized messages with a native ZT companion through modeled USB and BLE. Inventory checks cover both the 2.8.1 baseline and the 2.8.2 target. The persistent broadcast-history regression suite retains its 2.8.1 clock reference and runs in both enum modes. [Pinned upstream test suites](https://github.com/meshtastic/firmware/tree/d5f16191ca28b01b5024f590f04a67f25d66f1b1/test)
 
 ### Five module comparisons
 
@@ -50,6 +50,16 @@ The upstream inventory has 44 registrations in 2.8.2, including two conditional 
 The reports job checks the scheduled DeviceMetrics and LocalStats pair on the same eligible idle session. It checks the unsolicited 32-bit Position packet on the local USB console and encrypted BLE sessions, including blocked and disconnected clients. This producer has no RF, MQTT or browser output. In the full companion the ordinary startup slots are 45 seconds for MeshBeacon, 60 seconds for Position and 90 seconds for DeviceTelemetry. Trackers start Position immediately, leaving a 75-second DeviceTelemetry slot.
 
 The core job compares the Git objects for the upstream telemetry sensor directory. All 46 pre-existing C++ units are byte-identical between 2.8.1 and 2.8.2. The two added units support the RAK2560 hub. The run also exercises selected Zephyr sensor workers with simulated I²C and clock inputs and the pinned Maxim optical algorithm. The RAK4631 Mini and the RAK2560 hub are different hardware. The checks do not measure calibration, optical contact, antenna response, or RF retune timing. [Sensor inventory](UPSTREAM-TELEMETRY-SENSORS.md)
+
+## Five additional behavioral comparisons
+
+| Upstream code | What the private runners compare |
+| --- | --- |
+| FloodingRouter | Licensed and ordinary relay decisions, repeated packets and five rebroadcast policies. Ten tests reuse upstream assertions. The directed known-peer case uses a recipient-verified synthetic packet and checks what reaches the radio and phone. The deprecated stock REPEATER mode has its own recorded exclusion. |
+| MeshModule | Stock reply envelopes and local companion module replies, including the request ID, addressing, channel, reply hop limit, acknowledgment flag and preservation of an existing priority. |
+| MeshBeaconTxHook | Channel selection for targeted beacons, a fresh contention delay after retuning, and restoration of the home settings. A synthetic radio records transmission order. Antenna timing and carrier detection on physical hardware remain bench work. |
+| GamesModule | Stock menu and game transitions compared with the ZT host. The checks cover the score-clear dialog, button actions and idle timeouts. |
+| Tetris | Independently compiled stock and ZT game cores receive identical pieces and controls. The checks compare board cells, the current and next piece, ghost position, row clears, levels, wall kicks and game over. |
 
 ## Optional USB bench check
 
