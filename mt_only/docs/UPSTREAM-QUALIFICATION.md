@@ -30,7 +30,7 @@ The native receipt records a separate comparison count for each family against t
 | MeshBeacon | The same settings feed the stock periodic task and ZT. The comparisons cover airtime and transmit-history deferral, the next scheduled opportunity, and beacon payload selection. |
 | Telemetry | The stock and ZT schedulers receive the same role, interval, congestion and regional settings. Synthetic readings exercise encoded Device and Environment announcements and replies. |
 
-These comparisons run without a radio. Physical sensor accuracy, RF timing and multi-radio operation require separate bench measurements. The remaining software checks include unsolicited full-precision Position updates to a local phone, Telemetry delivery to an idle phone queue, and recovery of the HopScaling histogram after a warm restart.
+These comparisons run without a radio. Physical sensor accuracy, RF timing and multi-radio operation require separate bench measurements. The reports job below also checks unsolicited local Position and idle-phone Telemetry. ZT rebuilds the HopScaling histogram from new traffic after boot. Stock can restore a saved histogram, so their initial hop caps can differ after a restart.
 
 The board jobs build the T096 680 and 728 KiB profiles, T114 V2, RAK4631 Mini, ordinary XIAO and three receive-only Heltec V4 variants. Each successful group uploads a JSON receipt containing its source commit. Board receipts give flash and static RAM usage and capacity. XIAO uses its unsigned application size against the usable update budget. The budget reserves 8,192 bytes for the swap trailer and 152 bytes for the longest supported P-256 signing metadata. RAM is measured in internal DRAM. These measurements leave peak stack, heap and physical radio behavior to the bench.
 
@@ -46,6 +46,8 @@ The upstream inventory has 44 registrations in 2.8.2, including two conditional 
 | Reports | Air quality, health, power, host metrics and unit conversions, with local phone reporting checked separately from RF. |
 | Peripherals | Device input and commands, optional example modules, simulated GPIO, notifications, audio, serial, passive counts, displays and games. |
 | Core | Beacon listener selection, retention of offer fields, and transmit or defer decisions on a channel change. The two stock shell registrations are checked against their Portduino and dedicated test-peer build conditions. |
+
+The reports job checks the scheduled DeviceMetrics and LocalStats pair on the same eligible idle session. It checks the unsolicited 32-bit Position packet on the local USB console and encrypted BLE sessions, including blocked and disconnected clients. This producer has no RF, MQTT or browser output. In the full companion the ordinary startup slots are 45 seconds for MeshBeacon, 60 seconds for Position and 90 seconds for DeviceTelemetry. Trackers start Position immediately, leaving a 75-second DeviceTelemetry slot.
 
 The core job compares the Git objects for the upstream telemetry sensor directory. All 46 pre-existing C++ units are byte-identical between 2.8.1 and 2.8.2. The two added units support the RAK2560 hub. The run also exercises selected Zephyr sensor workers with simulated I²C and clock inputs and the pinned Maxim optical algorithm. The RAK4631 Mini and the RAK2560 hub are different hardware. The checks do not measure calibration, optical contact, antenna response, or RF retune timing. [Sensor inventory](UPSTREAM-TELEMETRY-SENSORS.md)
 
