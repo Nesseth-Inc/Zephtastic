@@ -3,7 +3,7 @@
 #include <cstdio>
 
 // Pinned production methods own all selection, serialization and scheduling.
-// Inject a single US LongFast radio, its clock, packet pool and in-memory history.
+// Inject LongFast slot geometry for the two test regions, a clock and a packet pool.
 namespace donor {
 using Region = meshtastic_Config_LoRaConfig_RegionCode;
 using Preset = meshtastic_Config_LoRaConfig_ModemPreset;
@@ -16,11 +16,17 @@ struct RegionInfo {
     Region code = meshtastic_Config_LoRaConfig_RegionCode_US;
     Preset getDefaultPreset() const { return meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST; }
 };
-static const RegionInfo *getRegion(Region) { static const RegionInfo us; return &us; }
+static const RegionInfo *getRegion(Region region) {
+    static const RegionInfo us{}, eu{meshtastic_Config_LoRaConfig_RegionCode_EU_868};
+    return region == eu.code ? &eu : &us;
+}
 struct RadioInterface {
-    static uint32_t frequencySlotCount(const meshtastic_Config_LoRaConfig &) { return 104; }
+    static uint32_t frequencySlotCount(const meshtastic_Config_LoRaConfig &r) {
+        return r.region == meshtastic_Config_LoRaConfig_RegionCode_EU_868 ? 1 : 104;
+    }
     static uint32_t resolveFrequencySlot(const meshtastic_Config_LoRaConfig &r, const char *) {
-        return r.channel_num && r.channel_num <= frequencySlotCount(r) ? r.channel_num : 20;
+        if (r.channel_num && r.channel_num <= frequencySlotCount(r)) return r.channel_num;
+        return r.region == meshtastic_Config_LoRaConfig_RegionCode_EU_868 ? 1 : 20;
     }
 };
 struct DisplayFormatters {
@@ -149,7 +155,9 @@ static unsigned schedule()
         cfg.broadcast_interval_secs = seconds;
         assert(!f.edit.save(m, 10, false));
         donor::moduleConfig.mesh_beacon = cfg;
-        donor::moduleConfig.mesh_beacon.broadcast_interval_secs = seconds;
+        donor::config.device.role = static_cast<meshtastic_Config_DeviceConfig_Role>(core.role());
+        donor::config.lora.region = static_cast<donor::Region>(core.regionCode());
+        donor::config.lora.channel_num = radio.channel;
         donor::MeshBeaconBroadcastModule stock;
         donor::history.last = 0;
         donor::air.allowed = false;
@@ -191,5 +199,7 @@ int main()
     donor::config.lora.region = meshtastic_Config_LoRaConfig_RegionCode_US;
     donor::config.lora.use_preset = true;
     donor::config.lora.channel_num = 20;
-    printf("%u\n", payloads() + schedule());
+    const unsigned packets = payloads();
+    const unsigned ticks = schedule();
+    printf("%u\n", packets + ticks);
 }
