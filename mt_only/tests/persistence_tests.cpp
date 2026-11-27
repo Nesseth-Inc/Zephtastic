@@ -2,12 +2,12 @@
 #include "SettingsJournal.h"
 #include <cassert>
 #include <cstdio>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 using Bytes=std::vector<uint8_t>;
 struct Memory final:mt::SettingsBackend {
-  std::map<std::string,Bytes> files;
+  std::unordered_map<std::string,Bytes> files;
   int writes=0,writeError=0,readError=0,truncate=-1;bool failAfterWrite=false,corruptAfterWrite=false,errorAfterCommit=false;
   int read(const char *key,uint8_t *out,size_t capacity)override{
     if(readError)return readError;
