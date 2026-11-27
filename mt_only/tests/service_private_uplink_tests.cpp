@@ -21,7 +21,8 @@ struct Radio final:mt::Radio {
   bool ready()override{return true;}
   int start()override{state=1;return 0;}
   int restore()override{if(!restoreStatus)state=1;return restoreStatus;}
-  int stop()override{state=0;return 0;}
+  unsigned stops=0;
+  int stop()override{++stops;state=0;return 0;}
   int health()override{return state;}
   bool busy()override{return false;}
   uint32_t airtime(size_t)override{return 100;}
@@ -45,6 +46,16 @@ struct PrivateProvider final:mt::pki::PrivateRuntime {
   uint32_t peer()const override{return Peer;}
   bool ready(uint32_t node)const override{return readyFlag&&node==local;}
   bool publicIdentity(uint8_t out[32])const override{memset(out,0x42,32);return true;}
+#if defined(CONFIG_MT_RF_ADMIN_GET)
+  bool peerPublicIdentity(uint32_t node,uint8_t key[32])const override{
+    return matchesPeer(node)&&publicIdentity(key);
+  }
+  int submitAdminGet(mt::Endpoint &endpoint,uint8_t owner,uint32_t to,uint32_t id,
+                     const uint8_t *data,size_t n,unsigned hop,bool reliable,const uint8_t *key,
+                     size_t keySize,bool explicitPki,uint32_t now)override{
+    return submit(endpoint,owner,to,id,data,n,hop,reliable,key,keySize,explicitPki,now);
+  }
+#endif
   bool bootstrap(bench::MtCodec &,const bench::MtNodeRecord &,uint8_t,uint32_t,uint32_t,
                  bool,uint32_t,bench::Frame &)override{return false;}
   void freeze()override{}
@@ -240,4 +251,5 @@ int main(){
   failureAndRestoreDoNotEmit();
   ordinaryAndNonPrivateClassesStaySeparate();
   puts("PASS M122 real Service private-uplink native fixture; fake provider/radio only");
+  return 0;
 }

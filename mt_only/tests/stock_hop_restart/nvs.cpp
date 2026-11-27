@@ -3,6 +3,7 @@
 #define CONFIG_MT_HOP_HISTORY 1
 #include "stock/modules/HopScalingModule.h"
 #include "ZephyrSettings.h"
+#include "NodeJournal.h"
 #include "bridge.h"
 #include <cassert>
 #include <cstdio>
@@ -30,8 +31,8 @@ static void populate(mt::ZephyrSettings &settings,Rows &rows,unsigned sectors){
     // Current fresh T096 and conservative XIAO ledger occupancy, plus full
     // NodeJournals, an active waypoint record and five opaque Bluetooth bonds.
     struct Row { const char *key;unsigned n; };
-    const Row base[]={{"mtbase/config",80},{"mtbase/state0",624},{"mtbase/state1",624},
-        {"mtbase/nodes0",1572},{"mtbase/nodes1",1572},{"mtsat/epoch",16},
+    const Row base[]={{"mtbase/config",80},{"mtbase/state0",mt::SettingsJournal::RecordSize},{"mtbase/state1",mt::SettingsJournal::RecordSize},
+        {"mtbase/nodes0",mt::NodeJournal::MaxRecordSize},{"mtbase/nodes1",mt::NodeJournal::MaxRecordSize},{"mtsat/epoch",16},
         {"mtmod/state0",128},{"mtmod/state1",128},{"mtble/state0",32},{"mtble/state1",32},
         {"mtway/history",960},{"mtidentity/state0",84},{"bt/id",7},{"bt/irk",16},{"bt/name",18},{"bt/hash",16}};
     for(auto r:base)protect(settings,rows,r.key,r.n);

@@ -19,6 +19,36 @@ sys.path.insert(0, str(ROOT))
 import host_test_toolchain as host
 
 
+def run_owner(build, proto, env):
+    main = (APP/'src/main.cpp').read_text()
+    methods = []
+    for start in ('static void checkpointHistories(', 'static bool administrationWorkPending(',
+                  'static void pollBackgroundHistories('):
+        i = main.index(start)
+        methods.append(main[i:main.index('\n}',i)+2])
+    (build/'owner.inc').write_text('\n'.join(methods))
+    if 'pollBackgroundHistories(hotNow,clientIngressSaturated);' not in main[main.index('int main() {'):]:
+        raise ValueError('Owner fixture is not wired to the application loop')
+    mono = ROOT/'zephcore/lib/monocypher'
+    vendor = ROOT/'zephcore/adapters/bench/vendor'
+    flags = ['-O1', '-UNDEBUG', '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
+             '-DCONFIG_MT_RF_ADMIN_GET=1', '-DCONFIG_MT_HOP_HISTORY=1',
+             *['-I'+str(p) for p in (build, APP/'src', APP/'tests', mono, vendor, proto/'nanopb')]]
+    if sys.platform == 'darwin':
+        flags.append('-DEKEYREJECTED=129')
+    objects = []
+    for src in [mono/'monocypher.c', mono/'monocypher-ed25519.c',
+                *[proto/'nanopb'/f'pb_{s}.c' for s in ('common','encode','decode')]]:
+        obj = build/(src.stem+'.o')
+        subprocess.run([*host.cc(), '-std=c11', *flags, '-c', src, '-o', obj], check=True)
+        objects.append(obj)
+    exe = build/'owner'
+    subprocess.run([*host.cxx(), '-std=c++17', *flags, *host.crypto_compile_flags(), HERE/'owner.cpp',
+                    APP/'src/Protobuf.cpp',vendor/'MtCodec.cpp',vendor/'MtSignature.cpp',
+                    *objects,*host.crypto_link_flags(),'-o',exe], check=True)
+    subprocess.run([exe], env=env, check=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--stock', type=Path, required=True)
@@ -59,8 +89,18 @@ def main():
             if row['status'] != 'PASS' or row['compared_boots'] != 4 or row['hourly_saves'] != 7:
                 raise ValueError(f'Incomplete donor run: {row}')
             report['runs'].append({'enum': label, **row})
+        run_owner(build, proto, env)
+        report['outstanding_admin_query'] = 'PASS'
         if args.zephyr:
             lock = next(x for x in json.loads((APP/'dependency-lock.json').read_text()) if x['path']=='zephyr')
+            git = ['git','-C',str(args.zephyr)]
+            head = subprocess.check_output([*git,'rev-parse','HEAD'],text=True).strip()
+            if head != lock['commit']:
+                raise ValueError('Zephyr HEAD differs from the dependency lock')
+            for name in ('subsys/kvss/nvs/nvs_priv.h', 'include/zephyr/kvss/nvs.h'):
+                original = subprocess.check_output([*git,'cat-file','blob',f'{head}:{name}'])
+                if (args.zephyr/name).read_bytes() != original:
+                    raise ValueError(f'{name} differs from the pinned blob')
             for entry in lock['overlay']:
                 name = entry['path']
                 if name.startswith(('subsys/kvss/nvs/', 'subsys/settings/src/settings_')):
