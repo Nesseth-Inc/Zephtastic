@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "modules/BeaconController.h"
 #include "known_channel_fixture.h"
+#include "relay_fixture_provider.h"
+#include <map>
+#include <string>
 #include <algorithm>
 #include <cassert>
 #include <cstdio>
@@ -129,10 +132,11 @@ struct TestRadio final : mt::Radio {
 struct Fixture {
     TestRadio radio;
     mt::test::KnownChannelFixtureClock clock;
-    mt::Service service{radio,true,Self,127,true,false};
+    mt::Service service;
     Runtime runtime{service,nextDraw};
     mt::Config home;Bytes plain;
-    explicit Fixture(bool relay=false){
+    explicit Fixture(bool relay=false,mt::pki::PrivateRuntime *provider=nullptr,void(*beforeStart)(Fixture &)=nullptr):
+        service(radio,true,Self,127,true,false,provider){
         meterOwner::service.source=&service;meterOwner::beaconOffProfileRx=0;meterOwner::nativeSupport=true;
         const auto clockNow=[](void *ctx){return static_cast<mt::test::KnownChannelFixtureClock *>(ctx)->now();};
         assert(service.channelMeter().bind({clockNow,&clock},meterOwner::drainChannelObservations));
@@ -140,6 +144,7 @@ struct Fixture {
         request.channel=60;request.overrideMHz=915;request.powerSpecified=true;request.power=30;
         if(relay)assert(home.setDeviceRole(mt::DeviceRolePolicy::Role::CLIENT,mt::DeviceRolePolicy::RebroadcastMode::ALL));
         home.setTxEnabled(true);assert(home.setRadio(request)&&home.primaryName()[0]==0);
+        if(beforeStart)beforeStart(*this);
         assert(service.apply(home)&&service.start(false,0)&&service.armEndpoint(true));
         meshtastic_ModuleConfig_MeshBeaconConfig cfg{};cfg.has_broadcast_offer_preset=true;
         cfg.broadcast_offer_preset=Medium;strcpy(cfg.broadcast_message,"mesh beacon");
@@ -400,8 +405,9 @@ static void boundedAdmission(bool recover,bool unsupported=false){
     }
     assert(!f.runtime.busy()&&!f.radio.isolated&&f.radio.frames.size()==unsigned(recover));
 }
+#include "admin.inc"
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
-    retiredTarget();terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
-    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":18,\"refilled_slots\":24}");
+    retiredTarget();terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();stagedAdminRead();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
+    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":19,\"refilled_slots\":24}");
 }

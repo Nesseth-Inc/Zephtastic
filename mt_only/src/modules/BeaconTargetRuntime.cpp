@@ -95,11 +95,18 @@ bool BeaconTargetRuntime::encode(const BeaconExcursion::Request &request,const u
   out.bytes[12]=request.legacyHopOverride?0x20u:0u;return true;
 }
 
+bool BeaconTargetRuntime::serviceIdle(const Service &service)
+{
+#if defined(CONFIG_MT_RF_ADMIN_GET)
+  if(service.privateAdminWorkQueued()||service.privateAdminQueriesPending()||service.legacyAdminWorkQueued())return false;
+#endif
+  return service.normalMode_&&service.receiving_&&service.endpointArmed_&&service.txAllowed_&&
+         service.storageStopSafe()&&!service.normalTransitActive_;
+}
+
 bool BeaconTargetRuntime::ownerIdle()const
 {
-  return service_.normalMode_&&service_.receiving_&&service_.endpointArmed_&&service_.txAllowed_&&
-         service_.storageStopSafe()&&!service_.normalTransitActive_&&!service_.radio_.busy()&&
-         !service_.radio_.receiveEventPending();
+  return serviceIdle(service_)&&!service_.radio_.busy()&&!service_.radio_.receiveEventPending();
 }
 
 bool BeaconTargetRuntime::homeRxPending()const
@@ -320,7 +327,7 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
   if(pendingActionReady_&&pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission) {
     // The home RX drain can queue an ACK/private reply without forwarding
     // the incoming packet. Yield the modem to that existing Service work.
-    bool cancel=phase_==RadioPhase::Home&&!service_.storageStopSafe();
+    bool cancel=phase_==RadioPhase::Home&&!serviceIdle(service_);
     if(!cancel&&bench::due(now,activeSince_+5000u)) {
       const auto *r=row(activeId_);
       cancel=waitingForAdmission_||!r||!admission(r->target.region);
@@ -358,9 +365,6 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
   }
   const auto id=excursion_.frontId();
   if(!id||!ownerIdle())return;
-#if defined(CONFIG_MT_RF_ADMIN_GET)
-  if(service_.privateAdminWorkQueued()||service_.privateAdminQueriesPending()||service_.legacyAdminWorkQueued())return;
-#endif
   apply(excursion_.beforeTransmit(id,runningProfile(service_.config),settingsEpoch,identityEpoch),
         now,settingsEpoch,identityEpoch);
 }

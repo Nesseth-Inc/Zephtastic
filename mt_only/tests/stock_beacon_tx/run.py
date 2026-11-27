@@ -60,7 +60,7 @@ def main():
         start=owner.index('static void drainChannelObservations(')
         (build/'meter-owner.inc').write_text(owner[start:owner.index('\n}',start)+2])
         for label,abi in [('normal',[]),('short',['-fshort-enums'])]:
-            flags=['-O1','-UNDEBUG','-fsanitize=address,undefined','-fno-sanitize-recover=all',*abi,
+            flags=['-O1','-UNDEBUG','-DCONFIG_MT_RF_ADMIN_GET=1','-fsanitize=address,undefined','-fno-sanitize-recover=all',*abi,
                    *(('-DEKEYREJECTED=129',) if sys.platform=='darwin' else ()),
                    *['-I'+str(p) for p in (build,APP/'src',APP/'tests',APP/'tests/beacon/stubs',vendor,mono,proto/'nanopb')]]
             objects=[]
@@ -76,7 +76,7 @@ def main():
                             *host.crypto_link_flags(),'-o',exe],check=True)
             env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0:halt_on_error=1','UBSAN_OPTIONS':'halt_on_error=1'}
             row=json.loads(subprocess.check_output([exe],env=env,text=True))
-            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':18,'refilled_slots':24}:
+            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':19,'refilled_slots':24}:
                 raise ValueError(f'Incomplete beacon runtime run: {row}')
             results.append({'enum':label,**row})
     report={'status':'PASS','hardware':False,'stock_revision':STOCK,'source_sha256':PINS,'runs':results}

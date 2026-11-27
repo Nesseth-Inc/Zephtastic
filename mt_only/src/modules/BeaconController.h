@@ -12,9 +12,7 @@ class BeaconBroadcaster {
 protected:
   beacon::BeaconCadence cadence_;
   static bool idle(Service &service){
-    return service.normalMode()&&service.receiving()&&service.endpointArmed()&&service.txAllowed()&&
-      service.config.txEnabled()&&!service.faulted()&&!service.moduleAnnouncementPending()&&
-      !service.endpointControls()&&service.endpointFree()==4&&service.storageStopSafe();
+    return BeaconTargetRuntime::serviceIdle(service)&&service.config.txEnabled();
   }
   static bool encode(meshtastic_Data &d,uint8_t *wire,size_t &size){
     size=0;d.has_bitfield=true;d.bitfield=0;

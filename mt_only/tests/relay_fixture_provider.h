@@ -3,7 +3,7 @@
 #include "pki/PrivateRuntime.h"
 
 // A boot-ready provider can expose a synthetic owner public key; it never transmits.
-struct RelayFixtureProvider final:mt::pki::PrivateRuntime {
+struct RelayFixtureProvider:mt::pki::PrivateRuntime {
  explicit RelayFixtureProvider(uint32_t local,const uint8_t *publicKey=nullptr) : local_(local),publicKey_(publicKey) {}
  uint32_t local_;const uint8_t *publicKey_;
  bool available=true;

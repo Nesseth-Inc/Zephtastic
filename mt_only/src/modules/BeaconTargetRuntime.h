@@ -20,6 +20,7 @@ public:
   explicit BeaconTargetRuntime(Service &service,Draw draw=defaultDraw):service_(service),draw_(draw){}
   bool enqueue(const BeaconExcursion::Request &request,const uint8_t *data,size_t size,
                uint32_t random,uint32_t now,uint32_t *acceptedId=nullptr);
+  static bool serviceIdle(const Service &service);
   bool targetSupported(const BeaconExcursion::RadioProfile &profile);
   void poll(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch,bool mainReady);
   void receiveAccepted();
