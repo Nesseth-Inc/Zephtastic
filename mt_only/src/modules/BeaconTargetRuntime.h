@@ -27,6 +27,10 @@ public:
   void cancelAll(uint32_t settingsEpoch,uint32_t identityEpoch);
   bool busy()const{return radioHeld()||excursion_.queued()!=0;}
   bool homeRxPending()const;
+  // While radioHeld(), this permits the read-only USB recovery lane. RF,
+  // settings and power owners remain excluded until verified home RX.
+  bool recovering()const{return recovering_;}
+  static constexpr uint32_t RecoveryRetryMs=1000,RestoreFaultMs=5000;
   bool radioHeld()const{return excursion_.holdsRadio()||txActive_||phase_!=RadioPhase::Home;}
   size_t queued()const{return excursion_.queued();}
   int lastError()const{return lastError_;}
@@ -49,7 +53,7 @@ private:
   RadioPhase phase_=RadioPhase::Home;
   bool txActive_=false,homeArmed_=false,homeRelaying_=false;
   bool completionAwaitingRestore_=false,pendingTxSuccess_=false;
-  bool waitingForAdmission_=false;
+  bool waitingForAdmission_=false,recovering_=false;
   uint32_t deadline_=0,activeId_=0;
   uint32_t activeSince_=0,slotMs_=0;
   int lastError_=0;
@@ -60,6 +64,8 @@ private:
   bool encode(const BeaconExcursion::Request &request,const uint8_t *data,size_t size,
               uint32_t random,uint32_t now,bench::Frame &out);
   bool configureProfile(const BeaconExcursion::RadioProfile &profile,Config &candidate,uint32_t *slotMs=nullptr);
+  void deferRecovery(uint32_t now,int error);
+  void recover(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch);
   void finishTransmit(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch);
   void contend(const BeaconExcursion::Action &action,uint32_t now);
   bool retune(const BeaconExcursion::RadioProfile &profile);

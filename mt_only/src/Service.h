@@ -74,6 +74,10 @@ struct Radio {
   virtual int start()=0;
   virtual int restore()=0;
   virtual int stop()=0;
+  // Zero proves joined TX/IRQ work, retired completion ownership and hardware
+  // standby. Preserve already queued home RX. A backend may decline and keep
+  // the caller's frame leased until terminal completion.
+  virtual int abortBeaconTransmit(){return -ENOTSUP;}
   // Storage/config transitions need a stronger stop than ordinary shutdown:
   // implementations must preserve completed application RX events and return
   // -EAGAIN after restoring RX if an event raced the transition. A hard error

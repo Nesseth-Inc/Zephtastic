@@ -189,7 +189,10 @@ bool BeaconTargetRuntime::restoreHome()
     if(service_.radio_.busy())return false;
     const int stopped=service_.radio_.stopForStorage();
     if(stopped) {
-      if(stopped!=-EAGAIN){phase_=RadioPhase::NeedsAbort;service_.fault_=true;}
+      if(stopped!=-EAGAIN){
+        phase_=RadioPhase::NeedsAbort;
+        service_.noteFault(FaultStage::StorageStop,DiagnosticDomain::Errno,stopped);service_.fault_=true;
+      }
       return false;
     }
     phase_=RadioPhase::Parked;
@@ -238,11 +241,57 @@ void BeaconTargetRuntime::contend(const BeaconExcursion::Action &action,uint32_t
   pendingAction_=action;pendingActionReady_=true;
 }
 
+void BeaconTargetRuntime::deferRecovery(uint32_t now,int error)
+{
+  if(!recovering_){recovering_=true;activeSince_=now;}
+  else if(!service_.fault_&&bench::due(now,activeSince_+RestoreFaultMs)){
+    service_.noteFault(FaultStage::Restore,DiagnosticDomain::Errno,error);service_.fault_=true;
+  }
+  lastError_=error;deadline_=now+RecoveryRetryMs;
+}
+
+void BeaconTargetRuntime::recover(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch)
+{
+  if(!bench::due(now,deadline_))return;
+  deadline_=now+RecoveryRetryMs;
+  if(service_.fault_) {
+    while(const uint32_t queued=excursion_.frontId()){
+      (void)excursion_.cancel(queued,settingsEpoch,identityEpoch);release(queued);
+    }
+  }
+  if(txActive_||completionAwaitingRestore_) {
+    int late=0;
+    if(txActive_&&service_.radio_.completion(late)) {
+      // The host already marked the outcome uncertain. Never credit or
+      // retransmit a late completion, even if the driver reports success.
+      txActive_=false;pendingTxSuccess_=false;
+    } else {
+      // health()==0 alone also covers TX. Only a successful native join
+      // retires the buffer lease when its terminal event never arrived.
+      if(service_.radio_.abortBeaconTransmit()||service_.radio_.health()!=0)return;
+      txActive_=false;pendingTxSuccess_=false;
+      if(phase_!=RadioPhase::Home){
+        phase_=RadioPhase::Parked;completionAwaitingRestore_=false;
+        (void)excursion_.cancel(activeId_,settingsEpoch,identityEpoch);
+        apply(excursion_.transmitFailed(activeId_,settingsEpoch,identityEpoch),now,settingsEpoch,identityEpoch);
+        return;
+      }
+    }
+    // On home the configured modem survives the abort. Re-arm RX without
+    // the normal start/configure queue purge.
+    finishTransmit(now,settingsEpoch,identityEpoch);return;
+  }
+  apply({BeaconExcursion::ActionKind::RestoreHome,activeId_},now,settingsEpoch,identityEpoch);
+}
+
 void BeaconTargetRuntime::finishTransmit(uint32_t now,uint32_t settingsEpoch,uint32_t identityEpoch)
 {
   const int restored=service_.radio_.restore();
   if(restored||service_.radio_.health()!=1){
-    completionAwaitingRestore_=true;lastError_=restored?restored:-EIO;service_.fault_=true;return;
+    completionAwaitingRestore_=true;
+    const int error=restored?restored:-EIO;
+    service_.noteFault(FaultStage::Restore,DiagnosticDomain::Errno,error);service_.fault_=true;
+    deferRecovery(now,error);return;
   }
   completionAwaitingRestore_=false;
   const uint32_t id=activeId_;
@@ -265,10 +314,13 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
     if(!activeId_){activeSince_=now;activeId_=action.packetId;}
     auto gate=excursion_.beginConfigure(action.packetId,settingsEpoch,identityEpoch);
     const bool ok=gate.kind==BeaconExcursion::ActionKind::ConfigureTarget&&retune(gate.profile);
-    if(!ok){lastError_=lastError_?lastError_:-EIO;if(phase_!=RadioPhase::Home&&!restoreHome())service_.fault_=true;}
+    if(!ok&&phase_!=RadioPhase::Home&&!restoreHome()){
+      service_.noteFault(FaultStage::Restore,DiagnosticDomain::Errno,-EIO);service_.fault_=true;
+    }
     const auto next=excursion_.targetConfigured(action.packetId,ok,settingsEpoch,identityEpoch);
     if(next.kind==BeaconExcursion::ActionKind::StartTransmission)contend(next,now);
     else apply(next,now,settingsEpoch,identityEpoch);
+    if(!ok&&phase_!=RadioPhase::Home)deferRecovery(now,-EIO);
     return;
   }
   case BeaconExcursion::ActionKind::StartTransmission: {
@@ -305,7 +357,8 @@ void BeaconTargetRuntime::apply(const BeaconExcursion::Action &action,uint32_t n
   }
   case BeaconExcursion::ActionKind::RestoreHome:
   case BeaconExcursion::ActionKind::ApplyCurrentSettings: {
-    const bool ok=restoreHome();if(!ok){lastError_=-EIO;return;}
+    if(!restoreHome()){deferRecovery(now,-EIO);return;}
+    recovering_=false;
     const auto next=excursion_.restoreCompleted(true,settingsEpoch,identityEpoch);
     if(next.kind==BeaconExcursion::ActionKind::None)release(action.packetId);
     else apply(next,now,settingsEpoch,identityEpoch);return;
@@ -323,6 +376,7 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     cancelAll(settingsEpoch,identityEpoch);
     if(!radioHeld())return;
   }
+  if(recovering_){recover(now,settingsEpoch,identityEpoch);return;}
   expireQueued(now,settingsEpoch,identityEpoch);
   if(pendingActionReady_&&pendingAction_.kind==BeaconExcursion::ActionKind::StartTransmission) {
     // The home RX drain can queue an ACK/private reply without forwarding
@@ -347,14 +401,17 @@ void BeaconTargetRuntime::poll(uint32_t now,uint32_t settingsEpoch,uint32_t iden
     if(txActive_) {
       int result=0;
       if(!service_.radio_.completion(result)) {
-        if(bench::due(now,deadline_)){service_.noteTxUncertain();lastError_=-ETIMEDOUT;service_.fault_=true;}
+        if(bench::due(now,deadline_)){
+          service_.noteTxUncertain();service_.noteFault(FaultStage::CompletionTimeout,DiagnosticDomain::Errno,-ETIMEDOUT);
+          service_.fault_=true;deferRecovery(now,-ETIMEDOUT);
+        }
         return;
       }
       txActive_=false;
       pendingTxSuccess_=result==0;
       if(result){service_.noteTxUncertain();lastError_=result;}
       else service_.creditTxPending();
-    } else if(service_.radio_.busy())return;
+    }
     // A terminal completion releases the driver buffer. Its first RX restore
     // is idempotent even if the modem already reports an active receive.
     finishTransmit(now,settingsEpoch,identityEpoch);return;
@@ -383,7 +440,7 @@ void BeaconTargetRuntime::cancelAll(uint32_t settingsEpoch,uint32_t identityEpoc
   for(auto &r:rows_)if(r.id) {
     const auto action=excursion_.cancel(r.id,settingsEpoch,identityEpoch);
     if(action.kind==BeaconExcursion::ActionKind::None)release(r.id);
-    else if(action.kind!=BeaconExcursion::ActionKind::HoldPacket)apply(action,0,settingsEpoch,identityEpoch);
+    else if(!recovering_&&action.kind!=BeaconExcursion::ActionKind::HoldPacket)apply(action,0,settingsEpoch,identityEpoch);
   }
 }
 
