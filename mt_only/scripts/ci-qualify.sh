@@ -44,6 +44,7 @@ if [[ $tool_group == native ]]; then
     python "mt_only/tests/stock_remaining_$suite/run.py" --stock "$work/stock" --output "$work/modules.json" "${args[@]}"
     exit 0
   fi
+  python -m pip -q install --only-binary=:all: cryptography==50.0.2
   python mt_only/scripts/test-upstream-282.py --stock "$work/stock" --output "$work/upstream"
   for abi in native short; do
     args=()
