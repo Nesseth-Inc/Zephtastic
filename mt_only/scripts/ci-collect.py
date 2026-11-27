@@ -45,6 +45,22 @@ if args.group == "native":
             if type(count) is not int or count <= 0:
                 raise ValueError(f"{suite} did not compare {family}")
         report["module_parity"][suite] = evidence
+    persistence = read("settings-journal/results.json")
+    canned = read("canned-journal.json")
+    size = persistence["simulated_record_size"]
+    if (persistence["PASS"] is not True or persistence["ASAN_UBSAN"] is not True or
+            persistence["hardware"] is not False or size <= 0 or
+            persistence["partial_write_cut_points_per_path"] != size or
+            persistence["corruption_single_bits"] != 8 * size or
+            canned["groups"] != {"default-enum": 16, "short-enum": 16} or
+            canned["asan_ubsan"] is not True or canned["hardware"] is not False):
+        raise ValueError("Incomplete journal fault and recovery evidence")
+    report["settings_journals"] = {
+        "partial_write_cut_points_per_path": persistence["partial_write_cut_points_per_path"],
+        "corruption_single_bits": persistence["corruption_single_bits"],
+        "canned_message_groups": canned["groups"],
+        "asan_ubsan": True,
+    }
     history = read("transmit-history/result.json")
     expected = {(abi, case) for abi in ("normal", "short")
                 for case in ("history", "producers", "beacon", "factory")}

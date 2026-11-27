@@ -2,7 +2,7 @@
 #include "modules/CannedMessageJournal.h"
 #include <cassert>
 #include <cstdio>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -11,8 +11,8 @@ using namespace mt::modules;
 using Bytes=std::vector<uint8_t>;
 
 struct Backend final:SettingsBackend {
-  enum class Fault {None,ReadError,BeforeWrite,CommittedError,TornError,TornSuccess,ReadbackError,ReadbackShort,ReadbackDifferent};
-  std::map<std::string,Bytes> rows;
+  enum class Fault {None,ReadError,BeforeWrite,CommittedError,TornError,TornSuccess,ReadbackError,ReadbackShort,ReadbackLong,ReadbackDifferent};
+  std::unordered_map<std::string,Bytes> rows;
   std::vector<std::string> reads,writes;
   Fault fault=Fault::None;
   bool afterWrite=false;
@@ -22,6 +22,10 @@ struct Backend final:SettingsBackend {
     const auto it=rows.find(key);if(it==rows.end())return -ENOENT;
     if(it->second.size()>capacity)return -E2BIG;
     const size_t n=it->second.size();if(n)memcpy(out,it->second.data(),n);
+    if(afterWrite&&fault==Fault::ReadbackLong){
+      if(n==capacity)return -E2BIG;
+      out[n]=0;return int(n+1);
+    }
     if(afterWrite&&fault==Fault::ReadbackDifferent&&n)out[n-1]^=1;
     return int(afterWrite&&fault==Fault::ReadbackShort&&n?n-1:n);
   }
@@ -212,7 +216,7 @@ int main(){
   {
     for(auto fault:{Backend::Fault::BeforeWrite,Backend::Fault::CommittedError,Backend::Fault::TornError,
                     Backend::Fault::TornSuccess,Backend::Fault::ReadbackError,Backend::Fault::ReadbackShort,
-                    Backend::Fault::ReadbackDifferent}){
+                    Backend::Fault::ReadbackLong,Backend::Fault::ReadbackDifferent}){
       Backend b;CannedMessageJournal j;assert(!j.load(b)&&!j.save(b,settings("old")));
       const auto old=j.config();const auto generation=j.generation();const auto slot=j.activeSlot();b.fault=fault;
       assert(j.save(b,settings("new"))<0&&j.state()==CannedMessageJournal::State::IoError&&!j.ready()&&
@@ -221,7 +225,7 @@ int main(){
       assert(j.save(b,old)==-EACCES&&j.save(b,settings("again"))==-EACCES&&b.writes.size()==writeCount&&b.rows==rows);
       b.fault=Backend::Fault::None;b.afterWrite=false;CannedMessageJournal reboot;assert(!reboot.load(b));
       const bool committed=fault==Backend::Fault::CommittedError||fault==Backend::Fault::ReadbackError||
-        fault==Backend::Fault::ReadbackShort||fault==Backend::Fault::ReadbackDifferent;
+        fault==Backend::Fault::ReadbackShort||fault==Backend::Fault::ReadbackLong||fault==Backend::Fault::ReadbackDifferent;
       assert(reboot.config().same(settings(committed?"new":"old")));
     }
     pass("uncertain writes/readbacks preserve old RAM and poison retries until reload; reload reflects durable outcome");
