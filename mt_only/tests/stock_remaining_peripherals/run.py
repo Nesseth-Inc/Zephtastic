@@ -135,7 +135,12 @@ def collect(stock, temp):
         if not match or int(match[1]) <= 0:
             raise ValueError(f"Missing stock tests for {name}")
         row(name, "differential", "The extracted core matches stock source. The unmodified game assertions run in the pinned Unity framework with its Arduino startup hook replaced on the host.", cases=int(match[1]))
-    row("Tetris", "source", "The core matches the pinned source and the production display fixture exercises input, drop and scoring. The donor supplies no Tetris Unity suite.")
+    tetris = re.findall(r"^TETRIS282 states=(\d+) shapes=(\d+) kicks=(\d+) terminal=(\d+)$", ui, re.M)
+    if len(tetris) != 2 or tetris[0] != tetris[1] or min(map(int, tetris[0])) <= 0:
+        raise ValueError("Incomplete Tetris behavioral comparisons")
+    states, shapes, kicks, terminal = map(int, tetris[0])
+    row("Tetris", "differential", "Independently compiled stock and ZT cores match every board cell, pieces, ghost, score, level, clears and terminal state through seeded play and directed row clears.",
+        cases_per_abi=states+shapes, state_comparisons=states, shape_comparisons=shapes, observed_kicks=kicks, terminal_games=terminal)
     require(edges, "SystemCommandsModule 65536 ", 2)
     require(edges, "InputBroker 5 ", 2)
     row("SystemCommandsModule", "differential", "All 65,536 event/key pairs select the same action as the stock handler. The display fixture checks physical confirmation and pairing isolation.", cases_per_abi=65536)

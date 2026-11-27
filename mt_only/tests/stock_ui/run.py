@@ -126,6 +126,19 @@ with tempfile.TemporaryDirectory() as tmp:
                 reference=re.sub(r"^#include <cstring> // strcmp, for the (joystick-source test in handleInput|stick-source test in isPolledStickRepeat)\(\)$", "", reference, flags=re.M)
             actual = (games / f"{mode}.{ext}").read_text().split("\n", 2)[2].rstrip()
             assert reference == actual, f"core drift in {mode}.{ext}"
+    if args.release == "2.8.2":
+        stock_games = work / "stock-games"
+        stock_games.mkdir()
+        for extension in ("cpp", "h"):
+            filename = "Tetris." + extension
+            (stock_games / filename).write_text(donor("src/modules/games/" + filename))
+        for abi in ([], ["-fshort-enums"]):
+            stock_object = work / "stock-tetris.o"
+            run([*flags, *abi, "-DTetrisGame=StockTetrisGame", "-c", stock_games / "Tetris.cpp", "-o", stock_object])
+            binary = work / "compare-tetris"
+            run([*flags, *abi, "-I", app / "src", Path(__file__).parent / "tetris_282.cpp",
+                 games / "Tetris.cpp", stock_object, "-o", binary])
+            run([binary])
     for mode, test in [("Snake","snake"),("Breakout","breakout"),("ChirpyRunner","chirpy")]:
         cases = donor(f"test/test_{test}/test_main.cpp")
         src = work / f"{test}.cpp"
