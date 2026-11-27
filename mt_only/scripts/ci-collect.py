@@ -25,6 +25,19 @@ if args.group == "native":
     report["upstream"] = upstream
     report["node_info_and_position"] = read("node-position.json")
     report["device_config"] = read("device-config.json")
+    report["module_parity"] = {}
+    for suite, families in (
+            ("stock_traffic_position", ("traffic_management", "position")),
+            ("stock_hop_beacon", ("hop_scaling", "mesh_beacon")),
+            ("stock_telemetry_parity", ("telemetry",))):
+        evidence = read(f"{suite}.json")
+        if evidence["stock_revision"] != upstream["stock_revision"]:
+            raise ValueError(f"{suite} used a different upstream revision")
+        for family in families:
+            count = evidence["comparisons"][family]
+            if type(count) is not int or count <= 0:
+                raise ValueError(f"{suite} did not compare {family}")
+        report["module_parity"][suite] = evidence
     router = read("router-policy/results.json")
     if router["status"] != "PASS" or router["groups"] != 4:
         raise ValueError("Incomplete T096 router policy evidence")
