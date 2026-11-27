@@ -7,7 +7,8 @@
 using PacketId = uint32_t;
 using Mode = meshtastic_Config_DeviceConfig_RebroadcastMode;
 constexpr uint32_t ADMIN_NODE = 0x0C0C0C0C, NODENUM_BROADCAST = UINT32_MAX;
-#define IS_ONE_OF(value,a,b,c) ((value)==(a)||(value)==(b)||(value)==(c))
+template<class T, class... Choices>
+static bool IS_ONE_OF(T value, Choices... choices) { return ((value == choices) || ...); }
 static constexpr Mode ALL_MODES[] = {
     meshtastic_Config_DeviceConfig_RebroadcastMode_ALL,
     meshtastic_Config_DeviceConfig_RebroadcastMode_CORE_PORTNUMS_ONLY,
@@ -255,7 +256,7 @@ static void test_zt_companion_stamps_local_module_reply()
                    meshtastic_PortNum_TELEMETRY_APP,meshtastic_PortNum_PAXCOUNTER_APP,
                    meshtastic_PortNum_NEIGHBORINFO_APP}){
         query={}; query.which_payload_variant=meshtastic_ToRadio_packet_tag;
-        query.packet.to=Node;query.packet.id=++id;
+        query.packet.to=Node;query.packet.id=++id;query.packet.want_ack=true;
         query.packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
         auto &data=query.packet.decoded;
         data.portnum=port;data.want_response=true;
@@ -284,6 +285,27 @@ static void test_zt_companion_stamps_local_module_reply()
             ++replies;
         }
         TEST_ASSERT_EQUAL_UINT_MESSAGE(1,replies,"expected a single correlated module reply");
+        query.packet.id=++id;
+        query.packet.from=TARGET_NODE;
+        host.out.clear();
+        input(query);
+        unsigned rejections=0;
+        for(const auto &message:host.out) {
+            if(message.which_payload_variant!=meshtastic_FromRadio_packet_tag) continue;
+            const auto &packet=message.packet;
+            TEST_ASSERT_EQUAL_UINT32(Node,packet.from);
+            TEST_ASSERT_EQUAL_UINT32(Node,packet.to);
+            TEST_ASSERT_FALSE(packet.want_ack);
+            TEST_ASSERT_EQUAL(meshtastic_PortNum_ROUTING_APP,packet.decoded.portnum);
+            TEST_ASSERT_EQUAL_UINT32(id,packet.decoded.request_id);
+            meshtastic_Routing routing{};
+            auto stream=pb_istream_from_buffer(packet.decoded.payload.bytes,packet.decoded.payload.size);
+            TEST_ASSERT_TRUE(pb_decode(&stream,meshtastic_Routing_fields,&routing));
+            TEST_ASSERT_EQUAL(meshtastic_Routing_error_reason_tag,routing.which_variant);
+            TEST_ASSERT_EQUAL(meshtastic_Routing_Error_BAD_REQUEST,routing.error_reason);
+            ++rejections;
+        }
+        TEST_ASSERT_EQUAL_UINT(1,rejections);
     }
     TEST_ASSERT_EQUAL_UINT(0,f->radio.sends);
 }

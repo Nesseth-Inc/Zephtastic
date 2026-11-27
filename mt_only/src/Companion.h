@@ -2649,7 +2649,7 @@ private:
       MT_NOTICE("Neighbor query rejected: require a fresh ID, available queue and permitted peer/radio"));++deniedTx;}
   }
   void localRead(const meshtastic_MeshPacket &p) {
-    if(!canonicalInput()||!p.id||!p.decoded.want_response||p.decoded.payload.size||
+    if(!canonicalInput()||!p.id||p.from||!p.decoded.want_response||p.decoded.payload.size||
       p.decoded.dest||p.decoded.source||p.decoded.request_id||p.decoded.reply_id||
       p.decoded.emoji||p.decoded.has_bitfield||p.hop_start) {
       reject(p.id,meshtastic_Routing_Error_BAD_REQUEST,
@@ -2697,7 +2697,7 @@ private:
     else ack(p.id,meshtastic_Routing_Error_TOO_LARGE);
   }
   void localTelemetry(const meshtastic_MeshPacket &p) {
-    if(!canonicalInput()||!p.id||!p.decoded.want_response||
+    if(!canonicalInput()||!p.id||p.from||!p.decoded.want_response||
       !(TelemetryQuery::request(p.decoded.payload.bytes,p.decoded.payload.size)||
         EnvironmentQuery::request(p.decoded.payload.bytes,p.decoded.payload.size)||
         PowerQuery::request(p.decoded.payload.bytes,p.decoded.payload.size)||

@@ -162,7 +162,8 @@ def main():
     build_fixture = runpy.run_path(str(FIXTURE / "phone_config.py"))["build_fixture"]
     relay_out = out / "rebroadcast"
     relay_out.mkdir()
-    relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity, "-DCONFIG_MT_PAXCOUNTER_WIFI_ESP32=1"], [obj])
+    relay_flags = ["-I", out, "-I", unity, "-DCONFIG_MT_PAXCOUNTER=1", "-DCONFIG_MT_PAXCOUNTER_WIFI_ESP32=1"]
+    relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", relay_flags, [obj])
     results["rebroadcast_zt"] = run_unity(relay, integration_cases, relay_out)
     results["rebroadcast_modes"] = ["ALL", "CORE_PORTNUMS_ONLY", "KNOWN_ONLY", "LOCAL_ONLY", "NONE"]
     results["excluded_rebroadcast_mode"] = "ALL_SKIP_DECODING (deprecated stock REPEATER only)"
@@ -172,6 +173,8 @@ def main():
             "comparisons": len([name for name in names if name.startswith("test_setreplyto_")]),
             "stock_tests": [name for name in names if name.startswith("test_setreplyto_")],
             "additional_integration": local_dispatch,
+            "companion_paths": ["NodeInfo", "Position", "Telemetry", "Paxcounter", "NeighborInfo"],
+            "companion_origin_policy": "All five local read paths refuse nonzero phone-supplied senders with a correlated local BAD_REQUEST.",
             "coverage": "Both pinned setReplyTo assertions ran on the donor and the production reply-envelope helper used for companion module reads."
         },
         "FloodingRouter": {
