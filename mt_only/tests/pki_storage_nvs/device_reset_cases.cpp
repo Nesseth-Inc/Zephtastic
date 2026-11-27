@@ -46,7 +46,7 @@ int main(){
     PkiFreshProvisioning genesis(setup,ctx,entropy);
     assert(!genesis.stage(original)&&!genesis.confirm(original));
     const uint8_t one=1;
-    const char *const owned[]={"bt/keys/00","bt/ccc/01","mtble/gatt/01","mtba/m0","mtba/a15","mtway/history"};
+    const char *const owned[]={"bt/keys/00","bt/ccc/01","mtble/gatt/01","mtba/m0","mtba/a15","mtway/history","mthop/state"};
     for(const char *key:owned)assert(!settings.write(key,&one,1));
     for(unsigned i=0;i<34;++i){
         char key[20];snprintf(key,sizeof(key),"bt/ccc/test%02u",i);

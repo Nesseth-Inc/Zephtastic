@@ -36,10 +36,11 @@ int main(){
     assert(!seed.rows.count(name));seed.rows[name]={1,2,3};++eligible;return 0;
   }));
 #if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
-  assert(eligible==49&&seed.rows.count("mttx/history0")&&seed.rows.count("mttx/history1"));
+  assert(eligible==50&&seed.rows.count("mttx/history0")&&seed.rows.count("mttx/history1"));
 #else
-  assert(eligible==47);
+  assert(eligible==48);
 #endif
+  assert(seed.rows.count("mthop/state")); // also retire history made by a previous feature-enabled image
   assert(seed.rows.count("mtxsensor/bme680")&&seed.rows.count("mtsat/epoch")&&seed.rows.count("mtxsensor/sen5hist")&&seed.rows.count("mtxsensor/sen6hist")&&seed.rows.count("mtxsensor/nau")&&seed.rows.count("mtxsensor/as3935")&&seed.rows.count("mtxsensor/sen5")&&seed.rows.count("mtxsensor/sen6")&&seed.rows.count("mtway/history")&&seed.rows.count("mtba/b15")&&seed.rows.count("mtbase/config")&&seed.rows.count("mtgames/scores1"));
   assert(!reset::mark(seed,node,key,reset::Phase::RetireContacts));
   assert(reset::finish(seed,node,key,[]{return 0;})==-EINVAL);
