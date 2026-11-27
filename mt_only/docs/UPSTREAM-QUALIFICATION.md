@@ -22,7 +22,7 @@ The native receipt records a separate comparison count for each family against t
 | Module | What the comparison observes |
 | --- | --- |
 | TrafficManagement | Simulated LoRa arrivals pass through the receive service and transmit queue. The test counts radio sends at rate-window boundaries and checks how position deduplication interacts with the per-sender limit. |
-| Position | The received channel's name, key and precision govern forwarding even when the relay has no fix. ZT suppresses an over-precise broadcast, forwards compliant payload bytes unchanged, and keeps the first rejected report from suppressing a later compliant one. |
+| Position | The received channel's name, key and precision govern forwarding even when the relay has no fix. ZT suppresses an over-precise broadcast, forwards compliant payload bytes unchanged, and keeps a privacy-rejected report out of the position deduplication window. The per-sender packet limit still applies. |
 | HopScaling | Both implementations receive the same node population, hash seed and channel utilization. The packet-level checks compare how the router applies the resulting hop cap. |
 | MeshBeacon | The same settings feed the stock periodic task and ZT. The comparisons cover airtime and transmit-history deferral, the next scheduled opportunity, and beacon payload selection. |
 | Telemetry | The stock and ZT schedulers receive the same role, interval, congestion and regional settings. Synthetic readings exercise encoded Device and Environment announcements and replies. |
