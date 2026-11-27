@@ -86,51 +86,49 @@ static std::vector<unsigned> reports(const Phone &h,bool background=true){
     }
     return result;
 }
-static void localStats(Fixture &f,Phone &usb,Phone &ble,Fanout phones){
-    for(auto role:{meshtastic_Config_DeviceConfig_Role_CLIENT,meshtastic_Config_DeviceConfig_Role_TRACKER})for(bool enabled:{false,true}){
-        f.s.stop();auto cfg=f.s.config;cfg.setTxEnabled(true);assert(cfg.setDeviceRole(role,0));
-        assert(f.s.apply(cfg)&&f.s.start(false,0)&&f.s.armEndpoint(true));
-        mt::ModuleController controller;mt::ModuleSettings settings;
-        meshtastic_ModuleConfig config{};config.which_payload_variant=meshtastic_ModuleConfig_telemetry_tag;
-        config.payload_variant.telemetry.device_telemetry_enabled=enabled;
-        config.payload_variant.telemetry.device_update_interval=3600;assert(settings.set(config));
-        deviceDonor::moduleConfig.telemetry.device_telemetry_enabled=enabled;
-        deviceDonor::meshStamp=0;deviceDonor::DeviceTelemetryModule donor;
-        deviceDonor::MeshModule registration;
-        (void)registration.setStartDelay(); // NodeInfo and MeshBeacon
-        (void)registration.setStartDelay();
-        if(role!=meshtastic_Config_DeviceConfig_Role_TRACKER)(void)registration.setStartDelay();
-        (void)registration.setStartDelay(); // KeyVerification
-        uint32_t deadline=registration.setStartDelay();const auto first=deadline;
-        auto tick=[&](uint32_t now){
-            f.channelNow=now;usb.out.clear();ble.out.clear();
-            usb.blocked=now==first+120000;ble.blocked=now!=first+60000;
-            donor.sent.clear();donor.mesh=false;
-            if(now>=deadline){
-                deviceDonor::queue.empty=!usb.blocked;deviceDonor::now=now;
-                deadline=now+donor.runOnce();
-            }
-            controller.pollReports(f.s,settings,true,now,6789,0,[&](const uint8_t *p,size_t n,uint32_t id,
-                               mt::ModuleController::PhoneDelivery delivery,uint8_t recipients){
-                using D=mt::ModuleController::PhoneDelivery;
-                return phones.publishModuleData(p,n,id,0,delivery==D::Idle||delivery==D::DeviceIdle,recipients,
-                                                delivery==D::DeviceIdle||delivery==D::FollowUp);
-            });
-            assert(reports(usb,!donor.mesh)==donor.sent);
-            if(donor.mesh){
-                assert(enabled&&now==first&&f.s.endpointControls()==1&&reports(ble,false)==donor.sent);
-                f.s.stop();assert(f.s.start(false,now)&&f.s.armEndpoint(true));
-            }else{
-                assert(!f.s.endpointControls());
-                if(ble.blocked)assert(ble.out.empty());
-                else assert(reports(ble)==reports(usb));
-            }
-            assert(!f.radio.sends);
-        };
-        for(uint32_t now=0;now<=1020000;now+=15000)tick(now);
-        const auto delayed=deadline+59999;
-        tick(delayed);tick(delayed+1);tick(delayed+59999);tick(delayed+60000);
-    }
+static void localStats(Fixture &f,Phone &usb,Phone &ble,Fanout phones,unsigned role,bool enabled){
+    f.s.stop();auto cfg=f.s.config;cfg.setTxEnabled(true);assert(cfg.setDeviceRole(role,0));
+    assert(f.s.apply(cfg)&&f.s.start(false,0)&&f.s.armEndpoint(true));
+    mt::ModuleController controller;mt::ModuleSettings settings;
+    meshtastic_ModuleConfig config{};config.which_payload_variant=meshtastic_ModuleConfig_telemetry_tag;
+    config.payload_variant.telemetry.device_telemetry_enabled=enabled;
+    config.payload_variant.telemetry.device_update_interval=3600;assert(settings.set(config));
+    deviceDonor::moduleConfig.telemetry.device_telemetry_enabled=enabled;
+    deviceDonor::meshStamp=0;deviceDonor::DeviceTelemetryModule donor;
+    deviceDonor::MeshModule registration;
+    (void)registration.setStartDelay(); // NodeInfo and MeshBeacon
+    (void)registration.setStartDelay();
+    if(role!=meshtastic_Config_DeviceConfig_Role_TRACKER)(void)registration.setStartDelay();
+    (void)registration.setStartDelay(); // KeyVerification
+    uint32_t deadline=registration.setStartDelay();const auto first=deadline;
+    auto tick=[&](uint32_t now){
+        f.channelNow=now;usb.out.clear();ble.out.clear();
+        usb.blocked=now==first+120000;ble.blocked=now!=first+60000;
+        donor.sent.clear();donor.mesh=false;
+        if(now>=deadline){
+            deviceDonor::queue.empty=!usb.blocked;deviceDonor::now=now;
+            deadline=now+donor.runOnce();
+        }
+        controller.pollReports(f.s,settings,true,now,6789,0,[&](const uint8_t *p,size_t n,uint32_t id,
+                           mt::ModuleController::PhoneDelivery delivery,uint8_t recipients){
+            using D=mt::ModuleController::PhoneDelivery;
+            return phones.publishModuleData(p,n,id,0,delivery==D::Idle||delivery==D::DeviceIdle,recipients,
+                                            delivery==D::DeviceIdle||delivery==D::FollowUp);
+        });
+        assert(reports(usb,!donor.mesh)==donor.sent);
+        if(donor.mesh){
+            assert(enabled&&now==first&&f.s.endpointControls()==1&&reports(ble,false)==donor.sent);
+            f.s.stop();assert(f.s.start(false,now)&&f.s.armEndpoint(true));
+        }else{
+            assert(!f.s.endpointControls());
+            if(ble.blocked)assert(ble.out.empty());
+            else assert(reports(ble)==reports(usb));
+        }
+        assert(!f.radio.sends);
+    };
+    for(uint32_t now=0;now<=1020000;now+=15000)tick(now);
+    const auto delayed=deadline+59999;
+    tick(delayed);tick(delayed+1);tick(delayed+59999);tick(delayed+60000);
 }
 static void positions(Fixture &f,Phone &usb,Phone &ble,Fanout phones){
     for(auto role:{meshtastic_Config_DeviceConfig_Role_CLIENT,meshtastic_Config_DeviceConfig_Role_TRACKER,
@@ -193,13 +191,18 @@ static void positions(Fixture &f,Phone &usb,Phone &ble,Fanout phones){
     assert(!f.s.endpointControls()&&!f.radio.sends);
 }
 void phoneCases(){
-    auto fixture=std::make_unique<Fixture>();auto &f=*fixture;
-    Phone a(f.s),b(f.s),c(f.s),d(f.s);
-    mt::Companion usb(f.s,a,81,f.workspace,0),ble(f.s,b,81,f.workspace,1),
-        serial(f.s,c,81,f.workspace,3),tcp(f.s,d,81,f.workspace,2);
-    for(auto pair:{std::make_pair(&usb,&a),std::make_pair(&ble,&b),std::make_pair(&serial,&c),std::make_pair(&tcp,&d)})
-        connect(*pair.first,*pair.second);
-    c.blocked=d.blocked=true;
-    Fanout phones{usb,ble,serial,tcp};
-    localStats(f,a,b,phones);positions(f,a,b,phones);
+    for(auto role:{meshtastic_Config_DeviceConfig_Role_CLIENT,meshtastic_Config_DeviceConfig_Role_TRACKER})
+        for(bool enabled:{false,true}){
+            auto fixture=std::make_unique<Fixture>();auto &f=*fixture;
+            Phone a(f.s),b(f.s),c(f.s),d(f.s);
+            mt::Companion usb(f.s,a,81,f.workspace,0),ble(f.s,b,81,f.workspace,1),
+                serial(f.s,c,81,f.workspace,3),tcp(f.s,d,81,f.workspace,2);
+            for(auto pair:{std::make_pair(&usb,&a),std::make_pair(&ble,&b),
+                           std::make_pair(&serial,&c),std::make_pair(&tcp,&d)})
+                connect(*pair.first,*pair.second);
+            c.blocked=d.blocked=true;
+            Fanout phones{usb,ble,serial,tcp};
+            localStats(f,a,b,phones,role,enabled);
+            if(!enabled&&role==meshtastic_Config_DeviceConfig_Role_CLIENT)positions(f,a,b,phones);
+        }
 }
