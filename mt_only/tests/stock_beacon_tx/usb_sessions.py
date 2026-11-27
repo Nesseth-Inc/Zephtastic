@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Read actual CDC records into stock MeshInterface while a simulated beacon remains stuck."""
 import json
+from contextlib import ExitStack
 from pathlib import Path
 import select
 import subprocess
@@ -30,7 +31,8 @@ def request(packet_id,**admin):
     return message
 
 def session(exe,env,fault):
-    with subprocess.Popen([exe,fault],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env,text=True) as proc:
+    with subprocess.Popen([exe,fault],stdin=subprocess.PIPE,stdout=subprocess.PIPE,env=env,text=True) as proc, ExitStack() as sessions:
+        sessions.callback(lambda: proc.kill() if proc.poll() is None else None)
         def cmd(s):
             proc.stdin.write(s+'\n')
             proc.stdin.flush()
@@ -44,7 +46,7 @@ def session(exe,env,fault):
         def poll():
             return cmd('poll')['records']
         def snapshot(nonce,restricted):
-            client=StockClient(SELF,PEER)
+            client=sessions.enter_context(StockClient(SELF,PEER))
             client.isConnected.clear()
             client.myInfo=None
             client.nodesByNum={}
@@ -105,8 +107,10 @@ def session(exe,env,fault):
                     found[p.decoded.request_id]=1
             assert sorted(found)==sorted(ids)
 
+        print(f"USB {fault}: opening initial stock session",flush=True)
         existing=snapshot(71,False)
         assert cmd('fault')['recovering']
+        print(f'USB {fault}: verifying reads during the radio fault',flush=True)
         count=0
         for client in (existing,None):
             if client is None:
@@ -132,18 +136,31 @@ def session(exe,env,fault):
         # in the CDC ring both retain their original admission across release.
         split=setter(913)
         queue(split[:8]);assert not packets(poll())
-        queue(split[8:]+setter(914))
+        padding=mesh_pb2.ToRadio()
+        padding.heartbeat.nonce=2
+        backlog=split[8:]
+        while len(backlog)<140:
+            backlog+=framed(padding)
+        # The second setter starts after the first 128-byte drain. Append a
+        # newly admitted request after release, in the same second drain.
+        backlog+=setter(914)
+        queue(backlog)
         assert not cmd('release')['recovering']
-        denied(poll()+poll(),[913,914])
         queue(framed(request(915,get_owner_request=True)))
-        rows=poll();fresh.accept(rows)
+        first=poll()
+        denied(first,[913])
+        assert all(p.decoded.request_id!=914 for p in packets(first))
+        rows=poll()
+        denied(rows,[914])
+        fresh.accept(rows)
         assert any(p.decoded.request_id==915 and p.decoded.portnum==portnums_pb2.ADMIN_APP and
                    admin_pb2.AdminMessage.FromString(p.decoded.payload).HasField('get_owner_response') for p in packets(rows))
         proc.stdin.close()
         assert proc.wait(timeout=10)==0
+        print(f'USB {fault}: completed stock reads and release checks',flush=True)
     return {'stock_handshakes':3,'existing_session_read_cycles':3,'fresh_session_read_cycles':3,
             'metadata_status_replies':2*count,'heartbeat_replies':count,
-            'denied_writes_and_sends':4,'epoch_split_rejected':True,'ordinary_read_after_release':True}
+            'denied_writes_and_sends':4,'epoch_split_rejected':True,'release_backlog_bytes':len(backlog),'ordinary_read_after_release':True}
 
 def verify_usb(exe,env):
     provenance()
