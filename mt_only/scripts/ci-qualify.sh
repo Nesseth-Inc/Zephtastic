@@ -50,6 +50,7 @@ if [[ $tool_group == native ]]; then
   for abi in native short; do
     args=()
     if [[ $abi == short ]]; then args+=(--short-enums); fi
+    python mt_only/scripts/test-module-signing.py --stock "$work/stock" --output "$work/signing-$abi" "${args[@]}"
     python3 mt_only/scripts/test-role-channel.py --stock "$work/stock" --output "$work/roles-$abi" "${args[@]}"
   done
   python mt_only/tests/stock_node_position/run.py --stock "$work/stock" --output "$work/node-position.json"

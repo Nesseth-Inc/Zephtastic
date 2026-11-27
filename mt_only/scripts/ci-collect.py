@@ -72,7 +72,14 @@ if args.group == "native":
         raise ValueError("Incomplete T096 router policy evidence")
     report["router_policy"] = router
     report["roles"] = {}
+    report["signed_beacon_recovery"] = {}
     for abi in ("native", "short"):
+        signing = read(f"signing-{abi}/RESULT.json")
+        if (signing["status"] != "PASS" or signing["short_enums"] != (abi == "short") or
+                not signing["ASAN_UBSAN"] or not signing["actual_signer_runtime_ledger_channel_AES"] or
+                signing["hardware"] or signing["groups"] < 10):
+            raise ValueError(f"Incomplete signed beacon recovery checks for {abi}")
+        report["signed_beacon_recovery"][abi] = {"groups": signing["groups"], "asan_ubsan": True}
         roles = read(f"roles-{abi}/results.json")
         timing = read(f"roles-{abi}/stock-timing/results.json")
         if (roles["status"] != "PASS" or roles["groups"] < 1 or
