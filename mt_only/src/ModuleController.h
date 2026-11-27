@@ -254,16 +254,16 @@ public:
       const auto next=stock::StatusMessageModule::runOnce(nodeStatus,stock::StatusMessageSender(send));
       status_.configure(now,next,next);
     }
+    auto politeChannelAllowed=[&]() {
+      const auto channel=service.channelUtilization();
+      return service.channelMeter().diagnosticSupported() && channel &&
+             TxAdmission::channel(true,*channel,true)==TxAdmission::Decision::Allow;
+    };
     if(neighbor_.due(now)){
       const uint32_t configured=Config::get32(settings.bytes+10);
       const uint32_t interval=NeighborIntervals::advertisedSeconds(configured,router);
-      auto channelAllowed=[&]() {
-        const auto channel=service.channelUtilization();
-        return service.channelMeter().diagnosticSupported() && channel &&
-               TxAdmission::channel(true,*channel,true)==TxAdmission::Decision::Allow;
-      };
       const auto next=stock::NeighborInfoModule::runOnce(configured,settings.bytes[14],
-          !PrimaryChannel::defaultKey(service.config.node()),channelAllowed,
+          !PrimaryChannel::defaultKey(service.config.node()),politeChannelAllowed,
           [&](){return service.moduleAirtimeAllowed();},[&](bool overLoRa) {
             stock::NeighborInfoModule::sendNeighborInfo(neighbors_,service.nodes,service.route.identity(),interval,uptime,
                 [&](const uint8_t *payload,size_t length) {
@@ -277,7 +277,7 @@ public:
     }
     if(range_.due(now)){
       range_.consumed(now);
-      const bool active=rangeTest_.runOnce(uptime,[&](const uint8_t *payload,size_t length) {
+      const bool active=rangeTest_.runOnce(uptime,politeChannelAllowed(),[&](const uint8_t *payload,size_t length) {
         if(!data(meshtastic_PortNum_RANGE_TEST_APP,payload,length,bytes,size))return false;
         uint32_t id=0;
         (void)service.submitModuleAnnouncement(bytes,size,0,now,random^0x7267u,id);

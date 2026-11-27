@@ -37,11 +37,12 @@ public:
 
     // ZT's monotonic scheduler rejects an expired heartbeat before transmitting and
     // preserves the local phone copy even when the RF queue refuses the broadcast.
-    template <class Send> bool runOnce(uint64_t now, Send sendToMesh)
+    template <class Send> bool runOnce(uint64_t now, bool channelAllowed, Send sendToMesh)
     {
         if (now < started || now - started >= 28800000 || packetSequence == UINT32_MAX)
             return false;
-        RangeTestModuleRadio::sendPayload(++packetSequence, sendToMesh);
+        if (channelAllowed)
+            RangeTestModuleRadio::sendPayload(++packetSequence, sendToMesh);
         return true;
     }
 

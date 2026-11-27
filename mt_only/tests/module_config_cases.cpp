@@ -162,6 +162,37 @@ int main(){
  {mt::NeighborObservations table;mt::NodeCache cache;meshtastic_NeighborInfo out{};for(uint32_t id=100;id<110;++id)assert(table.observe(id,Node,0,500,false,0));assert(table.observe(110,Node,0,500,false,0)&&table.observe(111,Node,0,500,false,0));assert(table.snapshot(cache,Node,14400,500,out)&&out.neighbors_count==10);for(unsigned i=0;i<10;++i)assert(out.neighbors[i].node_id==102+i);mt::NeighborObservations zero;assert(zero.observeAnnouncement(77,Node,0,0,14400,0,100,true,-1.f)&&!zero.snapshot(cache,Node,14400,100,out));group("full table replacement preserves stock FIFO order for equal local timestamps and zero sentinel does not report self");}
  {uint8_t payload[16];memset(payload,0xaa,sizeof(payload));size_t size=1;assert(!mt::RangeTestPayload::encode(0,payload,sizeof(payload),size)&&!size&&payload[0]==0xaa);assert(!mt::RangeTestPayload::encode(1,payload,4,size)&&!size&&payload[0]==0xaa);assert(mt::RangeTestPayload::encode(UINT32_MAX,payload,sizeof(payload),size)&&size==14&&!memcmp(payload,"seq 4294967295",14));group("range sender has bounded stock ASCII sequence bytes");}
  {auto f=std::make_unique<Fixture>();mt::ModuleController modules;mt::ModuleSettings settings;std::vector<meshtastic_Data> packets;auto sink=[&](const uint8_t*p,size_t n,uint32_t id){assert(id);meshtastic_Data d{};auto stream=pb_istream_from_buffer(p,n);assert(pb_decode(&stream,meshtastic_Data_fields,&d));packets.push_back(d);};modules.poll(f->service,settings,true,0,91,sink);modules.poll(f->service,settings,true,59999,92,sink);assert(packets.empty());modules.poll(f->service,settings,true,60000,93,sink);assert(packets.size()==2&&f->radio.sends==0);meshtastic_Telemetry t{};auto stream=pb_istream_from_buffer(packets[1].payload.bytes,packets[1].payload.size);assert(pb_decode(&stream,meshtastic_Telemetry_fields,&t)&&t.which_variant==meshtastic_Telemetry_local_stats_tag&&t.variant.local_stats.uptime_seconds==60&&t.variant.local_stats.num_total_nodes==1&&!packets[1].request_id);modules.poll(f->service,settings,true,60001,94,sink);assert(packets.size()==2);modules.poll(f->service,settings,true,900000,95,sink);assert(packets.size()==3);group("default modules publish measured local telemetry without background RF or catchup");}
+ {
+  auto f=std::make_unique<Fixture>();
+  mt::ModuleController controller;
+  mt::ModuleSettings settings;
+  meshtastic_ModuleConfig range{};
+  range.which_payload_variant=meshtastic_ModuleConfig_range_test_tag;
+  range.payload_variant.range_test.enabled=true;
+  range.payload_variant.range_test.sender=1;
+  assert(settings.set(range));
+  unsigned count=0;
+  auto poll=[&](uint32_t now) {
+    assert(f->knownChannelClock.set(now));
+    controller.poll(f->service,settings,true,now,100,[&](const uint8_t *bytes,size_t length,uint32_t) {
+      meshtastic_Data data{};
+      auto in=pb_istream_from_buffer(bytes,length);
+      assert(pb_decode(&in,meshtastic_Data_fields,&data));
+      if(data.portnum==meshtastic_PortNum_RANGE_TEST_APP) {
+        assert(data.payload.size==5&&!memcmp(data.payload.bytes,"seq 1",5));
+        ++count;
+      }
+    });
+  };
+  poll(0);
+  f->service.channelMeter().supported(false);
+  poll(5000);assert(!count);
+  f->service.channelMeter().supported(true);
+  f->service.channelMeter().observeRx(15000,true);
+  poll(6000);assert(!count);
+  poll(70000);assert(count==1);
+  group("range sender skips unknown or 25-percent occupied channel and resumes at sequence one");
+ }
  {auto f=std::make_unique<Fixture>();mt::ModuleController modules;mt::ModuleSettings settings;meshtastic_ModuleConfig range{};range.which_payload_variant=meshtastic_ModuleConfig_range_test_tag;range.payload_variant.range_test.enabled=true;range.payload_variant.range_test.sender=1;assert(settings.set(range));std::vector<meshtastic_Data> packets;auto sink=[&](const uint8_t*p,size_t n,uint32_t){meshtastic_Data d{};auto stream=pb_istream_from_buffer(p,n);assert(pb_decode(&stream,meshtastic_Data_fields,&d));if(d.portnum==meshtastic_PortNum_RANGE_TEST_APP)packets.push_back(d);};modules.poll(f->service,settings,true,0,91,sink);modules.poll(f->service,settings,true,4999,92,sink);assert(packets.empty());modules.poll(f->service,settings,true,5000,93,sink);assert(packets.size()==1&&!memcmp(packets[0].payload.bytes,"seq 1",5));modules.poll(f->service,settings,true,1000000,94,sink);assert(packets.size()==2&&!memcmp(packets[1].payload.bytes,"seq 2",5));auto changed=status("Only status changed").set_module_config;assert(settings.set(changed));modules.poll(f->service,settings,true,28799000,95,sink);assert(packets.size()==3);modules.poll(f->service,settings,true,28800000,96,sink);assert(packets.size()==3);group("range starts after five seconds, consumes failed sends and stops at eight hours");}
  {auto f=std::make_unique<Fixture>();mt::ModuleController modules;mt::ModuleSettings settings;auto m=status("Working").set_module_config;assert(settings.set(m));m={};m.which_payload_variant=meshtastic_ModuleConfig_neighbor_info_tag;m.payload_variant.neighbor_info.enabled=true;m.payload_variant.neighbor_info.transmit_over_lora=true;assert(settings.set(m));unsigned statuses=0,neighbors=0;auto sink=[&](const uint8_t*p,size_t n,uint32_t){meshtastic_Data d{};auto stream=pb_istream_from_buffer(p,n);assert(pb_decode(&stream,meshtastic_Data_fields,&d));statuses+=d.portnum==meshtastic_PortNum_NODE_STATUS_APP;neighbors+=d.portnum==meshtastic_PortNum_NEIGHBORINFO_APP;};modules.poll(f->service,settings,true,0,91,sink);modules.observe(77,Node,0,1,true,-2.5f);modules.poll(f->service,settings,true,119999,92,sink);assert(!statuses&&!neighbors);modules.poll(f->service,settings,true,120000,93,sink);assert(statuses==1&&!neighbors);modules.poll(f->service,settings,true,3600000,94,sink);assert(!neighbors&&f->radio.sends==0);modules.poll(f->service,settings,true,3600001,95,sink);assert(!neighbors);group("status cadence remains local-only; zero-interval neighbor rows expire on stock whole-second TTL");}
  {
