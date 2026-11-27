@@ -37,6 +37,11 @@ def platform(stock, temp):
     (temp / "meshtastic").symlink_to(PROTO, target_is_directory=True)
     events = source("input/InputBroker.h")
     (temp / "events.inc").write_text(events[events.index("enum input_broker_event"):events.index("// Which physical joystick")])
+    commands = source("modules/SystemCommandsModule.cpp")
+    (temp / "commands.inc").write_text(method(commands, "int SystemCommandsModule::handleInputEvent("))
+    broker = source("input/InputBroker.cpp")
+    start = broker.index("        userConfigNoScreen.singlePress =")
+    (temp / "headless.inc").write_text(broker[start:broker.index("UserButtonThread->initButton(userConfigNoScreen)", start)])
     buzzer = source("buzz/BuzzerFeedbackThread.cpp")
     (temp / "buzzer.inc").write_text(method(buzzer, "int BuzzerFeedbackThread::handleInputEvent("))
     status = source("modules/StatusLEDModule.cpp")
@@ -58,11 +63,12 @@ def platform(stock, temp):
         method(gpio, "bool RemoteHardwareModule::handleReceivedProtobuf(") + "\n" + method(gpio, "int32_t RemoteHardwareModule::runOnce("))
     output = ""
     for flags in ([], ["-fshort-enums"]):
-        binary = temp / "platform"
-        subprocess.run([*shlex.split(os.environ.get("CXX", "c++")), "-std=c++17", "-fsanitize=address,undefined",
+        for name in ("platform", "input"):
+            binary = temp / name
+            subprocess.run([*shlex.split(os.environ.get("CXX", "c++")), "-std=c++17", "-fsanitize=address,undefined",
                         "-fno-omit-frame-pointer", *flags, "-I", temp, "-I", PROTO / "nanopb", "-I", APP / "src",
-                        HERE / "platform.cpp", "-o", binary], check=True)
-        output += capture([binary])
+                            HERE / (name + ".cpp"), "-o", binary], check=True)
+            output += capture([binary])
     return output
 
 
@@ -129,8 +135,10 @@ def collect(stock, temp):
             raise ValueError(f"Missing stock tests for {name}")
         row(name, "differential", "The game core matches stock source and executes the donor's own Unity cases with host assertion and clock adapters.", cases=int(match[1]))
     row("Tetris", "source", "The core matches the pinned source and the production display fixture exercises input, drop and scoring. The donor supplies no Tetris Unity suite.")
-    row("SystemCommandsModule", "behavior", "The production display fixture checks command selection, confirmation, dispatch, managed reset availability and pairing isolation.")
-    row("InputBroker", "behavior", "The physical input fixture drives headless double/triple clicks, long hold and display gestures. ThinkNode and Linux Arcade Bonnet routing are outside these board profiles.")
+    require(edges, "SystemCommandsModule 65536 ", 2)
+    require(edges, "InputBroker 5 ", 2)
+    row("SystemCommandsModule", "differential", "All 65,536 event/key pairs select the same action as the stock handler. The display fixture checks physical confirmation and pairing isolation.", cases_per_abi=65536)
+    row("InputBroker", "differential", "Five headless press, hold and multiclick outcomes match the stock button map. Linux Arcade Bonnet and ThinkNode-specific routing are outside the selected profiles.", cases_per_abi=5)
     return rows
 
 
