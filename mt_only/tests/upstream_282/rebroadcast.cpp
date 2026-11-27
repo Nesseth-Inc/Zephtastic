@@ -226,6 +226,36 @@ static void test_directed_opaque_between_known_parties(){
                                                 "known-party directed opaque transit");
 }
 
+static void test_zt_companion_stamps_local_module_reply()
+{
+    startRelay();
+    const uint32_t id=0x11229977;
+    meshtastic_ToRadio query{};
+    query.which_payload_variant=meshtastic_ToRadio_packet_tag;
+    query.packet.id=id;
+    query.packet.to=Node;
+    query.packet.which_payload_variant=meshtastic_MeshPacket_decoded_tag;
+    query.packet.decoded.portnum=meshtastic_PortNum_NODEINFO_APP;
+    query.packet.decoded.want_response=true;
+    relay->input(query);
+    unsigned replies=0;
+    for(const auto &message:relay->usb.out) {
+        if(message.which_payload_variant!=meshtastic_FromRadio_packet_tag ||
+           message.packet.decoded.portnum!=meshtastic_PortNum_NODEINFO_APP) continue;
+        const auto &packet=message.packet;
+        TEST_ASSERT_EQUAL_UINT32(Node,packet.from);
+        TEST_ASSERT_EQUAL_UINT32(Node,packet.to);
+        TEST_ASSERT_EQUAL_UINT32(id,packet.decoded.request_id);
+        TEST_ASSERT_EQUAL_UINT8(0,packet.channel);
+        TEST_ASSERT_EQUAL_UINT8(relay->service.config.hopLimit(),packet.hop_limit);
+        TEST_ASSERT_FALSE(packet.want_ack);
+        TEST_ASSERT_EQUAL(meshtastic_MeshPacket_Priority_RELIABLE,packet.priority);
+        ++replies;
+    }
+    TEST_ASSERT_EQUAL_UINT(1,replies);
+    TEST_ASSERT_EQUAL_UINT(0,capture.sendCalls);
+}
+
 void setUp() {
     capture.reset();nodesForTest.rows.clear();owner.is_licensed=false;
     signaturePolicy=meshtastic_Config_SecurityConfig_PacketSignaturePolicy_PACKET_SIGNATURE_POLICY_COMPATIBLE;

@@ -143,7 +143,9 @@ def main():
     rebroadcast_cases = [case for case in all_rebroadcast if case != translated]
     relay_cases = [*rebroadcast_cases, "test_directed_opaque_between_known_parties",
                    "test_zt_forwarding_and_duplicate_queue_against_stock"]
-    (out / "rebroadcast-run-tests.inc").write_text("\n".join(f"RUN_TEST({name});" for name in relay_cases))
+    local_dispatch = "test_zt_companion_stamps_local_module_reply"
+    integration_cases = [*relay_cases, local_dispatch]
+    (out / "rebroadcast-run-tests.inc").write_text("\n".join(f"RUN_TEST({name});" for name in integration_cases))
     runpy.run_path(str(FIXTURE / "relay_vectors.py"))["write_vectors"](sources[REBROADCAST], out / "relay-vectors.inc")
     (out / "stock-rebroadcast.inc").write_text("\n\n".join((
         *(extract(sources[AUTH_HARNESS], marker)[0] for marker in (
@@ -161,7 +163,7 @@ def main():
     relay_out = out / "rebroadcast"
     relay_out.mkdir()
     relay = build_fixture(relay_out, FIXTURE / "rebroadcast.cpp", ["-I", out, "-I", unity], [obj])
-    results["rebroadcast_zt"] = run_unity(relay, relay_cases, relay_out)
+    results["rebroadcast_zt"] = run_unity(relay, integration_cases, relay_out)
     results["rebroadcast_modes"] = ["ALL", "CORE_PORTNUMS_ONLY", "KNOWN_ONLY", "LOCAL_ONLY", "NONE"]
     results["excluded_rebroadcast_mode"] = "ALL_SKIP_DECODING (deprecated stock REPEATER only)"
     results["other_upstream_rebroadcast_cases"] = [c for c in all_rebroadcast if c not in rebroadcast_cases]
@@ -169,6 +171,7 @@ def main():
         "MeshModule": {
             "comparisons": len([name for name in names if name.startswith("test_setreplyto_")]),
             "stock_tests": [name for name in names if name.startswith("test_setreplyto_")],
+            "additional_integration": local_dispatch,
             "coverage": "Both pinned setReplyTo assertions ran on the donor and the production reply-envelope helper used for companion module reads."
         },
         "FloodingRouter": {
