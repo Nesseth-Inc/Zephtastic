@@ -38,6 +38,12 @@ if args.group == "native":
             if type(count) is not int or count <= 0:
                 raise ValueError(f"{suite} did not compare {family}")
         report["module_parity"][suite] = evidence
+    history = read("transmit-history/result.json")
+    expected = {(abi, case) for abi in ("normal", "short")
+                for case in ("history", "producers", "beacon", "factory")}
+    if {(row["enum"], row["case"]) for row in history["tests"]} != expected:
+        raise ValueError("Incomplete broadcast history regression coverage")
+    report["transmit_history"] = history
     router = read("router-policy/results.json")
     if router["status"] != "PASS" or router["groups"] != 4:
         raise ValueError("Incomplete T096 router policy evidence")

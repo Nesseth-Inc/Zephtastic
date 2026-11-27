@@ -40,6 +40,7 @@ if [[ $group == native ]]; then
   for suite in stock_traffic_position stock_hop_beacon stock_telemetry_parity; do
     python "mt_only/tests/$suite/run.py" --stock "$work/stock" --output "$work/$suite.json"
   done
+  python mt_only/tests/stock_transmit_history/run.py --stock "$work/stock" --output "$work/transmit-history"
   python mt_only/scripts/test-role-channel.py --router --output "$work/router-policy"
   python mt_only/tests/stock_operating_roles/run.py --release 2.8.2 --stock "$work/stock" --output "$work/device-config.json"
   exit 0
