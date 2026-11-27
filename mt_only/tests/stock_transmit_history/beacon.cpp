@@ -25,12 +25,13 @@ int main(){
     tick={12000,1800000000};assert(!f.edit.markBeaconSent(tick.utc,uint32_t(tick.uptimeMs)));
     const unsigned before=f.memory.writes;poll(f,f.controller,60000,1800000060);
     assert(!h.has(Kind::Beacon)&&f.local.empty()&&f.memory.writes==before);
-    poll(f,f.controller,3600000,1800003600);
+    poll(f,f.controller,3600000,1800003600);assert(f.local.empty());
+    poll(f,f.controller,3660000,1800003660);
     assert(h.has(Kind::Beacon)&&f.local.size()==1&&f.memory.writes==before+1);
     assert(f.edit.config().lastSentUtc()==1800000000); // Existing key remains readable on downgrade.
     Fixture reboot;reboot.memory.files=f.memory.files;assert(!reboot.journal.load(reboot.memory)&&reboot.edit.load());
     TransmitHistory restored;bind(reboot,restored);
-    poll(reboot,reboot.controller,60000,1800003659);assert(reboot.local.empty()&&!reboot.service.moduleAnnouncementPending());
+    poll(reboot,reboot.controller,60000,1800003719);assert(reboot.local.empty()&&!reboot.service.moduleAnnouncementPending());
   }
   {
     Fixture f;f.config();TransmitHistory h;bind(f,h);f.memory.fail=true;

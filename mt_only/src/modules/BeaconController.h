@@ -72,7 +72,8 @@ public:
   }
   bool due(Service &service,ExtendedModuleEdit &edit,const meshtastic_ModuleConfig_MeshBeaconConfig &cfg,
            uint64_t uptime,uint32_t utc){
-    return uptime>=60000&&idle(service)&&stock::MeshBeaconBroadcastModule::broadcastDue(cfg,service.config.role(),service.moduleAirtimeAllowed(),[&]{
+    return idle(service)&&cadence_.takeScheduledTick(uptime,cfg.broadcast_interval_secs)&&
+      stock::MeshBeaconBroadcastModule::broadcastDue(cfg,service.config.role(),service.moduleAirtimeAllowed(),[&]{
 #if defined(CONFIG_MT_PERSIST_BROADCAST_HISTORY)
             if(service.broadcastHistory&&service.broadcastHistory->has(history::Kind::Beacon))
               return service.broadcastDue(history::Kind::Beacon,beacon::BeaconCadence::intervalMs(cfg.broadcast_interval_secs));
