@@ -3,6 +3,20 @@
 #include <iostream>
 int main(){
     using Keyboard=mt::stock::ui::OnScreenKeyboardModule;
+    for(unsigned code=0;code<256;++code){
+        graphics::OnScreenKeyboardModule donor;
+        donor.keyboard=std::make_unique<graphics::VirtualKeyboard>();
+        donor.keyboard->setInputText("draft");
+        Keyboard port;port.start(now,"draft");
+        ++now;donor.handleInput({code});
+        auto result=port.input(code,now);
+        assert(donor.cancelled==(result==Keyboard::Result::Cancel));
+        if(donor.cancelled){assert(!port.active&&!port.length);continue;}
+        assert(port.active&&donor.keyboard->inputText==port.text);
+        assert(port.cursor==unsigned(donor.keyboard->cursorRow)*11+donor.keyboard->cursorCol);
+        assert(port.lastActivity==donor.keyboard->lastActivityTime);
+    }
+    std::cout<<"PASS 256 stock keyboard module input events\n";
     for(unsigned cell=0;cell<44;++cell)for(unsigned action:{10u,11u}){
         graphics::VirtualKeyboard stock;Keyboard port;
         std::string submitted;bool callback=false;

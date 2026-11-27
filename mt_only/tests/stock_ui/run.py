@@ -51,11 +51,24 @@ with tempfile.TemporaryDirectory() as tmp:
     (work/"VirtualKeyboard.h").write_text(donor("src/graphics/VirtualKeyboard.h").replace("  private:", "  public:"))
     core = (virtual[virtual.index("namespace graphics"):virtual.index("void VirtualKeyboard::draw(")]
             + virtual[virtual.index("char VirtualKeyboard::getCharForKey"):virtual.rindex("#endif")])
+    broker = donor("src/input/InputBroker.h")
+    keyboard_module = donor("src/modules/OnScreenKeyboardModule.cpp")
+    def method(source, signature):
+        start = source.index(signature)
+        return source[start:source.index("\n}", start) + 2]
+    control = ("#include <memory>\nnamespace graphics {\n" +
+               broker[broker.index("enum input_broker_event"):broker.index("// Which physical joystick")] +
+               "\nstruct InputEvent {unsigned inputEvent;};\n"
+               "struct OnScreenKeyboardModule {std::unique_ptr<VirtualKeyboard> keyboard;bool cancelled=false;"
+               "void onCancel(){cancelled=true;}void handleInput(const InputEvent &);"
+               "static bool processVirtualKeyboardInput(const InputEvent &,VirtualKeyboard *);};\n" +
+               method(keyboard_module, "void OnScreenKeyboardModule::handleInput(") + "\n" +
+               method(keyboard_module, "bool OnScreenKeyboardModule::processVirtualKeyboardInput(") + "\n}\n")
     compare = work/"keyboard.cpp"
     compare.write_text('#include "VirtualKeyboard.h"\n#define LOG_INFO(...) ((void)0)\n'
                        'static uint32_t now=0;static uint32_t millis(){return now;}\n'
                        'namespace graphics { struct Screen{enum {FOCUS_PRESERVE};void setFrames(int){}};'
-                       'static Screen *screen=nullptr;}\n' + core
+                       'static Screen *screen=nullptr;}\n' + core + control
                        + (Path(__file__).parent/"keyboard_cases.inc").read_text())
     run([*flags,"-I"+str(app/"src"),str(compare),"-o",str(work/"keyboard")])
     run([str(work/"keyboard")])

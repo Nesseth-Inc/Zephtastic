@@ -54,6 +54,7 @@ int main(){
     key(10);assert(model().keyboard.active&&model().keyboard.cursor==27);
     while(model().keyboard.cursor)key(20);key(10);key(18);key(11);
     assert(!strcmp(model().keyboard.text,"1Q"));
+    key(27);assert(model().keyboard.active&&!strcmp(model().keyboard.text,"1Q"));
     for(int i=0;i<10;++i)key(20);
     key(10);assert(!model().keyboard.active&&model().cannedSubstate==CannedSubstate::Destinations);
     key(10);key(18);key(10);assert(model().cannedConfirm);key(10);

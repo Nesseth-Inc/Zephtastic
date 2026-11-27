@@ -125,9 +125,10 @@ def collect(stock, temp):
     row("AudioModule", "differential", "Captured Codec2 frame lengths, stock PTT transitions and queued audio sends match on a synthetic codec and I²S backend.", cases_per_abi=int(audio_counts[0]))
     row("PaxcounterModule", "differential", "Stock solicited replies and scheduled count reports agree across allocation failure, refresh, disabled and stale observations.")
     ui = suite("stock_ui")
+    require(ui, "PASS 256 stock keyboard module input events", 1)
     require(ui, "PASS pinned VirtualKeyboard", 1)
     require(ui, "PASS keyboard compose/routing", 4)
-    row("OnScreenKeyboardModule", "differential", "Stock VirtualKeyboard and the local composer match on 88 key actions, 5,000 navigation steps and timeout.")
+    row("OnScreenKeyboardModule", "differential", "The stock keyboard module matches all 256 broker events, including preserving drafts on Back. VirtualKeyboard matches 88 key actions, 5,000 navigation steps and timeout.")
     row("GamesModule", "behavior", "The production display fixture enters, ticks, pauses and resumes all four games and tests score selection and clearing on two display sizes.")
     for name in ("Breakout", "ChirpyRunner", "Snake"):
         match = re.search(rf"^{name}: (\d+) pinned stock tests passed$", ui, re.M)

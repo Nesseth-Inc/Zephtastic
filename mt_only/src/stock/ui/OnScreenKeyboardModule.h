@@ -56,7 +56,7 @@ public:
         case 13:case 18:cursor=(cursor+Columns)%(Rows*Columns);break;
         case 19:case 29:cursor=(cursor+Rows*Columns-1)%(Rows*Columns);break;
         case 20:case 28:cursor=(cursor+1)%(Rows*Columns);break;
-        case 24:case 27:clear();return Result::Cancel;
+        case 24:clear();return Result::Cancel;
         case 10:case 11:{
             const bool longPress=event==11;
             char key=Keys[cursor/Columns][cursor%Columns];
