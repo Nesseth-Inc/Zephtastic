@@ -6,6 +6,8 @@ import json
 import os
 from pathlib import Path
 
+from remaining_coverage import verify_module_evidence
+
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("group")
 parser.add_argument("work", type=Path)
@@ -58,6 +60,10 @@ if args.group == "native":
                 timing["stock_commit"] != upstream["stock_revision"] or timing["comparisons"] < 1):
             raise ValueError(f"Incomplete role evidence for {abi}")
         report["roles"][abi] = {"role_channel": roles, "timing": timing}
+elif args.group.startswith("modules-"):
+    evidence = read("modules.json")
+    verify_module_evidence(args.group.removeprefix("modules-"), evidence)
+    report["module_evidence"] = evidence
 else:
     profiles = {}
     for profile in boards[args.group]:

@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Each private x86-64 Ubuntu runner uses an isolated, job-local tool directory.
 set -euo pipefail
-group=${1:?usage: ci-qualify.sh native|nordic|esp32|router}
-case "$group" in native|nordic|esp32|router) ;; *) exit 2 ;; esac
+group=${1:?usage: ci-qualify.sh native|nordic|esp32|router|modules-*}
+case "$group" in native|nordic|esp32|router|modules-wire|modules-peripherals|modules-reports|modules-core) ;; *) exit 2 ;; esac
 root=$(git rev-parse --show-toplevel)
 work=$(mktemp -d "${RUNNER_TEMP:-/tmp}/zephtastic-build.XXXXXXXX")
 if [[ -n ${GITHUB_ENV:-} ]]; then
@@ -11,7 +11,9 @@ if [[ -n ${GITHUB_ENV:-} ]]; then
 fi
 cd "$root"
 source mt_only/scripts/ci-runner-tools.sh
-install_runner_tools "$group" "$work"
+tool_group=$group
+if [[ $group == modules-* ]]; then tool_group=native; fi
+install_runner_tools "$tool_group" "$work"
 
 fetch_commit() {
   local dest=$1 url=$2 commit=$3
@@ -21,7 +23,7 @@ fetch_commit() {
   test "$(git -C "$dest" rev-parse HEAD)" = "$commit"
 }
 
-if [[ $group == native ]]; then
+if [[ $tool_group == native ]]; then
   fetch_commit "$work/stock" https://github.com/meshtastic/firmware.git d5f16191ca28b01b5024f590f04a67f25d66f1b1
   git -C "$work/stock" fetch -q --depth=1 https://github.com/meshtastic/firmware.git 8e6a88d06f44cad26f1e8d7cd402939ccacb9b4c
   for release in 2.8.1 2.8.2; do
@@ -30,6 +32,11 @@ if [[ $group == native ]]; then
   export CC=clang CXX=clang++
   ulimit -s 65536
   python -m pip -q install meshtastic==2.7.11
+  if [[ $group == modules-* ]]; then
+    suite=${group#modules-}
+    python "mt_only/tests/stock_remaining_$suite/run.py" --stock "$work/stock" --output "$work/modules.json"
+    exit 0
+  fi
   python mt_only/scripts/test-upstream-282.py --stock "$work/stock" --output "$work/upstream"
   for abi in native short; do
     args=()

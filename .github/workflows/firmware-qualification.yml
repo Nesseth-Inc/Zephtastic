@@ -1,7 +1,7 @@
 name: Firmware qualification
 on:
   push:
-    branches: [main, codex/upstream-private-ci, codex/upstream-five-modules]
+    branches: [main, codex/upstream-private-ci, codex/upstream-five-modules, codex/upstream-remaining-modules]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [native, nordic, esp32]
+        group: [native, nordic, esp32, modules-wire, modules-peripherals, modules-reports, modules-core]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
