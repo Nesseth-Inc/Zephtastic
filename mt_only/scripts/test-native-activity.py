@@ -66,10 +66,14 @@ int main(void) {
 }
 '''
 invalidation=run('invalidate',prefix+'\n'+enum+'\n'+invalidate+'\n'+invalidate_cases)
-main=(app/'src/main.cpp').read_text().split('int main()',1)[1]
+source=(app/'src/main.cpp').read_text()
+main=extract(source,'int main()')
+drain=extract(source,'static void drainHomeRadioEvents() {')
+usb=extract(source,'static void drainUsbCompanion(bool radioReadOnly) {')
+assert 'k_msgq_get(&rxQueue' in drain
+assert usb.index('takeUsbBytes(bytes,sizeof(bytes))')<usb.index('companion.byte(bytes[i]')
 assert main.count('mt::observeIdleRx(service,radio);')==1
-assert main.index('k_msgq_get(&rxQueue')<main.index('mt::observeIdleRx(service,radio);')<main.index('drainUsbCompanion(false);')
-assert main.index('static void drainUsbCompanion(')<main.index('takeUsbBytes(bytes,sizeof(bytes))')<main.index('companion.byte(bytes[i]')
-assert 'return sx126x_is_receiving_diagnostic(radioDevice,&busyDiagnostic_);'in(app/'src/main.cpp').read_text()
+assert main.index('\n    drainHomeRadioEvents();')<main.index('mt::observeIdleRx(service,radio);')<main.index('drainUsbCompanion(false);')
+assert 'return sx126x_is_receiving_diagnostic(radioDevice,&busyDiagnostic_);' in source
 paths=[driver,header,Path(__file__).resolve(),app/'src/IdleRx.h',app/'src/main.cpp',tests/'native_activity_prefix.c',tests/'native_activity_baseline.c',tests/'native_activity_cases.c',tests/'native_activity_detail_cases.c',tests/'idle_rx_tests.cpp']
 (out/'SUMMARY.json').write_text(json.dumps({'status':'PASS','hardware':False,'RF':False,'actual_extracted_driver_bodies':True,'actual_reconfigure_invalidation_helper_extracted':True,'invalidation_stdout':invalidation,'original_instrumented_io_state_return_traces_identical':True,'main_drain_observe_admin_order':True,'detail_stdout':detail,'idle_stdout':idle,'source_sha256':{str(q):hashlib.sha256(q.read_bytes()).hexdigest()for q in paths},'commands':commands},indent=2)+'\n')
