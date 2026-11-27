@@ -126,7 +126,8 @@ def main():
     rows = {
         "MeshBeaconListenerModule": {"kind": "differential", "comparisons": counts[0],
             "evidence": "Stock listen admission and retained offer fields compared across ports and offer combinations. ZT receive-service and advisory-cache regressions also ran."},
-        "MeshBeaconTxHook": {"kind": "differential", "comparisons": counts[1]+sum(r["runtime_scenarios"] for r in target_runtime["runs"]),
+        "MeshBeaconTxHook": {"kind": "differential", "comparisons": counts[1],
+            "runtime_scenarios": sum(r["runtime_scenarios"] for r in target_runtime["runs"]),
             "runtime": target_runtime,
             "evidence": "The production target owner deferred after retune, repeated contention on busy CAD, and preserved target hashes, complete frames, FIFO order and live home settings against pinned hook/timing functions and stock regression cases. CAD and TX completion used a synthetic radio."},
         "DMShellModule": {"kind": "profile", "evidence": "Stock registers this owner only in Portduino builds with the shell enabled. Shipping ZT boards use Zephyr."},

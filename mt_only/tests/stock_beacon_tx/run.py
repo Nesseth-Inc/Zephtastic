@@ -56,6 +56,9 @@ def main():
         build=Path(tmp)
         (build/'meshtastic').symlink_to(proto,target_is_directory=True)
         (build/'donor.inc').write_text('\n'.join(units))
+        owner=(APP/'src/main.cpp').read_text()
+        start=owner.index('static void drainChannelObservations(')
+        (build/'meter-owner.inc').write_text(owner[start:owner.index('\n}',start)+2])
         for label,abi in [('normal',[]),('short',['-fshort-enums'])]:
             flags=['-O1','-UNDEBUG','-fsanitize=address,undefined','-fno-sanitize-recover=all',*abi,
                    *(('-DEKEYREJECTED=129',) if sys.platform=='darwin' else ()),
@@ -73,7 +76,7 @@ def main():
                             *host.crypto_link_flags(),'-o',exe],check=True)
             env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0:halt_on_error=1','UBSAN_OPTIONS':'halt_on_error=1'}
             row=json.loads(subprocess.check_output([exe],env=env,text=True))
-            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':12,'refilled_slots':24}:
+            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':13,'refilled_slots':24}:
                 raise ValueError(f'Incomplete beacon runtime run: {row}')
             results.append({'enum':label,**row})
     report={'status':'PASS','hardware':False,'stock_revision':STOCK,'source_sha256':PINS,'runs':results}

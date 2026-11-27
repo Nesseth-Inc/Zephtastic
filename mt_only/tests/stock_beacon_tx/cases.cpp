@@ -58,6 +58,22 @@ constexpr uint32_t Self=0x12345678u;
 constexpr auto Medium=meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_FAST;
 static unsigned draw=5,draws=0;
 static uint32_t nextDraw(){++draws;return draw;}
+// Use the production drain, including its native support decision while the
+// application receiver is isolated. Driver calls below model an empty queue.
+namespace meterOwner {
+struct ApplicationReceiver {
+    const mt::Service *source=nullptr;
+    bool receiving()const{return source&&source->receiving();}
+} service;
+static unsigned beaconOffProfileRx=0,radioDevice=0;
+static bool nativeSupport=true;
+static unsigned atomic_get(const unsigned *v){return *v;}
+struct sx126x_airtime_observation {uint32_t airtime_ms=0;bool known=false;uint64_t observed_at_ms=0;uint16_t irq=0;uint8_t length=0;};
+static bool sx126x_airtime_observer_supported(unsigned){return nativeSupport;}
+static bool sx126x_airtime_observer_take_loss(unsigned){return false;}
+static int sx126x_airtime_observer_take(unsigned,sx126x_airtime_observation *){return -ENOENT;}
+#include "meter-owner.inc"
+}
 struct TestRadio final : mt::Radio {
     mt::Config applied;
     bool isolated=false,blockScan=false,complete=false,rxBusy=false,rxPending=false;
@@ -73,7 +89,7 @@ struct TestRadio final : mt::Radio {
     int restore()override{if(restoreFailures){--restoreFailures;return -EIO;}state=1;return 0;}
     int health()override{return state;}
     bool beaconIsolationSupported()const override{return true;}
-    void beaconRxIsolation(bool b)override{isolated=b;}
+    void beaconRxIsolation(bool b)override{isolated=b;meterOwner::beaconOffProfileRx=b;}
     int configure(const mt::Config &c)override{
         assert(state==0);++configures;
         if(c.radioRequest().overrideMHz!=0&&homeFailures){--homeFailures;return -EIO;}
@@ -98,7 +114,9 @@ struct Fixture {
     Runtime runtime{service,nextDraw};
     mt::Config home;Bytes plain;
     Fixture(){
-        clock.bind(service);
+        meterOwner::service.source=&service;meterOwner::beaconOffProfileRx=0;meterOwner::nativeSupport=true;
+        const auto clockNow=[](void *ctx){return static_cast<mt::test::KnownChannelFixtureClock *>(ctx)->now();};
+        assert(service.channelMeter().bind({clockNow,&clock},meterOwner::drainChannelObservations));
         auto request=home.radioRequest();request.regionCode=1;request.usePreset=true;request.preset=0;
         request.channel=60;request.overrideMHz=915;request.powerSpecified=true;request.power=30;
         home.setTxEnabled(true);assert(home.setRadio(request)&&home.primaryName()[0]==0);
@@ -288,9 +306,9 @@ static void preservedHomeRx(){
     assert(f.service.received==1&&accepted);f.runtime.receiveAccepted();f.poll(++at);
     assert(f.radio.frames.empty()&&!f.runtime.busy());
 }
-static void boundedAdmission(bool recover){
+static void boundedAdmission(bool recover,bool unsupported=false){
     Fixture f;draw=255;auto target=f.resolve(meshtastic_Config_LoRaConfig_ModemPreset_LONG_SLOW);
-    f.service.channelMeter().observeRx(60000,true);
+    f.service.channelMeter().observeRx(60000,true);meterOwner::nativeSupport=!unsupported;
     const uint32_t start=recover?59000u:100u;
     assert(f.enqueue(500,target,start));f.poll(start);
     const auto delay=f.delay(draw);assert(delay>5000&&f.radio.isolated&&f.radio.scans==0);
@@ -305,6 +323,6 @@ static void boundedAdmission(bool recover){
 }
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
-    normalSender();preservedHomeRx();boundedAdmission(false);boundedAdmission(true);
-    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":12,\"refilled_slots\":24}");
+    normalSender();preservedHomeRx();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
+    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":13,\"refilled_slots\":24}");
 }
