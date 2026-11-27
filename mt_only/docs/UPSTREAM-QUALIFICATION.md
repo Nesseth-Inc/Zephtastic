@@ -61,6 +61,10 @@ The core job compares the Git objects for the upstream telemetry sensor director
 | GamesModule | Stock menu and game transitions compared with the ZT host. The checks cover the score-clear dialog, button actions and idle timeouts. |
 | Tetris | Independently compiled stock and ZT game cores receive identical pieces and controls. The checks compare board cells, the current and next piece, ghost position, row clears, levels, wall kicks and game over. |
 
+The native job also interrupts settings journal writes at each byte, changes each bit of a saved record, and checks variable-length records under both enum ABIs. These tests cover the shared write-and-readback routine used by 15 settings journals.
+
+The beacon tests cover late completion and recovery after a failed return to the home channel. If a driver never signals completion, or if the radio can never verify the home channel, the current firmware retains the packet and radio ownership. The ordinary USB service loop then pauses until recovery or reset.
+
 ## Optional USB bench check
 
 With the designated test node already backed up and running ZT, use the stock Python package `meshtastic==2.7.11`. Supply its assigned serial port and the node ID from the backup. The default check reads the configuration handshake. Adding `--send-to` sends one direct text and verifies the peer's successful routing ACK matches the destination and request ID. The meshTestic assertions run through ZT's device selection without invoking upstream device discovery or setup. [Upstream bench assertions](https://github.com/meshtastic/meshTestic/blob/dcac7e5673005f4d8a2b1f0f6e06877b689d7519/test/config.spec.ts)
