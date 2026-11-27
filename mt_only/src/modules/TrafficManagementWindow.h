@@ -50,6 +50,7 @@ class TrafficManagementWindow {
     const uint64_t ticks=uint64_t(seconds)/360;return ticks<1?1:ticks>255?255:ticks;
   }
 public:
+  bool deduplicatesPosition() const { return configured_ && config_.position_min_interval_secs != 0; }
   bool configured() const { return configured_; }
   void configure(const TrafficManagementSettings &settings){
     if(!configured_||!settings.same(settings_)){

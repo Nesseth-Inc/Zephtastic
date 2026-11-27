@@ -399,6 +399,7 @@ struct Config {
 #endif
   }
   // Forwarding uses channel policy even when the relay has no local location.
+  bool trafficPositionChannel(unsigned index, unsigned &precision) const;
   unsigned relayPositionPrecision(unsigned index) const;
   unsigned positionPrecision(unsigned index) const;
   bool channelMuted()const{return bytes[101]!=0;}

@@ -1081,6 +1081,18 @@ private:
       opaqueUplinkNext_=(opaqueUplinkNext_+1u)%8u;
     }
   }
+  bool positionRelayAllowed(unsigned channel, uint8_t hash, const bench::RouteMetadata &m) const {
+    unsigned precision = config.relayPositionPrecision(channel);
+    // Identical on-air channels can occupy multiple settings slots. Their
+    // wire identity cannot distinguish which slot the originator selected.
+    const auto candidates = config.channelCandidates(hash);
+    for (unsigned i = 0; i < 8; ++i) {
+      if (i == channel || !(candidates & (1u << i)) || !sameChannel(channel, i)) continue;
+      const unsigned other = config.relayPositionPrecision(i);
+      if (other < precision) precision = other;
+    }
+    return stock::TrafficManagementModule::allowsPositionRelay(m.payload, m.payloadLength, precision);
+  }
   bool receiveTransit(const uint8_t *p,size_t n,bench::RouteMetadata &m,int8_t snr,uint32_t now,uint32_t random,
                       bool radioReceive=true,uint32_t utcNow=0) {
     m.mqttIngress=!radioReceive;
@@ -1096,16 +1108,7 @@ private:
         m.portnum == meshtastic_PortNum_POSITION_APP &&
         bench::le32(p) == UINT32_MAX) {
       const unsigned channel = m.channelContext ? unsigned(m.channelContext - 1) : selectedChannel_;
-      unsigned precision = config.relayPositionPrecision(channel);
-      // Identical on-air channels can occupy multiple settings slots. Their
-      // wire identity cannot distinguish which slot the originator selected.
-      const auto candidates = config.channelCandidates(p[13]);
-      for (unsigned i = 0; i < 8; ++i) {
-        if (i == channel || !(candidates & (1u << i)) || !sameChannel(channel, i)) continue;
-        const unsigned other = config.relayPositionPrecision(i);
-        if (other < precision) precision = other;
-      }
-      if (!stock::TrafficManagementModule::allowsPositionRelay(m.payload, m.payloadLength, precision)) {
+      if (!positionRelayAllowed(channel, p[13], m)) {
         trafficSuppressed_ = true;
         return false;
       }
@@ -2573,8 +2576,14 @@ public:
            (!m.signatureLength||m.signatureVerified)&&positionRole_)
             advisory=positionRole_(from,role);
 #endif
+        unsigned precision=0;
+        // An over-precise broadcast that cannot be relayed must not consume the
+        // dedup window for the next compliant report in its cell.
+        const bool dedupChannel=m.portnum==meshtastic_PortNum_POSITION_APP &&
+          traffic_->deduplicatesPosition() && config.trafficPositionChannel(decodedSlot,precision) &&
+          (to!=UINT32_MAX || positionRelayAllowed(decodedSlot,p[13],m));
         if(traffic_->decoded(from,to,route.identity(),m.portnum,m.payload,m.payloadLength,
-            selectedDefault_,config.positionPrecision(decodedSlot),role,trafficUptime_,roleKnown,advisory)){
+            dedupChannel,precision,role,trafficUptime_,roleKnown,advisory)){
           trafficSuppressed_=true;bench::wipeKeyBuffer(&m,sizeof(m));return;
         }
       }

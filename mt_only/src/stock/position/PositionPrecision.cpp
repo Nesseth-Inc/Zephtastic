@@ -131,33 +131,55 @@ unsigned mt::Config::positionPrecision(unsigned index) const {
     return stock::getPositionPrecisionForChannel(PositionChannels(*this), static_cast<uint8_t>(index));
 }
 
-unsigned mt::Config::relayPositionPrecision(unsigned index) const {
-    ChannelRecord channel;
-    // TrafficManagementModule::alterReceived exempts licensed stations and
-    // zero channel precision. The limit concerns a relayed packet and does
-    // not require a local GNSS fix or a local Position transmission.
-    if (licensedOperation() || index >= 8 || !channelRecord(index, channel) ||
-        !channel.role() || !channel.precision() || isPositionEventChannel(index))
-        return 32;
-#ifndef USERPREFS_TMM_APPLY_TO_PRIVATE_CHANNELS
-    // Channels::isWellKnownChannel uses the stored PSK and a recognized
-    // preset name. ZT stores primary aliases 1..255 as their expanded keys,
-    // so apply the limit to the entire public key family on primary.
+namespace {
+// Channels::isWellKnownChannel checks a preset name and the stored PSK.
+// ZT's primary journal expands the single-byte public key indexes on save.
+bool wellKnownChannel(const mt::Config &cfg, unsigned index, const mt::ChannelRecord &channel)
+{
     const auto &family = bench::MtNodeRecord::PublicKey;
-    const bool shortKey = index == 0
-        ? channel.keySize() == sizeof(family) && !memcmp(channel.key(), family, sizeof(family) - 1)
-        : channel.keySize() <= 1;
-    if (!shortKey) return 32;
-    const char *name = channel.name()[0] ? channel.name() : modemName();
-    bool knownName = false;
+    if (channel.keySize() > 1 &&
+        !(index == 0 && channel.keySize() == sizeof(family) &&
+          !memcmp(channel.key(), family, sizeof(family) - 1)))
+        return false;
+
+    const char *name = channel.name()[0] ? channel.name() : cfg.modemName();
     for (unsigned i = _meshtastic_Config_LoRaConfig_ModemPreset_MIN;
          i <= _meshtastic_Config_LoRaConfig_ModemPreset_MAX; ++i) {
-        const char *preset = radioPresetName(i);
-        if (name && preset && !strcmp(name, preset)) { knownName = true; break; }
+        const char *preset = mt::Config::radioPresetName(i);
+        if (name && preset && !strcmp(name, preset)) return true;
     }
-    if (!knownName) return 32;
-#endif
+    return false;
+}
+
+unsigned ingressPrecision(const mt::Config &cfg, unsigned index, const mt::ChannelRecord &channel)
+{
+    if (cfg.isPositionEventChannel(index)) return 0;
     const unsigned bits = channel.precision();
-    return bits > PublicPositionPrecision && PositionChannels(*this).usesPublicKey(static_cast<uint8_t>(index))
-             ? PublicPositionPrecision : bits;
+    return bits > mt::Config::PublicPositionPrecision && mt::PositionChannels(cfg).usesPublicKey(index)
+               ? mt::Config::PublicPositionPrecision : bits;
+}
+}
+
+bool mt::Config::trafficPositionChannel(unsigned index, unsigned &precision) const
+{
+    precision = 0;
+    ChannelRecord channel;
+    if (!channelRecord(index, channel) || !channel.role() || !wellKnownChannel(*this, index, channel))
+        return false;
+    precision = ingressPrecision(*this, index, channel);
+    return true;
+}
+
+unsigned mt::Config::relayPositionPrecision(unsigned index) const
+{
+    // ZT suppresses over-precise transits instead of rewriting a sender's bytes.
+    // The legacy relay policy exempts licensed, unconfigured and event channels.
+    ChannelRecord channel;
+    if (licensedOperation() || !channelRecord(index, channel) || !channel.role() ||
+        !channel.precision() || isPositionEventChannel(index))
+        return 32;
+#ifndef USERPREFS_TMM_APPLY_TO_PRIVATE_CHANNELS
+    if (!wellKnownChannel(*this, index, channel)) return 32;
+#endif
+    return ingressPrecision(*this, index, channel);
 }
