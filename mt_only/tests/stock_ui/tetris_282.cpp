@@ -21,6 +21,31 @@ static void compare(const TetrisGame &zt, const StockTetrisGame &stock) {
     ++states;
 }
 
+static void resetI(TetrisGame &zt, StockTetrisGame &stock) {
+    for (uint32_t seed = 1; seed < 1024; ++seed) {
+        stock.reset(seed); zt.reset(seed);
+        if (stock.current().type == 0) { compare(zt, stock); return; }
+    }
+    assert(false);
+}
+
+static void boundaryCases() {
+    TetrisGame zt; StockTetrisGame stock;
+    resetI(zt, stock);
+    assert(zt.rotate() && stock.rotate()); // vertical I occupies column 2 of its bounding box
+    for (int i = 0; i < 12; ++i) {
+        assert(zt.moveLeft() == stock.moveLeft()); compare(zt, stock);
+    }
+    assert(stock.current().col == -2);
+    assert(zt.rotate() && stock.rotate()); compare(zt, stock);
+    assert(stock.current().col == 0); ++kicks;  // only the +2 kick clears the wall
+    for (unsigned i = 0; stock.isPlaying(); ++i) {
+        assert(i < 64);
+        zt.hardDrop(); stock.hardDrop(); compare(zt, stock);
+    }
+    assert(!zt.step() && !stock.step()); compare(zt, stock); ++losses;
+}
+
 static void traces() {
     for (uint32_t seed = 0; seed < 128; ++seed) {
         TetrisGame zt; StockTetrisGame stock;
@@ -79,11 +104,7 @@ static void prepareRows(TetrisGame &zt, StockTetrisGame &stock, unsigned count) 
 static void clears() {
     for (unsigned lines = 1; lines <= 4; ++lines) {
         TetrisGame zt; StockTetrisGame stock;
-        for (uint32_t seed = 1; ; ++seed) {
-            assert(seed < 1024);
-            stock.reset(seed); zt.reset(seed);
-            if (stock.current().type == 0) break; // vertical I can complete all four rows
-        }
+        resetI(zt, stock);
         assert(zt.rotate() && stock.rotate());
         prepareRows(zt, stock, lines);
         zt.hardDrop(); stock.hardDrop(); compare(zt, stock);
@@ -106,6 +127,6 @@ int main() {
             assert(TetrisGame::pieceCell(t, r, y, x) == StockTetrisGame::pieceCell(t, r, y, x));
             ++shapes;
         }
-    traces(); clears();
+    boundaryCases(); traces(); clears();
     std::printf("TETRIS282 states=%u shapes=%u kicks=%u terminal=%u\n", states, shapes, kicks, losses);
 }
