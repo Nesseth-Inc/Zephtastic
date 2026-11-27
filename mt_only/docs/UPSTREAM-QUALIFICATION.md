@@ -21,13 +21,13 @@ The native receipt records a separate comparison count for each family against t
 
 | Module | What the comparison observes |
 | --- | --- |
-| TrafficManagement | Simulated LoRa arrivals pass through the receive service and transmit queue. The test counts radio sends for repeated positions under different channel and traffic settings. |
+| TrafficManagement | Simulated LoRa arrivals pass through the receive service and transmit queue. The test counts radio sends at rate-window boundaries and checks how position deduplication interacts with the per-sender limit. |
 | Position | The received channel's name, key and precision govern forwarding even when the relay has no fix. ZT suppresses an over-precise broadcast, forwards compliant payload bytes unchanged, and keeps the first rejected report from suppressing a later compliant one. |
-| HopScaling | Random draws and channel utilization feed the stock algorithm and ZT. The packet-level checks compare how the router applies the resulting hop cap. |
+| HopScaling | Both implementations receive the same node population, hash seed and channel utilization. The packet-level checks compare how the router applies the resulting hop cap. |
 | MeshBeacon | The same settings feed the stock periodic task and ZT. The comparisons cover airtime and transmit-history deferral, the next scheduled opportunity, and beacon payload selection. |
 | Telemetry | The stock and ZT schedulers receive the same role, interval, congestion and regional settings. Synthetic readings exercise encoded Device and Environment announcements and replies. |
 
-These comparisons run without a radio. Physical sensor accuracy, RF timing and multi-radio operation require separate bench measurements. Telemetry phone-queue timing also has separate coverage from its radio schedule.
+These comparisons run without a radio. Physical sensor accuracy, RF timing and multi-radio operation require separate bench measurements. The remaining software checks include unsolicited full-precision Position updates to a local phone, Telemetry delivery to an idle phone queue, and recovery of the HopScaling histogram after a warm restart.
 
 The board jobs build the T096 680 and 728 KiB profiles, T114 V2, RAK4631 Mini, ordinary XIAO and three receive-only Heltec V4 variants. Each successful group uploads a JSON receipt containing its source commit. Board receipts give flash and static RAM usage and capacity. XIAO uses its unsigned application size against the usable update budget. The budget reserves 8,192 bytes for the swap trailer and 152 bytes for the longest supported P-256 signing metadata. RAM is measured in internal DRAM. These measurements leave peak stack, heap and physical radio behavior to the bench.
 
