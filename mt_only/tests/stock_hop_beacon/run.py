@@ -49,7 +49,7 @@ def prepare(build, sources):
         'struct StockConfig {meshtastic_Config_DeviceConfig device{};}; extern StockConfig config;\n')
     (build / 'concurrency/OSThread.h').write_text(
         '#pragma once\nnamespace concurrency { struct OSThread { OSThread(const char*){} '
-        'unsigned startup=0; void setIntervalFromNow(unsigned x){startup=x;} virtual int32_t runOnce()=0; }; }\n')
+        'inline static unsigned startup=0; void setIntervalFromNow(unsigned x){startup=x;} virtual int32_t runOnce()=0; }; }\n')
     router = sources['mesh/Router.cpp']
     start = router.index('    if (isFromUs(p) && isBroadcast(p->to) && hopScalingModule')
     (build / 'router.inc').write_text(router[start:router.index('\n#endif', start)])

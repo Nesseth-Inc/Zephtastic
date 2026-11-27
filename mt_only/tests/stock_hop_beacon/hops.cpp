@@ -36,7 +36,7 @@ int main()
             hopScalingModule = &stock;
             zt.seed(seed);
             stock.setHashSeed(seed);
-            uint32_t now = stock.startup;
+            uint32_t now = concurrency::OSThread::startup;
             bool limited = false, recovered = false;
             for (unsigned tick = 0; tick < 12 * 44; ++tick) {
                 // First a dense quiet mesh, then bursts on either side of the
