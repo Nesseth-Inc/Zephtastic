@@ -59,6 +59,12 @@ def main():
         owner=(APP/'src/main.cpp').read_text()
         start=owner.index('static void drainChannelObservations(')
         (build/'meter-owner.inc').write_text(owner[start:owner.index('\n}',start)+2])
+        # Exercise the acquisition pass between the beacon poll and the following
+        # service/power work. The already-held pass has its own unconditional yield.
+        poll=owner.index('    beaconTargets.poll(',owner.index('    const bool heartbeatEnabled='))
+        before=owner.index(');',poll)+2
+        after=owner.index('    if(ringtoneJournal.ready())',before)
+        (build/'power-owner-acquisition.inc').write_text(owner[before:after])
         for label,abi in [('normal',[]),('short',['-fshort-enums'])]:
             flags=['-O1','-UNDEBUG','-DCONFIG_MT_RF_ADMIN_GET=1','-fsanitize=address,undefined','-fno-sanitize-recover=all',*abi,
                    *(('-DEKEYREJECTED=129',) if sys.platform=='darwin' else ()),
@@ -69,6 +75,11 @@ def main():
                 obj=build/(unit.stem+'.o')
                 subprocess.run([*host.cc(),'-std=c11',*flags,'-c',unit,'-o',obj],check=True)
                 objects.append(obj)
+            power=build/'power.o'
+            subprocess.run([*host.cxx(),'-std=c++17','-I'+str(APP/'tests/stock_operating_roles/mocks'),
+                            '-DCONFIG_BOARD_HELTEC_T096=1','-DCONFIG_SOC_SERIES_NRF52=1',*flags,
+                            '-c',APP/'src/power/PowerPolicy.cpp','-o',power],check=True)
+            objects.append(power)
             exe=build/'target'
             subprocess.run([*host.cxx(),'-std=c++17',*flags,*host.crypto_compile_flags(),HERE/'cases.cpp',
                             APP/'src/modules/BeaconTargetRuntime.cpp',APP/'src/modules/BeaconExcursion.cpp',
@@ -76,7 +87,7 @@ def main():
                             *host.crypto_link_flags(),'-o',exe],check=True)
             env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0:halt_on_error=1','UBSAN_OPTIONS':'halt_on_error=1'}
             row=json.loads(subprocess.check_output([exe],env=env,text=True))
-            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':19,'refilled_slots':24}:
+            if row!={'target_rechecks':2,'fifo_frames':4,'runtime_scenarios':22,'refilled_slots':24,'power_actions':3}:
                 raise ValueError(f'Incomplete beacon runtime run: {row}')
             results.append({'enum':label,**row})
     report={'status':'PASS','hardware':False,'stock_revision':STOCK,'source_sha256':PINS,'runs':results}

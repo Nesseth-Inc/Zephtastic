@@ -6160,6 +6160,13 @@ int main() {
     const bool heartbeatEnabled=storageReady&&notificationEdit.ready()&&!notificationEdit.config().heartbeatDisabled();
     beaconTargets.poll(k_uptime_get_32(),beaconSettingsEpoch(),service.route.identity(),
       initialized&&storageReady&&extendedEdit.trusted()&&!settingsEdit.open()&&!rebootSchedule.pending());
+    // This poll can acquire the modem. Give the in-flight beacon the same
+    // exclusive owner pass as a beacon already held at the top of the loop.
+    if(beaconTargets.radioHeld()){
+      k_mutex_unlock(&serviceLock);
+      if(channel>=0)(void)wdt_feed(watchdog,channel);
+      k_sleep(K_MSEC(5));continue;
+    }
     if(ringtoneJournal.ready())completionRuntime.ringtone(ringtoneJournal.config().ringtone,ringtoneJournal.config().length());
 #if defined(CONFIG_MT_PAXCOUNTER_WIFI_ESP32)
     completionRuntime.paxPermitted(bluetoothConfigReady&&bluetoothJournal.ready()&&wifiJournal.ready()&&mt::ble::paxRadioIdle(),

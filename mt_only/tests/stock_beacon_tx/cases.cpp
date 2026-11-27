@@ -406,8 +406,9 @@ static void boundedAdmission(bool recover,bool unsupported=false){
     assert(!f.runtime.busy()&&!f.radio.isolated&&f.radio.frames.size()==unsigned(recover));
 }
 #include "admin.inc"
+#include "power_owner_cases.h"
 int main(){
     offChannel();reusedSlots();changedHome();homeRestoreRetry();delayedSplit();cancelInFlight();faultRecovery();
     retiredTarget();terminalSignal();normalSender();preservedHomeRx();pendingHomeAck();stagedAdminRead();boundedAdmission(false);boundedAdmission(true);boundedAdmission(false,true);
-    std::puts("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":19,\"refilled_slots\":24}");
+    std::printf("{\"target_rechecks\":2,\"fifo_frames\":4,\"runtime_scenarios\":22,\"refilled_slots\":24,\"power_actions\":%u}\n",beaconPower::cases());
 }
