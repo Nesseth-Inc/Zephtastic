@@ -156,13 +156,19 @@ public:
         if(cursor>=hot.count()){rescan_=false;lastScan_=gen;cursor=0;return;}
         if(used_<4){const auto *e=hot.get(cursor++);if(e)enqueue(*e);}
     }
+    template<class IO> int prefetch(IO &io,unsigned owner){
+        if(owner>=Clients||!ready())return 0;
+        auto &r=reads_[owner];
+        if(!r.id||r.loaded)return 0;
+        if(!directory_.eligible(r.id)){r={};return 0;}
+        const int rc=directory_.read(io,r.id,r.row);if(rc){r={};return rc;}
+        r.loaded=true;return 1;
+    }
     template<class IO> int poll(IO &io,uint32_t gen,Row *evicted=nullptr,bool maySave=true){
         if(evicted)*evicted={};
         if(!ready())return -EAGAIN;
-        for(auto &r:reads_)if(r.id&&!r.loaded){
-            if(!directory_.eligible(r.id)){r={};continue;}
-            const int rc=directory_.read(io,r.id,r.row);if(rc){r={};return rc;}
-            r.loaded=true;return 0;
+        for(unsigned owner=0;owner<Clients;++owner){
+            const int result=prefetch(io,owner);if(result)return result<0?result:0;
         }
         if(!directory_.censusReady())return directory_.hydrateCensus(io);
         if(used_){

@@ -369,6 +369,10 @@ public:
     return sx126x_recv_async_packet(radioDevice,receive,nullptr);
   }
   int stop() override {
+    const int result=abortBeaconTransmit();
+    k_msgq_purge(&rxQueue);return result;
+  }
+  int abortBeaconTransmit() override {
 #ifdef CONFIG_MT_NORMAL_ENDPOINT
     joinedForAgc_=false;
 #endif
@@ -381,7 +385,7 @@ public:
       bench::wipeKeyBuffer(txInternal_,sizeof(txInternal_));
 #endif
     }
-    k_msgq_purge(&rxQueue);return ret;
+    return ret;
   }
   bool receiveEventPending()const override{return k_msgq_num_used_get(&rxQueue)!=0;}
   int stopForStorage() override {
@@ -1526,6 +1530,7 @@ RING_BUF_DECLARE(usbTx,2048);
 #else
 RING_BUF_DECLARE(usbTx,8192);
 #endif
+static uint32_t usbReadOnlyPrefix; // Accessed under the USB producer IRQ exclusion.
 static atomic_t usbDrops;
 static atomic_t usbEpochChanged;
 static mt::UsbSessionEpoch usbSession;
@@ -1536,7 +1541,7 @@ static void wipeUsbRxLocked(){
     bench::wipeKeyBuffer(claimed,count);
     if(ring_buf_get_finish(&usbRx,count)!=0)break;
   }
-  ring_buf_reset(&usbRx);
+  ring_buf_reset(&usbRx);usbReadOnlyPrefix=0;
 }
 static void resetUsbBuffersLocked(bool discardRx,bool epoch) {
   if(discardRx)wipeUsbRxLocked();
@@ -2839,7 +2844,7 @@ public:
   }
   int uiConfig(meshtastic_DeviceUIConfig &out)const override {
     out=mt::ui::UiConfigSettings::defaults();
-    if(!ready()||!uiConfigJournal.ready()||!mt::ui::UiConfigSettings::valid(uiConfigJournal.config()))return -EACCES;
+    if(!localSnapshotReady()||!uiConfigJournal.ready()||!mt::ui::UiConfigSettings::valid(uiConfigJournal.config()))return -EACCES;
     out=uiConfigJournal.config();return 0;
   }
   int hardwarePinInventory(meshtastic_NodeRemoteHardwarePinsResponse &out)const override {
@@ -3795,11 +3800,11 @@ public:
 #endif
   unsigned directoryLimit()const override{return DirectoryLimit;}
   unsigned directoryCount(const mt::NodeCache &hot)const override{
-    if(!ready()||!directoryBound||settingsEdit.open()||directorySettingsGen!=journal.generation())return hot.count();
+    if(!localSnapshotReady()||!directoryBound||settingsEdit.open()||directorySettingsGen!=journal.generation())return hot.count();
     k_mutex_lock(&directoryLock,K_FOREVER);const unsigned n=peerDirectory.visibleCount(hot);k_mutex_unlock(&directoryLock);return n;
   }
   int directoryPeer(unsigned owner,unsigned ordinal,const mt::NodeCache &hot,mt::NodeCache::Entry &e) override{
-    if(!ready()||!directoryBound||settingsEdit.open()||directorySettingsGen!=journal.generation())return 0;
+    if(!localSnapshotReady()||!directoryBound||settingsEdit.open()||directorySettingsGen!=journal.generation())return 0;
     if(k_mutex_lock(&directoryLock,K_NO_WAIT))return -EAGAIN;
     const int result=peerDirectory.next(owner,ordinal,hot,e);k_mutex_unlock(&directoryLock);return result;
   }
@@ -3849,7 +3854,10 @@ public:
     k_mutex_unlock(&directoryLock);
   }
 #endif
-  bool ready() const override {return initialized&&storageReady&&journal.ready()&&!remoteConfigPending()&&!beaconTargets.radioHeld()&&!atomic_get(&shutdownAdmissionClosed);}
+  bool localSnapshotReady()const {
+    return initialized&&storageReady&&journal.ready()&&!remoteConfigPending()&&!atomic_get(&shutdownAdmissionClosed);
+  }
+  bool ready() const override {return localSnapshotReady()&&!beaconTargets.radioHeld();}
   bool acceptTransportFrame(uint32_t generation) override {
     // This is the USB request's single acceptance/linearization point. The
     // same IRQ exclusion used by the CDC ISR orders an observed DTR transition
@@ -4795,7 +4803,12 @@ static void mqttLocalRx(void *,const uint8_t *frame,size_t size,uint32_t now) {
 #endif
 }
 #endif
-struct UsbBatch {uint32_t length=0,generation=0;};
+struct UsbBatch {uint32_t length=0,generation=0,readOnly=0;};
+static void retainUsbAdmissionAtRelease() {
+  const unsigned key=irq_lock();
+  usbReadOnlyPrefix=ring_buf_size_get(&usbRx);
+  irq_unlock(key);
+}
 static UsbBatch takeUsbBytes(uint8_t *bytes,size_t capacity) {
   // DTR sampling, transition handling and extraction exclude the producer.
   // The ISR independently observes the same epoch before admitting each RX
@@ -4814,6 +4827,8 @@ static UsbBatch takeUsbBytes(uint8_t *bytes,size_t capacity) {
     if(ring_buf_get_finish(&usbRx,count)!=0){bench::wipeKeyBuffer(bytes+length,count);break;}
     length+=count;
   }
+  const uint32_t restricted=length<usbReadOnlyPrefix?length:usbReadOnlyPrefix;
+  usbReadOnlyPrefix-=restricted;
   irq_unlock(key);
   if(reset)companion.resetStream();
   if(!length)return {0,first.generation};
@@ -4824,7 +4839,14 @@ static UsbBatch takeUsbBytes(uint8_t *bytes,size_t capacity) {
   reset=atomic_set(&usbEpochChanged,0)!=0;irq_unlock(key);
   if(reset)companion.resetStream();
   if(!valid)bench::wipeKeyBuffer(bytes,length);
-  return {valid?length:0,first.generation};
+  return {valid?length:0,first.generation,restricted};
+}
+static void drainUsbCompanion(bool radioReadOnly) {
+  uint8_t bytes[128];const auto batch=takeUsbBytes(bytes,sizeof(bytes));
+  for(uint32_t i=0;i<batch.length;++i)
+    companion.byte(bytes[i],k_uptime_get_32(),batch.generation,companionWorkspaceProof(),radioReadOnly||i<batch.readOnly);
+  bench::wipeKeyBuffer(bytes,sizeof(bytes));
+  if(radioReadOnly)companion.pollUsbSnapshot(companionWorkspaceProof());
 }
 static int commitVerifiedPeer(void *,uint32_t peer,const uint8_t key[32]) {
 #if defined(CONFIG_MT_PKI_TARGET_RUNTIME)
@@ -5742,10 +5764,19 @@ int main() {
     if(beaconTargets.radioHeld()){
       // Exclusive native owner until target completion and verified home RX.
       // USB/BLE/TCP callbacks retain their bounded ingress queues meanwhile.
+      const bool wasRecovering=beaconTargets.recovering();
       if(beaconTargets.homeRxPending())drainHomeRadioEvents();
       beaconTargets.poll(k_uptime_get_32(),beaconSettingsEpoch(),service.route.identity(),
         initialized&&storageReady&&extendedEdit.trusted()&&!settingsEdit.open()&&!rebootSchedule.pending());
+      if(wasRecovering&&!beaconTargets.recovering())retainUsbAdmissionAtRelease();
+      const bool usbRecovery=beaconTargets.recovering()&&clientHost.localSnapshotReady();
+      if(usbRecovery)drainUsbCompanion(true);
       k_mutex_unlock(&serviceLock);
+#if defined(CONFIG_MT_PEER_DIRECTORY)
+      if(usbRecovery&&directoryBound&&!k_mutex_lock(&directoryLock,K_NO_WAIT)){
+        (void)peerDirectory.prefetch(directoryVolume,0);k_mutex_unlock(&directoryLock);
+      }
+#endif
       if(channel>=0)(void)wdt_feed(watchdog,channel);
       k_sleep(K_MSEC(5));continue;
     }
@@ -5816,10 +5847,7 @@ int main() {
     mt::observeIdleRx(service,radio);
 #endif
     bool clientIngressSaturated=false;
-    uint8_t serialBytes[128];const auto serialBatch=takeUsbBytes(serialBytes,sizeof(serialBytes));
-    for(uint32_t i=0;i<serialBatch.length;++i)
-      companion.byte(serialBytes[i],k_uptime_get_32(),serialBatch.generation,companionWorkspaceProof());
-    bench::wipeKeyBuffer(serialBytes,sizeof(serialBytes));
+    drainUsbCompanion(false);
 #if defined(CONFIG_MT_PKI_STOCK_TRIAL) && MT_PKI_LEGACY_TAIL_TOOLS_ENABLED
     provisionIngress.tick();
 #endif

@@ -342,7 +342,7 @@ public:
 private:
   Service &service_;Host &host_;companion::CompanionWorkspace &workspace_;uint8_t model_,owner_;
   uint8_t frame_[512]{};size_t length_=0,used_=0;unsigned state_=0;uint32_t frameEpoch_=0;
-  uint32_t lastByte_=0,sequence_=0;bool connected_=false,recoveryOnly_=false,recoveryReply_=false,acceptedUsbFrame_=false;
+  uint32_t lastByte_=0,sequence_=0;bool connected_=false,recoveryOnly_=false,recoveryReply_=false,acceptedUsbFrame_=false,usbReadOnlyFrame_=false;
   static constexpr uint32_t OnlyConfig=69420,OnlyNodes=69421;
   enum class HandshakePhase:uint8_t {Idle,MyInfo,UiData,Metadata,Region,Channels,Configs,Modules,LocalNode,Nodes,Diagnostics,QueueStatus,
 #if defined(CONFIG_MT_PHONE_FILES)
@@ -1064,10 +1064,10 @@ private:
       return;
     }
     handshakePhase_=nonce==OnlyNodes?HandshakePhase::LocalNode:HandshakePhase::MyInfo;
-    progressHandshake();
+    if(!acceptedUsbFrame_||!usbReadOnlyFrame_)progressHandshake();
   }
-  void progressHandshake() {
-    while(handshakePhase_!=HandshakePhase::Idle) {
+  void progressHandshake(unsigned steps=UINT32_MAX) {
+    while(steps--&&handshakePhase_!=HandshakePhase::Idle) {
       switch(handshakePhase_) {
       case HandshakePhase::Idle:return;
       case HandshakePhase::MyInfo:
@@ -3234,6 +3234,29 @@ private:
 #endif
     return;
   }
+  void handleUsbSnapshotPacket() {
+    const auto &p=input_.packet;
+    if(!connected_||!p.id)return;
+    if(p.to!=service_.route.identity()||p.from||p.channel||
+       p.which_payload_variant!=meshtastic_MeshPacket_decoded_tag||
+       p.decoded.portnum!=meshtastic_PortNum_ADMIN_APP||!p.decoded.want_response){
+      ack(p.id,meshtastic_Routing_Error_NO_INTERFACE);return;
+    }
+    if(service_.config.isManaged()){ack(p.id,meshtastic_Routing_Error_NOT_AUTHORIZED);return;}
+    admin_={};reply_={};detail::VolatileWipe clearAdmin{&admin_,sizeof(admin_)},clearReply{&reply_,sizeof(reply_)};
+    auto in=pb_istream_from_buffer(p.decoded.payload.bytes,p.decoded.payload.size);
+    if(!pb_decode(&in,meshtastic_AdminMessage_fields,&admin_)){ack(p.id,meshtastic_Routing_Error_BAD_REQUEST);return;}
+    switch(admin_.which_payload_variant) {
+    case meshtastic_AdminMessage_get_device_metadata_request_tag:
+      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_metadata_response_tag;
+      metadata(reply_.get_device_metadata_response);break;
+    case meshtastic_AdminMessage_get_device_connection_status_request_tag:
+      reply_.which_payload_variant=meshtastic_AdminMessage_get_device_connection_status_response_tag;
+      connectionStatus(reply_.get_device_connection_status_response);break;
+    default:ack(p.id,meshtastic_Routing_Error_NO_INTERFACE);return;
+    }
+    adminReply(p.id);
+  }
   void handle(uint32_t now,DeferredProxy &deferred) {
     struct ClearInput {
       meshtastic_ToRadio &input;uint8_t *frame;size_t size;
@@ -3241,6 +3264,15 @@ private:
     } clearInput{input_,frame_,sizeof(frame_)};
     input_={};auto s=pb_istream_from_buffer(frame_,length_);
     if(!pb_decode(&s,meshtastic_ToRadio_fields,&input_)){++parseErrors;return;}
+    if(acceptedUsbFrame_&&usbReadOnlyFrame_){
+      if(input_.which_payload_variant==meshtastic_ToRadio_want_config_id_tag)handshake(input_.want_config_id,now);
+      else if(input_.which_payload_variant==meshtastic_ToRadio_disconnect_tag)resetStream();
+      else if(!recoveryOnly_&&host_.consoleAllowed()){
+        if(input_.which_payload_variant==meshtastic_ToRadio_packet_tag)handleUsbSnapshotPacket();
+        else if(input_.which_payload_variant==meshtastic_ToRadio_heartbeat_tag&&connected_)queue();
+      }
+      return;
+    }
     if(owner_==0&&(recoveryOnly_||!host_.consoleAllowed())) {
       switch(input_.which_payload_variant) {
       case meshtastic_ToRadio_want_config_id_tag:handshake(input_.want_config_id,now);break;
@@ -3806,6 +3838,10 @@ public:
     if(!pb_decode(&input,meshtastic_Data_fields,&packet.decoded)||input.bytes_left)return false;
     timestamp(packet,host_.wallTime());return emit(!idleOnly,idleOnly);
   }
+  void pollUsbSnapshot(WorkspaceProof proof) {
+    auto lease=workspace_.acquire(proof);
+    if(lease&&owner_==0&&!recoveryOnly_&&host_.consoleAllowed())progressHandshake(4);
+  }
   void poll(WorkspaceProof proof) {
     auto lease=workspace_.acquire(proof);if(!lease)return;
 #if defined(CONFIG_MT_PHONE_FILES)
@@ -3914,11 +3950,14 @@ public:
 #endif
   }
   // Timeout abandons incomplete messages. Invalid length never allocates memory.
-  void byte(uint8_t b,uint32_t now,uint32_t epoch,WorkspaceProof proof) {
+  void byte(uint8_t b,uint32_t now,uint32_t epoch,WorkspaceProof proof,bool radioReadOnly=false) {
     if(!proof.held())return;
     if(state_&&(uint32_t(now-lastByte_)>2000||frameEpoch_!=epoch)){
       state_=0;length_=used_=0;bench::wipeKeyBuffer(frame_,sizeof(frame_));
     }
+    // Preserve the stricter admission for a frame spanning a change of owner.
+    if(state_)usbReadOnlyFrame_|=radioReadOnly;
+    else usbReadOnlyFrame_=radioReadOnly;
     lastByte_=now;
     switch(state_) {
     case 0:if(b==0x94){state_=1;frameEpoch_=epoch;}break;
